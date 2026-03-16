@@ -1,7 +1,7 @@
 {
   "name": "Remitos Fran",
   "short_name": "Remitos",
-  "start_url": "/",
+  "start_url": "/auth/login",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
