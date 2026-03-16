@@ -38,9 +38,6 @@ export default function SignUpPage() {
 
     const supabase = createClient()
 
-    // ✅ Siempre usar la URL pública (Vercel) si está definida
-    // - En Vercel: NEXT_PUBLIC_SITE_URL = https://tu-app.vercel.app
-    // - En local: podés dejarlo vacío (usa localhost) o setearlo a Vercel si querés que el mail abra Vercel
     const siteUrl =
       process.env.NEXT_PUBLIC_SITE_URL ||
       process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
@@ -110,7 +107,7 @@ export default function SignUpPage() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
               </button>
             </div>
           </div>
@@ -135,7 +132,7 @@ export default function SignUpPage() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               >
-                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                {showConfirmPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
               </button>
             </div>
           </div>

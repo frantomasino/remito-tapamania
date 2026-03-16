@@ -35,8 +35,6 @@ export default function LoginPage() {
       return
     }
 
-    // ✅ Guardar "último login" en public.profiles
-    // (No bloquea el login si falla)
     try {
       const userId = signInData.user?.id
       const userEmail = signInData.user?.email ?? email
@@ -104,11 +102,11 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={() => setShowPassword((prev) => !prev)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
               </button>
             </div>
 
