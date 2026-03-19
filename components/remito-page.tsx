@@ -52,6 +52,7 @@ const LS_BASE_KEYS = {
   salesHistory: "salesHistory",
   nextNumber: "nextNumber",
   lastDay: "lastDay",
+  productsCache: "productsCache",
 } as const
 
 function k(base: string, userId: string) {
@@ -62,6 +63,11 @@ const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
 
 const BOTTOM_NAV_PX = 72
 const ACTION_BAR_PX = 64
+
+type ProductsCacheEntry = {
+  loadedAt: number
+  products: Product[]
+}
 
 export default function RemitoPage() {
   const [userId, setUserId] = useState<string>("")
@@ -79,6 +85,12 @@ export default function RemitoPage() {
   const [mounted, setMounted] = useState(false)
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  const productsCacheRef = useRef<Record<PriceListId, ProductsCacheEntry>>({
+    minorista: { loadedAt: 0, products: [] },
+    mayorista: { loadedAt: 0, products: [] },
+    oferta: { loadedAt: 0, products: [] },
+  })
 
   useEffect(() => setMounted(true), [])
 
@@ -105,6 +117,7 @@ export default function RemitoPage() {
       const nextKey = k(LS_BASE_KEYS.nextNumber, userId)
       const listKey = k(LS_BASE_KEYS.priceListId, userId)
       const lastDayKey = k(LS_BASE_KEYS.lastDay, userId)
+      const productsCacheKey = k(LS_BASE_KEYS.productsCache, userId)
 
       const lastDay = localStorage.getItem(lastDayKey)
       if (lastDay && lastDay !== today) {
@@ -128,6 +141,14 @@ export default function RemitoPage() {
       if (savedHistory) {
         const parsed = JSON.parse(savedHistory) as SaleRecord[]
         if (Array.isArray(parsed)) setSalesHistory(parsed)
+      }
+
+      const rawProductsCache = localStorage.getItem(productsCacheKey)
+      if (rawProductsCache) {
+        const parsed = JSON.parse(rawProductsCache) as Record<PriceListId, ProductsCacheEntry>
+        if (parsed?.minorista && parsed?.mayorista && parsed?.oferta) {
+          productsCacheRef.current = parsed
+        }
       }
     } catch {}
   }, [userId])
@@ -154,15 +175,34 @@ export default function RemitoPage() {
     if (next > prev) showToast("Producto agregado ✅")
   }, [items.length, showToast])
 
+  const saveProductsCache = useCallback(
+    (cache: Record<PriceListId, ProductsCacheEntry>) => {
+      if (!userId) return
+      try {
+        localStorage.setItem(k(LS_BASE_KEYS.productsCache, userId), JSON.stringify(cache))
+      } catch {}
+    },
+    [userId]
+  )
+
   useEffect(() => {
     const controller = new AbortController()
 
     const loadProducts = async () => {
+      const cached = productsCacheRef.current[priceListId]
+      if (cached?.products?.length > 0) {
+        setProducts(cached.products)
+      }
+
+      if (cached?.products?.length > 0) {
+        return
+      }
+
       try {
         setIsLoadingProducts(true)
 
         const res = await fetch(`/api/products-csv?list=${priceListId}`, {
-          cache: "no-store",
+          cache: "force-cache",
           signal: controller.signal,
         })
 
@@ -173,15 +213,28 @@ export default function RemitoPage() {
         const text = await res.text()
         const parsed = parseCSV(text)
 
+        const nextCache = {
+          ...productsCacheRef.current,
+          [priceListId]: {
+            loadedAt: Date.now(),
+            products: parsed,
+          },
+        }
+
+        productsCacheRef.current = nextCache
+        saveProductsCache(nextCache)
+
         startTransition(() => {
           setProducts(parsed)
         })
       } catch (e) {
         if ((e as { name?: string })?.name === "AbortError") return
         console.error("No se pudieron cargar productos", e)
-        startTransition(() => {
-          setProducts([])
-        })
+        if (!productsCacheRef.current[priceListId]?.products?.length) {
+          startTransition(() => {
+            setProducts([])
+          })
+        }
       } finally {
         setIsLoadingProducts(false)
       }
@@ -190,7 +243,7 @@ export default function RemitoPage() {
     loadProducts()
 
     return () => controller.abort()
-  }, [priceListId])
+  }, [priceListId, saveProductsCache])
 
   const remitoNumero = useMemo(() => formatRemitoNumber(nextNumber), [nextNumber])
   const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
@@ -312,18 +365,15 @@ export default function RemitoPage() {
     }
   }, [userId, items, remitoNumero, client.nombre, priceListId, total, showToast])
 
-  const openIOSPrintWindow = useCallback(() => {
+  const buildPrintHtml = useCallback(() => {
     const printable = document.getElementById("printable-remito")
-    if (!printable) return
+    if (!printable) return null
 
     const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
       .map((el) => el.outerHTML)
       .join("\n")
 
-    const win = window.open("", "_blank")
-    if (!win) return
-
-    const html = `<!doctype html>
+    return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -360,47 +410,70 @@ ${styles}
   </script>
 </body>
 </html>`
+  }, [])
+
+  const openPrintWindowImmediate = useCallback(() => {
+    const html = buildPrintHtml()
+    if (!html) return null
+
+    const win = window.open("", "_blank")
+    if (!win) return null
 
     win.document.open()
     win.document.write(html)
     win.document.close()
     win.focus()
-  }, [])
+
+    return win
+  }, [buildPrintHtml])
+
+  const openIOSPrintWindow = useCallback(() => {
+    return openPrintWindowImmediate()
+  }, [openPrintWindowImmediate])
 
   const handlePrint = useCallback(async () => {
     if (!canPrint || isSaving) return
 
+    const printWindow = isIOS() ? openIOSPrintWindow() : null
+
+    if (isIOS() && !printWindow) {
+      showToast("No se pudo abrir impresión")
+      return
+    }
+
+    if (!isIOS()) {
+      window.print()
+    }
+
     const ok = await persistRemito()
     if (!ok) return
 
     recordSale()
     advanceAndReset()
-
-    if (isIOS()) {
-      openIOSPrintWindow()
-      return
-    }
-
-    window.print()
-  }, [canPrint, isSaving, persistRemito, recordSale, advanceAndReset, openIOSPrintWindow])
+  }, [canPrint, isSaving, openIOSPrintWindow, persistRemito, recordSale, advanceAndReset, showToast])
 
   const handlePreviewPrint = useCallback(async () => {
     if (!canPrint || isSaving) return
 
-    const ok = await persistRemito()
-    if (!ok) return
-
     setShowPreview(false)
-    recordSale()
-    advanceAndReset()
 
-    if (isIOS()) {
-      openIOSPrintWindow()
+    const printWindow = isIOS() ? openIOSPrintWindow() : null
+
+    if (isIOS() && !printWindow) {
+      showToast("No se pudo abrir impresión")
       return
     }
 
-    window.print()
-  }, [canPrint, isSaving, persistRemito, recordSale, advanceAndReset, openIOSPrintWindow])
+    if (!isIOS()) {
+      window.print()
+    }
+
+    const ok = await persistRemito()
+    if (!ok) return
+
+    recordSale()
+    advanceAndReset()
+  }, [canPrint, isSaving, openIOSPrintWindow, persistRemito, recordSale, advanceAndReset, showToast])
 
   const handleNewRemito = useCallback(() => {
     setClient(defaultClient)
