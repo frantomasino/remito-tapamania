@@ -462,33 +462,56 @@ ${styles}
       <div id="screen-ui" className="min-h-screen overflow-x-hidden bg-background">
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
           <div className="mx-auto w-full max-w-5xl px-3 py-2.5">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary">
-                <FileText className="size-4 text-primary-foreground" />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-foreground">N° {remitoNumero}</p>
-                  <span className="rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">
-                    {selectedListLabel}
-                  </span>
+            <div className="rounded-2xl border bg-card px-3 py-3">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary">
+                  <FileText className="size-4 text-primary-foreground" />
                 </div>
-                <p className="text-[11px] text-muted-foreground">{remitoDateRef.current}</p>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                    Nuevo remito
+                  </p>
+
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      N° {remitoNumero}
+                    </p>
+                    <span className="rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">
+                      {selectedListLabel}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 text-[11px] text-muted-foreground">{remitoDateRef.current}</p>
+                </div>
               </div>
 
-              <select
-                className="h-9 rounded-xl border bg-card px-2.5 text-xs font-medium text-foreground outline-none"
-                value={priceListId}
-                onChange={(e) => setPriceListId(e.target.value as PriceListId)}
-                aria-label="Lista de precios"
-              >
-                {PRICE_LISTS.map((list) => (
-                  <option key={list.id} value={list.id}>
-                    {list.label}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-3 grid grid-cols-[1fr_auto] items-end gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
+                  <p className="truncate text-base font-semibold leading-tight text-foreground tabular-nums">
+                    {formatCurrency(total)}
+                  </p>
+                </div>
+
+                <div className="min-w-[124px]">
+                  <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Lista
+                  </label>
+                  <select
+                    className="h-9 w-full rounded-xl border bg-background px-2.5 text-xs font-medium text-foreground outline-none"
+                    value={priceListId}
+                    onChange={(e) => setPriceListId(e.target.value as PriceListId)}
+                    aria-label="Lista de precios"
+                  >
+                    {PRICE_LISTS.map((list) => (
+                      <option key={list.id} value={list.id}>
+                        {list.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
         </header>
@@ -509,11 +532,8 @@ ${styles}
                   </p>
                 </div>
 
-                <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
-                  <p className="text-sm font-semibold tabular-nums text-foreground">
-                    {formatCurrency(total)}
-                  </p>
+                <div className="shrink-0 rounded-full border bg-background px-2.5 py-1 text-[10px] text-muted-foreground">
+                  {selectedListLabel}
                 </div>
               </div>
 

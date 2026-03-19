@@ -163,11 +163,15 @@ const ProductCard = memo(function ProductCard({
   onAdd,
 }: ProductCardProps) {
   return (
-    <article className="rounded-xl border bg-background px-3 py-2.5">
+    <article className="rounded-xl border bg-background px-3 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">{title}</p>
-          <p className="mt-1 text-[12px] font-semibold text-foreground">{formatCurrency(product.precio)}</p>
+          <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">
+            {title}
+          </p>
+          <p className="mt-1 text-[12px] font-semibold text-foreground">
+            {formatCurrency(product.precio)}
+          </p>
         </div>
 
         <Button
@@ -180,7 +184,7 @@ const ProductCard = memo(function ProductCard({
       </div>
 
       {options.length > 0 ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
           {options.map((o) => {
             const active = normalize(o) === normalize(selectedOpt)
             return (
@@ -200,7 +204,7 @@ const ProductCard = memo(function ProductCard({
           })}
         </div>
       ) : infoTags.length > 0 ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
           {infoTags.map((t) => (
             <span
               key={t}
@@ -231,14 +235,16 @@ const SelectedItemCard = memo(function SelectedItemCard({
   onUpdateQuantity,
 }: SelectedItemCardProps) {
   return (
-    <article className="rounded-xl border bg-background px-3 py-2.5">
+    <article className="rounded-xl border bg-background px-3 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">
             {title}
             {item.opcion ? <span className="text-muted-foreground"> — {item.opcion}</span> : null}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">{formatCurrency(item.product.precio)}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {formatCurrency(item.product.precio)}
+          </p>
         </div>
 
         <Button
@@ -252,9 +258,11 @@ const SelectedItemCard = memo(function SelectedItemCard({
         </Button>
       </div>
 
-      <div className="mt-2 flex items-end justify-between gap-3">
+      <div className="mt-2.5 flex items-end justify-between gap-3">
         <div>
-          <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Cantidad</p>
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            Cantidad
+          </p>
           <select
             className="h-8 rounded-lg border bg-background px-2.5 text-[12px]"
             value={item.cantidad}
@@ -272,7 +280,9 @@ const SelectedItemCard = memo(function SelectedItemCard({
 
         <div className="text-right">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Subtotal</p>
-          <p className="text-[12px] font-semibold text-foreground">{formatCurrency(item.subtotal)}</p>
+          <p className="text-[12px] font-semibold text-foreground">
+            {formatCurrency(item.subtotal)}
+          </p>
         </div>
       </div>
     </article>
@@ -404,10 +414,18 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
           </p>
 
           <div className="mt-2 flex gap-2">
-            <Button variant="outline" className="h-10 flex-1 rounded-xl" onClick={() => setConfirmClearOpen(false)}>
+            <Button
+              variant="outline"
+              className="h-10 flex-1 rounded-xl"
+              onClick={() => setConfirmClearOpen(false)}
+            >
               Cancelar
             </Button>
-            <Button variant="destructive" className="h-10 flex-1 rounded-xl" onClick={onConfirmClearAll}>
+            <Button
+              variant="destructive"
+              className="h-10 flex-1 rounded-xl"
+              onClick={onConfirmClearAll}
+            >
               Vaciar
             </Button>
           </div>
@@ -493,7 +511,9 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
         <div className={mobileTab === "catalogo" ? "hidden" : "flex flex-col gap-3"}>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[12px] font-medium text-foreground">Seleccionados ({items.length})</p>
+            <p className="text-[12px] font-medium text-foreground">
+              Seleccionados ({items.length})
+            </p>
 
             <Button
               variant="outline"
@@ -513,6 +533,15 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
             </div>
           ) : (
             <div className="flex flex-col gap-2">
+              <div className="rounded-xl border bg-muted/30 px-3 py-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground">Total</span>
+                  <span className="text-[13px] font-semibold text-foreground">
+                    {formatCurrency(total)}
+                  </span>
+                </div>
+              </div>
+
               {items.map((item) => {
                 const d = derivedByDesc.get(item.product.descripcion)
                 const title = d?.title ?? shortDesc(item.product.descripcion)
@@ -528,13 +557,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                   />
                 )
               })}
-
-              <div className="rounded-xl border bg-muted/30 px-3 py-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground">Total</span>
-                  <span className="text-[13px] font-semibold text-foreground">{formatCurrency(total)}</span>
-                </div>
-              </div>
             </div>
           )}
         </div>
