@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, useCallback } from "react"
-import { Download, Trash2 } from "lucide-react"
+import { Download, Trash2, LogOut, Mail, UserCircle2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import type { SaleRecord } from "@/lib/remito-types"
@@ -41,7 +41,6 @@ export default function PerfilPage() {
     })
   }, [])
 
-  // cargar remitos del localStorage (por usuario) + reset diario
   useEffect(() => {
     if (!userId) return
 
@@ -53,6 +52,7 @@ export default function PerfilPage() {
       if (lastDay && lastDay !== today) {
         localStorage.removeItem(salesKey)
       }
+
       localStorage.setItem(lastDayKey, today)
 
       const raw = localStorage.getItem(salesKey)
@@ -106,9 +106,23 @@ export default function PerfilPage() {
   return (
     <div className="px-4 pt-6 pb-6">
       <h1 className="text-2xl font-bold">Perfil</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Email: {email || "—"}</p>
 
-      {/* Remitos del día (adentro de Perfil, como querías) */}
+      <section className="mt-6 rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <UserCircle2 className="size-6" />
+          </div>
+
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold">Cuenta</h2>
+            <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+              <Mail className="size-4 shrink-0" />
+              <span className="truncate">{email || "Sin email"}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="mt-6 rounded-xl border bg-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -166,12 +180,17 @@ export default function PerfilPage() {
         )}
       </section>
 
-      {/* Cerrar sesión */}
-      <form action="/auth/signout" method="post" className="mt-6">
-        <Button type="submit" className="h-12 w-full rounded-xl text-base font-semibold">
-          Cerrar sesión
-        </Button>
-      </form>
+      <section className="mt-6 rounded-xl border bg-card p-4">
+        <h2 className="text-base font-semibold">Sesión</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Cerrá sesión desde acá cuando termines de usar la app.</p>
+
+        <form action="/auth/signout" method="post" className="mt-4">
+          <Button type="submit" variant="outline" className="h-12 w-full rounded-xl text-base font-semibold">
+            <LogOut className="h-5 w-5" />
+            Cerrar sesión
+          </Button>
+        </form>
+      </section>
     </div>
   )
 }

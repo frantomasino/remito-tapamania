@@ -12,10 +12,10 @@ export interface LineItem {
 
 export interface ClientData {
   nombre: string
-  direccion: string
-  telefono: string
-  mail: string
-  formaPago: string
+  direccion?: string
+  telefono?: string
+  mail?: string
+  formaPago?: string
 }
 
 export interface RemitoData {
@@ -32,7 +32,7 @@ export interface SaleRecord {
   numero: string
   fecha: string
   cliente: string
-  formaPago: string
+  formaPago?: string
   total: number
   itemCount: number
 }
@@ -149,7 +149,6 @@ export function parseCSV(text: string): Product[] {
     const precio = parsePrice(precioRaw)
     if (!Number.isFinite(precio) || precio <= 0) continue
 
-    // elimina duplicados exactos
     const key = `${descripcion}||${precio}`
     if (seen.has(key)) continue
     seen.add(key)

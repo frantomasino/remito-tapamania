@@ -21,10 +21,10 @@ import {
 
 type PriceListId = "minorista" | "mayorista" | "oferta"
 
-const PRICE_LISTS: { id: PriceListId; label: string; url?: string }[] = [
-  { id: "minorista", label: "Minorista", url: process.env.NEXT_PUBLIC_LISTA_MINORISTA_URL },
-  { id: "mayorista", label: "Mayorista", url: process.env.NEXT_PUBLIC_LISTA_MAYORISTA_URL },
-  { id: "oferta", label: "Oferta", url: process.env.NEXT_PUBLIC_LISTA_OFERTA_URL },
+const PRICE_LISTS: { id: PriceListId; label: string }[] = [
+  { id: "minorista", label: "Minorista" },
+  { id: "mayorista", label: "Mayorista" },
+  { id: "oferta", label: "Oferta" },
 ]
 
 const defaultClient: ClientData = {
@@ -56,9 +56,7 @@ function k(base: string, userId: string) {
 
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
 
-// altura estimada de tu BottomNav
 const BOTTOM_NAV_PX = 72
-// altura estimada de la barra de acciones mobile
 const ACTION_BAR_PX = 64
 
 export default function RemitoPage() {
@@ -75,9 +73,10 @@ export default function RemitoPage() {
   const remitoDateRef = useRef<string>(getTodayDateSafe())
 
   const [mounted, setMounted] = useState(false)
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
+
   useEffect(() => setMounted(true), [])
 
-  // ✅ Toast (sin vibración)
   const toastTimer = useRef<number | null>(null)
   const [toast, setToast] = useState<{ open: boolean; text: string }>({ open: false, text: "" })
 
@@ -87,13 +86,11 @@ export default function RemitoPage() {
     toastTimer.current = window.setTimeout(() => setToast({ open: false, text: "" }), 1400)
   }, [])
 
-  // userId
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? ""))
   }, [])
 
-  // restore por usuario
   useEffect(() => {
     if (!userId) return
     try {
@@ -144,7 +141,6 @@ export default function RemitoPage() {
     } catch {}
   }, [nextNumber, userId])
 
-  // ✅ Detectar agregado por diferencia de cantidad
   const prevCountRef = useRef(0)
   useEffect(() => {
     const prev = prevCountRef.current
@@ -153,29 +149,41 @@ export default function RemitoPage() {
     if (next > prev) showToast("Producto agregado ✅")
   }, [items.length, showToast])
 
-  // productos (Google Sheets)
   useEffect(() => {
-    const selected = PRICE_LISTS.find((x) => x.id === priceListId)
-    const url = selected?.url
-    if (!url) return
-
     const controller = new AbortController()
-    const load = async () => {
+
+    const loadProducts = async () => {
       try {
-        const res = await fetch(`/api/products-csv?url=${encodeURIComponent(url)}`, {
+        setIsLoadingProducts(true)
+
+        const res = await fetch(`/api/products-csv?list=${priceListId}`, {
           cache: "no-store",
           signal: controller.signal,
         })
-        if (!res.ok) throw new Error("No se pudo traer el CSV/TSV")
+
+        if (!res.ok) {
+          throw new Error("No se pudo traer la lista de precios")
+        }
+
         const text = await res.text()
-        startTransition(() => setProducts(parseCSV(text)))
+        const parsed = parseCSV(text)
+
+        startTransition(() => {
+          setProducts(parsed)
+        })
       } catch (e) {
-        if ((e as any)?.name === "AbortError") return
-        console.error("No se pudieron cargar productos desde Google Sheets", e)
+        if ((e as { name?: string })?.name === "AbortError") return
+        console.error("No se pudieron cargar productos", e)
+        startTransition(() => {
+          setProducts([])
+        })
+      } finally {
+        setIsLoadingProducts(false)
       }
     }
 
-    load()
+    loadProducts()
+
     return () => controller.abort()
   }, [priceListId])
 
@@ -191,7 +199,7 @@ export default function RemitoPage() {
       subtotal: total,
       total,
     }),
-    [remitoNumero, client, items, total],
+    [remitoNumero, client, items, total]
   )
 
   const canPrint = items.length > 0
@@ -299,6 +307,7 @@ ${styles}
       openIOSPrintWindow()
       return
     }
+
     window.print()
   }, [canPrint, recordSale, advanceAndReset, openIOSPrintWindow])
 
@@ -312,6 +321,7 @@ ${styles}
       openIOSPrintWindow()
       return
     }
+
     window.print()
   }, [canPrint, recordSale, advanceAndReset, openIOSPrintWindow])
 
@@ -342,7 +352,6 @@ ${styles}
   return (
     <>
       <div id="screen-ui" className="min-h-screen bg-background overflow-x-hidden">
-        {/* HEADER liviano + acciones en desktop */}
         <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
           <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 lg:px-6">
             <div className="flex items-center gap-3 min-w-0">
@@ -363,14 +372,13 @@ ${styles}
                 onChange={(e) => setPriceListId(e.target.value as PriceListId)}
                 aria-label="Lista de precios"
               >
-                {PRICE_LISTS.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.label}
+                {PRICE_LISTS.map((list) => (
+                  <option key={list.id} value={list.id}>
+                    {list.label}
                   </option>
                 ))}
               </select>
 
-              {/* ✅ Desktop actions */}
               <div className="hidden sm:flex items-center gap-2">
                 <Button variant="outline" size="icon" onClick={handleNewRemito} aria-label="Nuevo remito" className="h-9 w-9">
                   <RotateCcw className="size-4" />
@@ -396,22 +404,34 @@ ${styles}
           </div>
         </header>
 
-        {/* padding bottom grande: BottomNav + ActionBar + safe area */}
         <main
           className="mx-auto max-w-5xl px-4 py-5 lg:px-6 overflow-x-hidden"
           style={{ paddingBottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 16px)` }}
         >
           <div className="flex flex-col gap-6">
             <section className="rounded-xl bg-card border p-4 sm:p-5">
-              <h2 className="text-base font-semibold text-foreground">Productos</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Buscá y agregá productos.</p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">Productos</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Buscá y agregá productos de la lista seleccionada.
+                  </p>
+                </div>
+
+                <div className="shrink-0 rounded-full border px-3 py-1 text-xs text-muted-foreground">
+                  {isLoadingProducts ? "Cargando lista..." : PRICE_LISTS.find((x) => x.id === priceListId)?.label}
+                </div>
+              </div>
+
               <div className="mt-4">
                 <ProductSelector products={products} items={items} onItemsChange={setItems} />
               </div>
             </section>
 
             <section className="rounded-xl bg-card border p-4 sm:p-5">
-              <h2 className="text-sm font-semibold text-foreground">Cliente (opcional)</h2>
+              <h2 className="text-sm font-semibold text-foreground">Comercio (opcional)</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Completalo solo si necesitás identificar el pedido.</p>
+
               <div className="mt-4">
                 <ClientForm data={client} onChange={setClient} />
               </div>
@@ -419,7 +439,6 @@ ${styles}
           </div>
         </main>
 
-        {/* ✅ ACTION BAR fija MOBILE (con ruedita) */}
         <div
           className="fixed inset-x-0 z-50 border-t bg-card/95 backdrop-blur sm:hidden"
           style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
@@ -473,7 +492,6 @@ ${styles}
           </div>
         </div>
 
-        {/* ✅ Toast */}
         {toast.open && (
           <div
             className="fixed left-1/2 z-[60] -translate-x-1/2 sm:hidden"
@@ -487,7 +505,6 @@ ${styles}
         )}
       </div>
 
-      {/* Modal preview */}
       {showPreview && (
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
           <DialogContent
@@ -504,7 +521,7 @@ ${styles}
             "
           >
             <DialogHeader className="px-4 pt-4 sm:px-6 sm:pt-6">
-              <DialogTitle>Vista Previa del Remito</DialogTitle>
+              <DialogTitle>Vista previa del remito</DialogTitle>
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
@@ -528,7 +545,6 @@ ${styles}
         </Dialog>
       )}
 
-      {/* Printable */}
       <div id="printable-remito">
         <RemitoPrint data={remitoData} />
       </div>

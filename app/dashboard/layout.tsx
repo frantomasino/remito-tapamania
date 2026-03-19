@@ -11,8 +11,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background pb-20">
-      <main className="flex-1">{children}</main>
+    <div className="min-h-dvh bg-background">
+      <main className="pb-[88px]">{children}</main>
       <BottomNav />
     </div>
   )

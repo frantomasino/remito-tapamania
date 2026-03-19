@@ -12,143 +12,103 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
   { data },
   ref
 ) {
-  const MAX_ROWS = 12
-
   const total = data.items.reduce((s, i) => s + i.subtotal, 0)
-  const rows = data.items.slice(0, MAX_ROWS)
-  const emptyCount = Math.max(0, MAX_ROWS - rows.length)
+  const comercio = (data.client.nombre ?? "").trim()
 
   return (
     <div
       ref={ref}
-      className="remito-print bg-card text-card-foreground w-full overflow-x-hidden"
       id="remito-print"
+      className="w-full overflow-x-hidden bg-white text-black"
     >
-      <div className="mx-auto w-full max-w-full sm:max-w-[800px] p-3 sm:p-6 font-sans text-[11px] sm:text-[13px] leading-relaxed overflow-x-hidden">
-        {/* Header */}
-        <div className="flex items-stretch border-2 border-foreground w-full">
-          {/* Left - Title */}
-          <div className="flex flex-1 items-center justify-center border-r-2 border-foreground p-3 sm:p-4 min-w-0">
-            <h1 className="text-base sm:text-xl font-bold tracking-tight text-foreground">COMPROBANTE</h1>
-          </div>
+      <div className="mx-auto w-full max-w-full p-4 font-sans text-[12px] leading-relaxed sm:max-w-[800px] sm:p-6 sm:text-[13px]">
+        {/* Encabezado */}
+        <div className="border-2 border-black">
+          <div className="flex items-center justify-between gap-4 border-b-2 border-black px-4 py-3">
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold tracking-tight sm:text-2xl">PEDIDO</h1>
+              <p className="text-[11px] sm:text-[12px]">Preventa</p>
+            </div>
 
-          {/* Center - X mark */}
-          <div className="flex items-center justify-center border-r-2 border-foreground px-3 sm:px-4 py-3 sm:py-4 flex-shrink-0">
-            <div className="flex size-10 sm:size-12 items-center justify-center rounded border-2 border-foreground text-xl sm:text-2xl font-bold text-foreground">
-              X
+            <div className="text-right">
+              <p className="text-[12px] font-bold sm:text-sm">N° {data.numero}</p>
+              <p className="text-[12px] font-semibold sm:text-sm">Fecha: {data.fecha}</p>
             </div>
           </div>
 
-          {/* Right - Number & Date */}
-          <div className="flex flex-1 flex-col justify-center p-3 sm:p-4 min-w-0">
-            <p className="text-[12px] sm:text-sm font-bold text-foreground truncate">
-              {"N\u00BA"} {data.numero}
-            </p>
-            <p className="text-[12px] sm:text-sm font-semibold text-foreground truncate">
-              FECHA: {data.fecha}
-            </p>
+          <div className="px-4 py-3 text-[11px] sm:text-[12px]">
+            <div className="min-w-0">
+              <span className="font-semibold">Comercio: </span>
+              <span>{comercio || "Sin especificar"}</span>
+            </div>
           </div>
         </div>
 
-        {/* Client Info */}
-        <div className="border-x-2 border-b-2 border-foreground w-full overflow-x-hidden">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 p-3 text-[11px] sm:text-[12px]">
-            <div className="min-w-0">
-              <span className="font-semibold text-foreground">NOMBRE: </span>
-              <span className="text-foreground break-words">{data.client.nombre}</span>
-            </div>
-            <div className="min-w-0">
-              <span className="font-semibold text-foreground">TELEFONO: </span>
-              <span className="text-foreground break-words">{data.client.telefono}</span>
-            </div>
-            <div className="min-w-0">
-              <span className="font-semibold text-foreground">DIRECCION: </span>
-              <span className="text-foreground break-words">{data.client.direccion}</span>
-            </div>
-            <div className="min-w-0">
-              <span className="font-semibold text-foreground">MAIL: </span>
-              <span className="text-foreground break-words">{data.client.mail}</span>
-            </div>
-
-            {data.client.formaPago ? (
-              <div className="sm:col-span-2 min-w-0">
-                <span className="font-semibold text-foreground">FORMA DE PAGO: </span>
-                <span className="text-foreground break-words">{data.client.formaPago}</span>
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        {/* Items Table */}
-        <div className="border-x-2 border-b-2 border-foreground w-full overflow-x-hidden">
-          <table className="w-full text-[11px] sm:text-[12px] table-fixed">
+        {/* Tabla de productos */}
+        <div className="border-x-2 border-b-2 border-black">
+          <table className="w-full table-fixed text-[11px] sm:text-[12px]">
             <thead>
-              <tr className="border-b-2 border-foreground bg-muted/30">
-                <th className="border-r border-foreground px-2 sm:px-3 py-2 text-left font-semibold text-foreground">
-                  Descripcion
+              <tr className="border-b-2 border-black bg-black/5">
+                <th className="border-r border-black px-2 py-2 text-left font-semibold">
+                  Producto
                 </th>
-                <th className="border-r border-foreground px-2 sm:px-3 py-2 text-center font-semibold text-foreground w-14 sm:w-16">
+                <th className="border-r border-black px-2 py-2 text-center font-semibold w-14 sm:w-16">
                   Cant.
                 </th>
-                <th className="border-r border-foreground px-2 sm:px-3 py-2 text-right font-semibold text-foreground w-24 sm:w-28">
-                  Precio Uni.
+                <th className="border-r border-black px-2 py-2 text-right font-semibold w-24 sm:w-28">
+                  P. unit.
                 </th>
-                <th className="px-2 sm:px-3 py-2 text-right font-semibold text-foreground w-24 sm:w-28">
-                  Sub Total
+                <th className="px-2 py-2 text-right font-semibold w-24 sm:w-28">
+                  Subtotal
                 </th>
               </tr>
             </thead>
 
             <tbody>
-              {rows.map((item, idx) => (
-                <tr key={idx} className="h-8 border-b border-foreground/30">
-                  <td className="border-r border-foreground/30 px-2 sm:px-3 py-1.5 text-foreground whitespace-normal break-words">
-                    {item.product.descripcion.replace(/\([^)]*\)/g, "").trim()}
-{item.opcion ? ` — ${item.opcion}` : ""}
-                  </td>
-                  <td className="border-r border-foreground/30 px-2 sm:px-3 py-1.5 text-center text-foreground">
-                    {item.cantidad}
-                  </td>
-                  <td className="border-r border-foreground/30 px-2 sm:px-3 py-1.5 text-right text-foreground tabular-nums">
-                    {formatCurrency(item.product.precio)}
-                  </td>
-                  <td className="px-2 sm:px-3 py-1.5 text-right font-medium text-foreground tabular-nums">
-                    {formatCurrency(item.subtotal)}
+              {data.items.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-4 text-center text-muted-foreground">
+                    Sin productos
                   </td>
                 </tr>
-              ))}
-
-              {Array.from({ length: emptyCount }).map((_, idx) => (
-                <tr key={`empty-${idx}`} className="h-8 border-b border-foreground/10">
-                  <td className="border-r border-foreground/10 px-2 sm:px-3 py-1.5">&nbsp;</td>
-                  <td className="border-r border-foreground/10 px-2 sm:px-3 py-1.5">&nbsp;</td>
-                  <td className="border-r border-foreground/10 px-2 sm:px-3 py-1.5">&nbsp;</td>
-                  <td className="px-2 sm:px-3 py-1.5">&nbsp;</td>
-                </tr>
-              ))}
+              ) : (
+                data.items.map((item, idx) => (
+                  <tr key={`${item.product.descripcion}-${item.opcion ?? ""}-${idx}`} className="border-b border-black/20">
+                    <td className="border-r border-black/20 px-2 py-2 align-top whitespace-normal break-words">
+                      {item.product.descripcion.replace(/\([^)]*\)/g, "").trim()}
+                      {item.opcion ? ` — ${item.opcion}` : ""}
+                    </td>
+                    <td className="border-r border-black/20 px-2 py-2 text-center align-top">
+                      {item.cantidad}
+                    </td>
+                    <td className="border-r border-black/20 px-2 py-2 text-right align-top tabular-nums">
+                      {formatCurrency(item.product.precio)}
+                    </td>
+                    <td className="px-2 py-2 text-right align-top font-medium tabular-nums">
+                      {formatCurrency(item.subtotal)}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Totals */}
-        <div className="border-x-2 border-b-2 border-foreground w-full overflow-x-hidden">
-          <div className="flex justify-end p-3">
-            <div className="flex flex-col items-end gap-1 text-[12px] sm:text-sm w-full max-w-[320px]">
-              <div className="flex items-center justify-between gap-4 w-full">
-                <span className="font-semibold text-foreground">SUBTOTAL:</span>
-                <span className="text-foreground text-right tabular-nums">{formatCurrency(total)}</span>
+        {/* Total */}
+        <div className="border-x-2 border-b-2 border-black">
+          <div className="flex justify-end px-4 py-3">
+            <div className="w-full max-w-[320px]">
+              <div className="flex items-center justify-between gap-4 text-[12px] sm:text-sm">
+                <span className="font-semibold">Subtotal</span>
+                <span className="tabular-nums">{formatCurrency(total)}</span>
               </div>
-              <div className="flex items-center justify-between gap-4 w-full text-[13px] sm:text-base font-bold border-t border-foreground pt-1">
-                <span className="text-foreground">TOTAL:</span>
-                <span className="text-foreground text-right tabular-nums">{formatCurrency(total)}</span>
+
+              <div className="mt-2 flex items-center justify-between gap-4 border-t border-black pt-2 text-[14px] font-bold sm:text-base">
+                <span>Total</span>
+                <span className="tabular-nums">{formatCurrency(total)}</span>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-3 text-center text-[10px] text-muted-foreground">
-          <p>Generado por Sistema de Remitos</p>
         </div>
       </div>
     </div>

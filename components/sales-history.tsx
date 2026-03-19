@@ -1,9 +1,8 @@
 "use client"
 
-import { Trash2, DollarSign, ChevronDown, ChevronUp } from "lucide-react"
+import { Trash2, ClipboardList, ChevronDown, ChevronUp } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { type SaleRecord, formatCurrency } from "@/lib/remito-types"
 
 interface SalesHistoryProps {
@@ -16,22 +15,23 @@ interface SalesHistoryProps {
 export function SalesHistory({
   records,
   onClear,
-  title = "Remitos",
+  title = "Pedidos",
   defaultExpanded = true,
 }: SalesHistoryProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
-  const total = useMemo(() => records.reduce((s, r) => s + r.total, 0), [records])
+  const total = useMemo(() => records.reduce((s, r) => s + (r.total || 0), 0), [records])
 
   if (records.length === 0) {
     return (
-      <section className="rounded-xl bg-card border p-5">
+      <section className="rounded-xl border bg-card p-5">
         <div className="flex items-center gap-3">
-          <div className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-            <DollarSign className="size-4" />
+          <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <ClipboardList className="size-4" />
           </div>
+
           <div>
             <h2 className="text-base font-semibold text-foreground">{title}</h2>
-            <p className="text-xs text-muted-foreground">Todavía no hay remitos para mostrar.</p>
+            <p className="text-xs text-muted-foreground">Todavía no hay pedidos para mostrar.</p>
           </div>
         </div>
       </section>
@@ -39,25 +39,30 @@ export function SalesHistory({
   }
 
   return (
-    <section className="rounded-xl bg-card border p-5">
-      <div className="flex items-center justify-between mb-4">
+    <section className="rounded-xl border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-3 cursor-pointer bg-transparent border-none p-0"
+          className="flex min-w-0 items-center gap-3 bg-transparent p-0 text-left"
           aria-expanded={expanded}
           aria-controls="sales-history-content"
         >
-          <div className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-            <DollarSign className="size-4" />
+          <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <ClipboardList className="size-4" />
           </div>
-          <h2 className="text-base font-semibold text-foreground">
-            {title} ({records.length})
-          </h2>
+
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-foreground">
+              {title} ({records.length})
+            </h2>
+            <p className="text-xs text-muted-foreground">Total: {formatCurrency(total)}</p>
+          </div>
+
           {expanded ? (
-            <ChevronUp className="size-4 text-muted-foreground" />
+            <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
           ) : (
-            <ChevronDown className="size-4 text-muted-foreground" />
+            <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
           )}
         </button>
 
@@ -71,35 +76,46 @@ export function SalesHistory({
 
       {expanded && (
         <div id="sales-history-content" className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-background px-4 py-3">
-            <div className="text-xs text-muted-foreground">
-              Remitos: <span className="font-semibold text-foreground">{records.length}</span>
+          <div className="rounded-lg border bg-background px-4 py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Cantidad</span>
+              <span className="text-sm font-semibold text-foreground">{records.length}</span>
             </div>
-            <div className="text-sm font-bold text-primary">Total: {formatCurrency(total)}</div>
+
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Total</span>
+              <span className="text-sm font-bold text-primary">{formatCurrency(total)}</span>
+            </div>
           </div>
 
-          <div className="max-h-64 overflow-y-auto rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="text-xs">Nro. Remito</TableHead>
-                  <TableHead className="text-xs">Fecha</TableHead>
-                  <TableHead className="text-xs">Cliente</TableHead>
-                  <TableHead className="text-xs text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
+          <div className="flex flex-col gap-2">
+            {records.map((record) => (
+              <article key={record.id} className="rounded-lg border bg-background px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Número</p>
+                    <p className="font-mono text-xs text-foreground">{record.numero}</p>
+                  </div>
 
-              <TableBody>
-                {records.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell className="text-xs font-mono">{record.numero}</TableCell>
-                    <TableCell className="text-xs">{record.fecha}</TableCell>
-                    <TableCell className="text-xs">{record.cliente}</TableCell>
-                    <TableCell className="text-xs text-right font-medium">{formatCurrency(record.total)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Total</p>
+                    <p className="text-sm font-semibold text-foreground">{formatCurrency(record.total ?? 0)}</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Comercio</p>
+                    <p className="truncate text-sm text-foreground">{record.cliente || "Sin cliente"}</p>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs text-muted-foreground">Fecha</p>
+                    <p className="text-xs text-foreground">{record.fecha}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       )}

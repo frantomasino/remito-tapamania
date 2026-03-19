@@ -39,8 +39,6 @@ export default function EditarRemitoPage() {
     numero_remito: "",
     fecha: "",
     cliente_nombre: "",
-    cliente_direccion: "",
-    cliente_telefono: "",
     estado: "pendiente" as "pendiente" | "entregado" | "cancelado",
     observaciones: "",
   })
@@ -60,9 +58,7 @@ export default function EditarRemitoPage() {
       setForm({
         numero_remito: r.numero_remito,
         fecha: r.fecha,
-        cliente_nombre: r.cliente_nombre,
-        cliente_direccion: r.cliente_direccion || "",
-        cliente_telefono: r.cliente_telefono || "",
+        cliente_nombre: r.cliente_nombre || "",
         estado: r.estado,
         observaciones: r.observaciones || "",
       })
@@ -102,15 +98,15 @@ export default function EditarRemitoPage() {
     setSaving(true)
     setError(null)
 
-    if (!form.numero_remito || !form.cliente_nombre) {
-      setError("Numero de remito y nombre del cliente son obligatorios")
+    if (!form.numero_remito) {
+      setError("El número de pedido es obligatorio")
       setSaving(false)
       return
     }
 
     const hasEmptyItem = items.some((item) => !item.descripcion.trim())
     if (hasEmptyItem) {
-      setError("Todos los items deben tener una descripcion")
+      setError("Todos los items deben tener una descripción")
       setSaving(false)
       return
     }
@@ -122,21 +118,18 @@ export default function EditarRemitoPage() {
       .update({
         numero_remito: form.numero_remito,
         fecha: form.fecha,
-        cliente_nombre: form.cliente_nombre,
-        cliente_direccion: form.cliente_direccion || null,
-        cliente_telefono: form.cliente_telefono || null,
+        cliente_nombre: form.cliente_nombre || null,
         estado: form.estado,
         observaciones: form.observaciones || null,
       })
       .eq("id", remitoId)
 
     if (updateError) {
-      setError("Error al actualizar el remito.")
+      setError("Error al actualizar el pedido.")
       setSaving(false)
       return
     }
 
-    // Delete existing items and reinsert
     await supabase.from("remito_items").delete().eq("remito_id", remitoId)
 
     const remitoItems = items.map((item) => ({
@@ -146,9 +139,7 @@ export default function EditarRemitoPage() {
       unidad: item.unidad,
     }))
 
-    const { error: itemsError } = await supabase
-      .from("remito_items")
-      .insert(remitoItems)
+    const { error: itemsError } = await supabase.from("remito_items").insert(remitoItems)
 
     if (itemsError) {
       setError("Error al actualizar los items.")
@@ -183,17 +174,17 @@ export default function EditarRemitoPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-xl font-bold text-foreground">Editar Remito</h1>
+        <h1 className="text-xl font-bold text-foreground">Editar pedido</h1>
       </header>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Datos del remito
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Datos del pedido
           </h2>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="numero">Numero de remito *</Label>
+            <Label htmlFor="numero">Número *</Label>
             <Input
               id="numero"
               value={form.numero_remito}
@@ -233,46 +224,25 @@ export default function EditarRemitoPage() {
         </section>
 
         <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Datos del cliente
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Comercio
           </h2>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="cliente">Nombre del cliente *</Label>
+            <Label htmlFor="cliente">Comercio (opcional)</Label>
             <Input
               id="cliente"
               value={form.cliente_nombre}
               onChange={(e) => setForm({ ...form, cliente_nombre: e.target.value })}
-              required
               className="h-11 rounded-xl"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="direccion">Direccion</Label>
-            <Input
-              id="direccion"
-              value={form.cliente_direccion}
-              onChange={(e) => setForm({ ...form, cliente_direccion: e.target.value })}
-              className="h-11 rounded-xl"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="telefono">Telefono</Label>
-            <Input
-              id="telefono"
-              type="tel"
-              value={form.cliente_telefono}
-              onChange={(e) => setForm({ ...form, cliente_telefono: e.target.value })}
-              className="h-11 rounded-xl"
+              placeholder="Ej: Kiosco Juan"
             />
           </div>
         </section>
 
         <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               Items
             </h2>
             <Button
@@ -304,12 +274,14 @@ export default function EditarRemitoPage() {
                   </button>
                 )}
               </div>
+
               <Input
-                placeholder="Descripcion del producto"
+                placeholder="Descripción del producto"
                 value={item.descripcion}
                 onChange={(e) => updateItem(index, "descripcion", e.target.value)}
                 className="h-10 rounded-lg"
               />
+
               <div className="flex gap-3">
                 <div className="flex-1">
                   <Input
@@ -322,11 +294,9 @@ export default function EditarRemitoPage() {
                     className="h-10 rounded-lg"
                   />
                 </div>
+
                 <div className="flex-1">
-                  <Select
-                    value={item.unidad}
-                    onValueChange={(v) => updateItem(index, "unidad", v)}
-                  >
+                  <Select value={item.unidad} onValueChange={(v) => updateItem(index, "unidad", v)}>
                     <SelectTrigger className="h-10 rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
@@ -347,29 +317,25 @@ export default function EditarRemitoPage() {
         </section>
 
         <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Observaciones
           </h2>
           <Textarea
             placeholder="Notas adicionales..."
             value={form.observaciones}
             onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
-            className="min-h-20 rounded-xl resize-none"
+            className="min-h-20 resize-none rounded-xl"
           />
         </section>
 
         {error && (
-          <p className="text-sm text-destructive text-center" role="alert">
+          <p className="text-center text-sm text-destructive" role="alert">
             {error}
           </p>
         )}
 
-        <Button
-          type="submit"
-          disabled={saving}
-          className="h-12 rounded-xl text-base font-semibold"
-        >
-          {saving ? "Guardando..." : "Guardar Cambios"}
+        <Button type="submit" disabled={saving} className="h-12 rounded-xl text-base font-semibold">
+          {saving ? "Guardando..." : "Guardar cambios"}
         </Button>
       </form>
     </div>

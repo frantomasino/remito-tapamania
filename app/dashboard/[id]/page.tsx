@@ -18,16 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import {
-  ArrowLeft,
-  Pencil,
-  Trash2,
-  User,
-  MapPin,
-  Phone,
-  Calendar,
-  Package,
-} from "lucide-react"
+import { ArrowLeft, Pencil, Trash2, Store, Calendar, Package } from "lucide-react"
 import type { RemitoWithItems } from "@/lib/remitos"
 
 const estadoConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -39,9 +30,8 @@ const estadoConfig: Record<string, { label: string; variant: "default" | "second
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00")
   return d.toLocaleDateString("es-AR", {
-    weekday: "long",
     day: "2-digit",
-    month: "long",
+    month: "2-digit",
     year: "numeric",
   })
 }
@@ -86,9 +76,9 @@ export default function RemitoDetailPage() {
           <Skeleton className="h-10 w-10 rounded-xl" />
           <Skeleton className="h-7 w-40" />
         </div>
-        <Skeleton className="h-48 rounded-xl" />
-        <Skeleton className="h-32 rounded-xl" />
         <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-32 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
       </div>
     )
   }
@@ -96,7 +86,7 @@ export default function RemitoDetailPage() {
   if (!remito) {
     return (
       <div className="flex min-h-[60dvh] flex-col items-center justify-center gap-4 px-4">
-        <p className="text-base text-muted-foreground">Remito no encontrado</p>
+        <p className="text-base text-muted-foreground">Pedido no encontrado</p>
         <Button asChild variant="outline" className="rounded-xl">
           <Link href="/dashboard">Volver</Link>
         </Button>
@@ -116,43 +106,40 @@ export default function RemitoDetailPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
+
         <div className="flex flex-1 items-center gap-2">
-          <h1 className="text-xl font-bold text-foreground">
-            #{remito.numero_remito}
-          </h1>
+          <h1 className="text-xl font-bold text-foreground">#{remito.numero_remito}</h1>
           <Badge variant={cfg.variant}>{cfg.label}</Badge>
         </div>
       </header>
 
-      {/* Actions */}
       <div className="flex gap-3">
-        <Button
-          asChild
-          variant="outline"
-          className="flex-1 h-11 rounded-xl gap-2"
-        >
+        <Button asChild variant="outline" className="h-11 flex-1 gap-2 rounded-xl">
           <Link href={`/dashboard/${remitoId}/editar`}>
             <Pencil className="h-4 w-4" />
             Editar
           </Link>
         </Button>
+
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
               variant="outline"
-              className="h-11 rounded-xl gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+              className="h-11 gap-2 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-4 w-4" />
               Eliminar
             </Button>
           </AlertDialogTrigger>
+
           <AlertDialogContent className="mx-4 rounded-2xl">
             <AlertDialogHeader>
-              <AlertDialogTitle>Eliminar remito</AlertDialogTitle>
+              <AlertDialogTitle>Eliminar pedido</AlertDialogTitle>
               <AlertDialogDescription>
-                Esta accion no se puede deshacer. Se eliminara el remito #{remito.numero_remito} y todos sus items.
+                Esta acción no se puede deshacer. Se eliminará el pedido #{remito.numero_remito} y sus items.
               </AlertDialogDescription>
             </AlertDialogHeader>
+
             <AlertDialogFooter>
               <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
               <AlertDialogAction
@@ -167,51 +154,36 @@ export default function RemitoDetailPage() {
         </AlertDialog>
       </div>
 
-      {/* Cliente info */}
       <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Cliente
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Datos del pedido
         </h2>
+
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3">
-            <User className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-sm text-foreground">{remito.cliente_nombre}</span>
+            <Store className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="text-sm text-foreground">{remito.cliente_nombre || "Sin comercio"}</span>
           </div>
-          {remito.cliente_direccion && (
-            <div className="flex items-center gap-3">
-              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-foreground">{remito.cliente_direccion}</span>
-            </div>
-          )}
-          {remito.cliente_telefono && (
-            <div className="flex items-center gap-3">
-              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-foreground">{remito.cliente_telefono}</span>
-            </div>
-          )}
+
           <div className="flex items-center gap-3">
-            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-sm text-foreground capitalize">{formatDate(remito.fecha)}</span>
+            <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="text-sm text-foreground">{formatDate(remito.fecha)}</span>
           </div>
         </div>
       </section>
 
-      {/* Items */}
       <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Items ({remito.remito_items.length})
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Productos ({remito.remito_items.length})
         </h2>
+
         <div className="flex flex-col gap-2">
           {remito.remito_items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-3 rounded-lg bg-background p-3"
-            >
-              <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+            <div key={item.id} className="flex items-center gap-3 rounded-lg bg-background p-3">
+              <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
+
               <div className="flex flex-1 flex-col">
-                <span className="text-sm font-medium text-foreground">
-                  {item.descripcion}
-                </span>
+                <span className="text-sm font-medium text-foreground">{item.descripcion}</span>
                 <span className="text-xs text-muted-foreground">
                   {item.cantidad} {item.unidad}
                 </span>
@@ -221,15 +193,12 @@ export default function RemitoDetailPage() {
         </div>
       </section>
 
-      {/* Observaciones */}
       {remito.observaciones && (
         <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Observaciones
           </h2>
-          <p className="text-sm text-foreground leading-relaxed">
-            {remito.observaciones}
-          </p>
+          <p className="text-sm leading-relaxed text-foreground">{remito.observaciones}</p>
         </section>
       )}
     </div>
