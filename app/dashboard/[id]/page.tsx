@@ -19,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { ArrowLeft, Pencil, Trash2, Store, Calendar, Package } from "lucide-react"
-import type { RemitoWithItems } from "@/lib/remitos"
+import type { RemitoWithItems } from "@/lib/remito-types"
 
 const estadoConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendiente: { label: "Pendiente", variant: "secondary" },

@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ArrowLeft, Plus, Trash2 } from "lucide-react"
-import type { RemitoWithItems } from "@/lib/remitos"
+import type { RemitoWithItems } from "@/lib/remito-types"
 
 interface ItemForm {
   id?: string

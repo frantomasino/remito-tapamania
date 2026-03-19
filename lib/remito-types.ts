@@ -180,3 +180,23 @@ export function getTodayDate(): string {
     year: "numeric",
   })
 }
+
+export interface RemitoItemRow {
+  id: string
+  remito_id: string
+  descripcion: string
+  cantidad: number
+  unidad: string
+}
+
+export interface RemitoWithItems {
+  id: string
+  numero_remito: string
+  fecha: string
+  cliente_nombre: string | null
+  cliente_direccion?: string | null
+  cliente_telefono?: string | null
+  estado: "pendiente" | "entregado" | "cancelado"
+  observaciones?: string | null
+  remito_items: RemitoItemRow[]
+}
