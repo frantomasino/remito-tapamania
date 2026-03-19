@@ -43,6 +43,10 @@ function getTodayDateSafe(): string {
   })
 }
 
+function getTodayISODate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 const LS_BASE_KEYS = {
   priceListId: "priceListId",
   salesHistory: "salesHistory",
@@ -74,6 +78,7 @@ export default function RemitoPage() {
 
   const [mounted, setMounted] = useState(false)
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => setMounted(true), [])
 
@@ -243,6 +248,70 @@ export default function RemitoPage() {
     remitoDateRef.current = getTodayDateSafe()
   }, [userId])
 
+  const persistRemito = useCallback(async () => {
+    if (!userId) {
+      showToast("Falta sesión")
+      return false
+    }
+
+    if (items.length === 0) {
+      showToast("No hay productos")
+      return false
+    }
+
+    try {
+      setIsSaving(true)
+
+      const supabase = createClient()
+
+      const { data: remitoInserted, error: remitoError } = await supabase
+        .from("remitos")
+        .insert({
+          user_id: userId,
+          numero_remito: remitoNumero,
+          fecha: getTodayISODate(),
+          cliente_nombre: client.nombre?.trim() || null,
+          estado: "pendiente",
+          observaciones: null,
+          price_list_id: priceListId,
+          total,
+        })
+        .select("id")
+        .single()
+
+      if (remitoError || !remitoInserted) {
+        console.error("Error guardando remito", remitoError)
+        showToast("Error al guardar")
+        return false
+      }
+
+      const remitoItems = items.map((item) => ({
+        remito_id: remitoInserted.id,
+        descripcion: item.product.descripcion,
+        cantidad: item.cantidad,
+        precio_unitario: item.product.precio,
+        subtotal: item.subtotal,
+        opcion: item.opcion || null,
+      }))
+
+      const { error: itemsError } = await supabase.from("remito_items").insert(remitoItems)
+
+      if (itemsError) {
+        console.error("Error guardando items", itemsError)
+        showToast("Error al guardar items")
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error inesperado guardando remito", error)
+      showToast("Error al guardar")
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }, [userId, items, remitoNumero, client.nombre, priceListId, total, showToast])
+
   const openIOSPrintWindow = useCallback(() => {
     const printable = document.getElementById("printable-remito")
     if (!printable) return
@@ -298,8 +367,12 @@ ${styles}
     win.focus()
   }, [])
 
-  const handlePrint = useCallback(() => {
-    if (!canPrint) return
+  const handlePrint = useCallback(async () => {
+    if (!canPrint || isSaving) return
+
+    const ok = await persistRemito()
+    if (!ok) return
+
     recordSale()
     advanceAndReset()
 
@@ -309,10 +382,14 @@ ${styles}
     }
 
     window.print()
-  }, [canPrint, recordSale, advanceAndReset, openIOSPrintWindow])
+  }, [canPrint, isSaving, persistRemito, recordSale, advanceAndReset, openIOSPrintWindow])
 
-  const handlePreviewPrint = useCallback(() => {
-    if (!canPrint) return
+  const handlePreviewPrint = useCallback(async () => {
+    if (!canPrint || isSaving) return
+
+    const ok = await persistRemito()
+    if (!ok) return
+
     setShowPreview(false)
     recordSale()
     advanceAndReset()
@@ -323,7 +400,7 @@ ${styles}
     }
 
     window.print()
-  }, [canPrint, recordSale, advanceAndReset, openIOSPrintWindow])
+  }, [canPrint, isSaving, persistRemito, recordSale, advanceAndReset, openIOSPrintWindow])
 
   const handleNewRemito = useCallback(() => {
     setClient(defaultClient)
@@ -395,9 +472,9 @@ ${styles}
                   <Eye className="size-4" />
                 </Button>
 
-                <Button size="sm" onClick={handlePrint} disabled={!canPrint} className="h-9 rounded-lg">
+                <Button size="sm" onClick={handlePrint} disabled={!canPrint || isSaving} className="h-9 rounded-lg">
                   <Printer className="size-4" />
-                  <span className="ml-2">Imprimir</span>
+                  <span className="ml-2">{isSaving ? "Guardando..." : "Imprimir"}</span>
                 </Button>
               </div>
             </div>
@@ -485,7 +562,7 @@ ${styles}
                 <Eye className="size-4" />
               </Button>
 
-              <Button size="icon" disabled={!canPrint} onClick={handlePrint} aria-label="Imprimir" className="h-10 w-10">
+              <Button size="icon" disabled={!canPrint || isSaving} onClick={handlePrint} aria-label="Imprimir" className="h-10 w-10">
                 <Printer className="size-4" />
               </Button>
             </div>
@@ -535,7 +612,7 @@ ${styles}
                 <Button variant="outline" onClick={() => setShowPreview(false)}>
                   Cerrar
                 </Button>
-                <Button onClick={handlePreviewPrint}>
+                <Button onClick={handlePreviewPrint} disabled={isSaving}>
                   <Printer className="size-4" />
                   Imprimir
                 </Button>

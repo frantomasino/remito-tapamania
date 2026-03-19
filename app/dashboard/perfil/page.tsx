@@ -14,63 +14,94 @@ function getTodayDateSafe(): string {
   })
 }
 
-const LS_BASE_KEYS = {
-  salesHistory: "salesHistory",
-  lastDay: "lastDay",
-} as const
-
-function k(base: string, userId: string) {
-  return `${base}:${userId}`
+function getTodayISODate(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
 function formatCurrency(n: number) {
   return n.toLocaleString("es-AR", { style: "currency", currency: "ARS" })
 }
 
+type RemitoRow = {
+  id: string
+  numero_remito: string
+  fecha: string
+  cliente_nombre: string | null
+  total: number
+}
+
 export default function PerfilPage() {
   const [email, setEmail] = useState("")
   const [userId, setUserId] = useState("")
   const [records, setRecords] = useState<SaleRecord[]>([])
-  const today = useMemo(() => getTodayDateSafe(), [])
+  const [loading, setLoading] = useState(true)
+
+  const todayLabel = useMemo(() => getTodayDateSafe(), [])
+  const todayISO = useMemo(() => getTodayISODate(), [])
+
+  const loadTodaysRemitos = useCallback(async (uid: string) => {
+    try {
+      setLoading(true)
+
+      const supabase = createClient()
+
+      const { data, error } = await supabase
+        .from("remitos")
+        .select("id, numero_remito, fecha, cliente_nombre, total")
+        .eq("user_id", uid)
+        .eq("fecha", todayISO)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Error cargando remitos del día", error)
+        setRecords([])
+        return
+      }
+
+      const mapped: SaleRecord[] =
+        (data as RemitoRow[] | null)?.map((row) => ({
+          id: row.id,
+          numero: row.numero_remito,
+          fecha: todayLabel,
+          cliente: row.cliente_nombre || "Sin cliente",
+          formaPago: "",
+          total: Number(row.total || 0),
+          itemCount: 0,
+        })) ?? []
+
+      setRecords(mapped)
+    } catch (error) {
+      console.error("Error inesperado cargando remitos", error)
+      setRecords([])
+    } finally {
+      setLoading(false)
+    }
+  }, [todayISO, todayLabel])
 
   useEffect(() => {
     const supabase = createClient()
+
     supabase.auth.getUser().then(({ data }) => {
       setEmail(data.user?.email ?? "")
-      setUserId(data.user?.id ?? "")
-    })
-  }, [])
 
-  useEffect(() => {
-    if (!userId) return
+      const uid = data.user?.id ?? ""
+      setUserId(uid)
 
-    try {
-      const salesKey = k(LS_BASE_KEYS.salesHistory, userId)
-      const lastDayKey = k(LS_BASE_KEYS.lastDay, userId)
-
-      const lastDay = localStorage.getItem(lastDayKey)
-      if (lastDay && lastDay !== today) {
-        localStorage.removeItem(salesKey)
+      if (uid) {
+        loadTodaysRemitos(uid)
+      } else {
+        setLoading(false)
       }
+    })
+  }, [loadTodaysRemitos])
 
-      localStorage.setItem(lastDayKey, today)
-
-      const raw = localStorage.getItem(salesKey)
-      const parsed = raw ? (JSON.parse(raw) as SaleRecord[]) : []
-      setRecords(Array.isArray(parsed) ? parsed : [])
-    } catch {
-      setRecords([])
-    }
-  }, [userId, today])
-
-  const todays = useMemo(() => records.filter((r) => r.fecha === today), [records, today])
-  const totalHoy = useMemo(() => todays.reduce((s, r) => s + (r.total || 0), 0), [todays])
+  const totalHoy = useMemo(() => records.reduce((s, r) => s + (r.total || 0), 0), [records])
 
   const downloadTodayCSV = useCallback(() => {
     const escapeCSV = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`
     const header = ["Nro Remito", "Fecha", "Cliente", "Total"]
 
-    const rows = todays.map((r) => [
+    const rows = records.map((r) => [
       escapeCSV(r.numero),
       escapeCSV(r.fecha),
       escapeCSV(r.cliente || "Sin cliente"),
@@ -82,7 +113,7 @@ export default function PerfilPage() {
     const csv = [header.join(","), ...rows.map((row) => row.join(","))].join("\n")
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
 
-    const safeDate = today.replaceAll("/", "-")
+    const safeDate = todayLabel.replaceAll("/", "-")
     const filename = `remitos-${safeDate}.csv`
 
     const url = URL.createObjectURL(blob)
@@ -93,15 +124,30 @@ export default function PerfilPage() {
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
-  }, [todays, totalHoy, today])
+  }, [records, totalHoy, todayLabel])
 
-  const clearToday = useCallback(() => {
+  const clearToday = useCallback(async () => {
     if (!userId) return
+
     try {
-      localStorage.removeItem(k(LS_BASE_KEYS.salesHistory, userId))
-    } catch {}
-    setRecords([])
-  }, [userId])
+      const supabase = createClient()
+
+      const { error } = await supabase
+        .from("remitos")
+        .delete()
+        .eq("user_id", userId)
+        .eq("fecha", todayISO)
+
+      if (error) {
+        console.error("Error eliminando remitos del día", error)
+        return
+      }
+
+      setRecords([])
+    } catch (error) {
+      console.error("Error inesperado eliminando remitos", error)
+    }
+  }, [userId, todayISO])
 
   return (
     <div className="px-4 pt-6 pb-6">
@@ -127,16 +173,16 @@ export default function PerfilPage() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold">Remitos de hoy</h2>
-            <p className="text-sm text-muted-foreground">{today}</p>
+            <p className="text-sm text-muted-foreground">{todayLabel}</p>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={downloadTodayCSV} disabled={todays.length === 0}>
+            <Button variant="outline" size="sm" onClick={downloadTodayCSV} disabled={loading || records.length === 0}>
               <Download className="h-4 w-4" />
               Descargar
             </Button>
 
-            <Button variant="outline" size="sm" onClick={clearToday} disabled={todays.length === 0}>
+            <Button variant="outline" size="sm" onClick={clearToday} disabled={loading || records.length === 0}>
               <Trash2 className="h-4 w-4" />
               Limpiar
             </Button>
@@ -146,15 +192,17 @@ export default function PerfilPage() {
         <div className="mt-3 rounded-lg border bg-background px-3 py-2 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Remitos:</span>
-            <span className="font-semibold">{todays.length}</span>
+            <span className="font-semibold">{loading ? "..." : records.length}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Total:</span>
-            <span className="font-semibold">{formatCurrency(totalHoy)}</span>
+            <span className="font-semibold">{loading ? "..." : formatCurrency(totalHoy)}</span>
           </div>
         </div>
 
-        {todays.length === 0 ? (
+        {loading ? (
+          <p className="mt-3 text-sm text-muted-foreground">Cargando remitos...</p>
+        ) : records.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">Todavía no hay remitos para mostrar.</p>
         ) : (
           <div className="mt-3 overflow-hidden rounded-lg border">
@@ -167,7 +215,7 @@ export default function PerfilPage() {
                 </tr>
               </thead>
               <tbody>
-                {todays.map((r) => (
+                {records.map((r) => (
                   <tr key={r.id} className="border-t">
                     <td className="px-3 py-2 font-mono text-xs">{r.numero}</td>
                     <td className="px-3 py-2 text-xs">{r.cliente || "Sin cliente"}</td>
