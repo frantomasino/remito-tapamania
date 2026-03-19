@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useCallback, useDeferredValue, useMemo, useState } from "react"
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
 import { Plus, Trash2, Search, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,8 @@ interface ProductSelectorProps {
   items: LineItem[]
   onItemsChange: React.Dispatch<React.SetStateAction<LineItem[]>>
 }
+
+const MAX_VISIBLE_PRODUCTS = 50
 
 const normalize = (s: string) =>
   s
@@ -135,7 +137,145 @@ const productOptions = (s: string) => {
 
 const itemKey = (desc: string, opcion?: string) => `${desc}||${opcion ?? ""}`
 
-type Derived = { title: string; tags: string[]; haystack: string }
+type Derived = {
+  title: string
+  tags: string[]
+  options: string[]
+  haystack: string
+}
+
+interface ProductCardProps {
+  product: Product
+  title: string
+  infoTags: string[]
+  options: string[]
+  selectedOpt: string
+  onSelectOption: (desc: string, opt: string) => void
+  onAdd: (product: Product, opcion?: string) => void
+}
+
+const ProductCard = memo(function ProductCard({
+  product,
+  title,
+  infoTags,
+  options,
+  selectedOpt,
+  onSelectOption,
+  onAdd,
+}: ProductCardProps) {
+  return (
+    <article className="rounded-lg border p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[12px] font-semibold leading-snug break-words">{title}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            <span className="font-medium text-foreground">{formatCurrency(product.precio)}</span>
+          </p>
+        </div>
+
+        <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      </div>
+
+      {options.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {options.map((o) => {
+            const active = normalize(o) === normalize(selectedOpt)
+            return (
+              <button
+                key={o}
+                type="button"
+                onClick={() => onSelectOption(product.descripcion, o)}
+                className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                  active ? "border-primary bg-primary text-primary-foreground" : "bg-muted/40"
+                }`}
+              >
+                {o}
+              </button>
+            )
+          })}
+        </div>
+      ) : infoTags.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {infoTags.map((t) => (
+            <span key={t} className="rounded-full border bg-muted/40 px-2 py-0.5 text-[10px]">
+              {t}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-3">
+        <Button className="h-9 w-full text-[12px]" onClick={() => onAdd(product, selectedOpt || undefined)}>
+          <Plus className="size-4" />
+          Agregar
+        </Button>
+      </div>
+    </article>
+  )
+})
+
+interface SelectedItemCardProps {
+  item: LineItem
+  title: string
+  qtyOptions: number[]
+  onRemove: (desc: string, opcion?: string) => void
+  onUpdateQuantity: (desc: string, opcion: string | undefined, cantidad: number) => void
+}
+
+const SelectedItemCard = memo(function SelectedItemCard({
+  item,
+  title,
+  qtyOptions,
+  onRemove,
+  onUpdateQuantity,
+}: SelectedItemCardProps) {
+  return (
+    <article className="rounded-lg border p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[12px] font-semibold leading-snug break-words">
+            {title}
+            {item.opcion ? <span className="text-muted-foreground"> — {item.opcion}</span> : null}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{formatCurrency(item.product.precio)}</p>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => onRemove(item.product.descripcion, item.opcion)}
+          aria-label="Eliminar"
+        >
+          <Trash2 className="size-4 text-destructive" />
+        </Button>
+      </div>
+
+      <div className="mt-3 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="mb-1 text-[11px] text-muted-foreground">Cantidad</p>
+          <select
+            className="h-9 rounded-md border bg-background px-3 text-[12px]"
+            value={item.cantidad}
+            onChange={(e) =>
+              onUpdateQuantity(item.product.descripcion, item.opcion, Number(e.target.value))
+            }
+          >
+            {qtyOptions.map((qty) => (
+              <option key={qty} value={qty}>
+                {qty}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="text-right">
+          <p className="text-[11px] text-muted-foreground">Subtotal</p>
+          <p className="text-[12px] font-bold">{formatCurrency(item.subtotal)}</p>
+        </div>
+      </div>
+    </article>
+  )
+})
 
 export function ProductSelector({ products, items, onItemsChange }: ProductSelectorProps) {
   const [search, setSearch] = useState("")
@@ -143,10 +283,14 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const [mobileTab, setMobileTab] = useState<"catalogo" | "seleccionados">("catalogo")
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
   const [selectedOptionByDesc, setSelectedOptionByDesc] = useState<Record<string, string>>({})
+  const [visibleCount, setVisibleCount] = useState(MAX_VISIBLE_PRODUCTS)
 
   const qtyOptions = useMemo(() => Array.from({ length: 100 }, (_, i) => i + 1), [])
 
-  const getSelectedOpt = useCallback((desc: string) => selectedOptionByDesc[desc] ?? "", [selectedOptionByDesc])
+  const getSelectedOpt = useCallback(
+    (desc: string) => selectedOptionByDesc[desc] ?? "",
+    [selectedOptionByDesc]
+  )
 
   const setSelectedOpt = useCallback((desc: string, opt: string) => {
     setSelectedOptionByDesc((prev) => (prev[desc] === opt ? prev : { ...prev, [desc]: opt }))
@@ -157,8 +301,9 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
     for (const p of products) {
       const title = shortDesc(p.descripcion)
       const tags = detailTags(p.descripcion)
-      const haystack = normalize(p.descripcion)
-      m.set(p.descripcion, { title, tags, haystack })
+      const options = productOptions(p.descripcion)
+      const haystack = normalize(`${p.descripcion} ${title} ${tags.join(" ")} ${options.join(" ")}`)
+      m.set(p.descripcion, { title, tags, options, haystack })
     }
     return m
   }, [products])
@@ -168,6 +313,8 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
     if (!q) return products
     return products.filter((p) => (derivedByDesc.get(p.descripcion)?.haystack ?? "").includes(q))
   }, [products, deferredSearch, derivedByDesc])
+
+  const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
 
   const addItem = useCallback(
     (product: Product, opcion?: string) => {
@@ -186,8 +333,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
         return [...prev, { product, cantidad: 1, subtotal: product.precio, opcion }]
       })
-
-      setMobileTab("seleccionados")
     },
     [onItemsChange]
   )
@@ -200,7 +345,9 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
         const idx = prev.findIndex((i) => itemKey(i.product.descripcion, i.opcion) === key)
         if (idx < 0) return prev
 
-        if (cantidad <= 0) return prev.filter((i) => itemKey(i.product.descripcion, i.opcion) !== key)
+        if (cantidad <= 0) {
+          return prev.filter((i) => itemKey(i.product.descripcion, i.opcion) !== key)
+        }
 
         const next = prev.slice()
         const cur = next[idx]
@@ -237,6 +384,10 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   }, [clearAllSelected])
 
   const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
+
+  useEffect(() => {
+    setVisibleCount(MAX_VISIBLE_PRODUCTS)
+  }, [deferredSearch, products])
 
   return (
     <>
@@ -302,65 +453,42 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
             <div className="flex items-center justify-center rounded-lg border border-dashed py-10">
               <p className="text-sm text-muted-foreground">No hay productos cargados</p>
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex items-center justify-center rounded-lg border border-dashed py-10">
+              <p className="text-sm text-muted-foreground">No se encontraron productos</p>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {filtered.map((p, idx) => {
+              {visibleProducts.map((p) => {
                 const d = derivedByDesc.get(p.descripcion)
                 const title = d?.title ?? shortDesc(p.descripcion)
-                const opts = productOptions(p.descripcion)
+                const options = d?.options ?? productOptions(p.descripcion)
                 const infoTags = d?.tags ?? detailTags(p.descripcion)
-                const selectedOpt = opts.length > 0 ? (getSelectedOpt(p.descripcion) || opts[0]) : ""
+                const selectedOpt = options.length > 0 ? (getSelectedOpt(p.descripcion) || options[0]) : ""
 
                 return (
-                  <article key={`${p.descripcion}-${idx}`} className="rounded-lg border p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[12px] font-semibold leading-snug break-words">{title}</p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          <span className="font-medium text-foreground">{formatCurrency(p.precio)}</span>
-                        </p>
-                      </div>
-
-                      <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                    </div>
-
-                    {opts.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {opts.map((o) => {
-                          const active = normalize(o) === normalize(selectedOpt)
-                          return (
-                            <button
-                              key={o}
-                              type="button"
-                              onClick={() => setSelectedOpt(p.descripcion, o)}
-                              className={`rounded-full border px-2 py-0.5 text-[10px] ${
-                                active ? "border-primary bg-primary text-primary-foreground" : "bg-muted/40"
-                              }`}
-                            >
-                              {o}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    ) : infoTags.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {infoTags.map((t) => (
-                          <span key={t} className="rounded-full border bg-muted/40 px-2 py-0.5 text-[10px]">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-
-                    <div className="mt-3">
-                      <Button className="h-9 w-full text-[12px]" onClick={() => addItem(p, selectedOpt || undefined)}>
-                        <Plus className="size-4" />
-                        Agregar
-                      </Button>
-                    </div>
-                  </article>
+                  <ProductCard
+                    key={itemKey(p.descripcion)}
+                    product={p}
+                    title={title}
+                    infoTags={infoTags}
+                    options={options}
+                    selectedOpt={selectedOpt}
+                    onSelectOption={setSelectedOpt}
+                    onAdd={addItem}
+                  />
                 )
               })}
+
+              {filtered.length > visibleCount && (
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleCount((prev) => prev + MAX_VISIBLE_PRODUCTS)}
+                  className="mt-2"
+                >
+                  Ver más ({filtered.length - visibleCount} restantes)
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -381,59 +509,19 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {items.map((item, idx) => {
+              {items.map((item) => {
                 const d = derivedByDesc.get(item.product.descripcion)
                 const title = d?.title ?? shortDesc(item.product.descripcion)
 
                 return (
-                  <article key={`${item.product.descripcion}||${item.opcion ?? ""}-${idx}`} className="rounded-lg border p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[12px] font-semibold leading-snug break-words">
-                          {title}
-                          {item.opcion ? <span className="text-muted-foreground"> — {item.opcion}</span> : null}
-                        </p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">{formatCurrency(item.product.precio)}</p>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => removeItem(item.product.descripcion, item.opcion)}
-                        aria-label="Eliminar"
-                      >
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    </div>
-
-                    <div className="mt-3 flex items-end justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="mb-1 text-[11px] text-muted-foreground">Cantidad</p>
-                        <select
-                          className="h-9 rounded-md border bg-background px-3 text-[12px]"
-                          value={item.cantidad}
-                          onChange={(e) =>
-                            updateQuantity(
-                              item.product.descripcion,
-                              item.opcion,
-                              Number(e.target.value)
-                            )
-                          }
-                        >
-                          {qtyOptions.map((qty) => (
-                            <option key={qty} value={qty}>
-                              {qty}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="text-[11px] text-muted-foreground">Subtotal</p>
-                        <p className="text-[12px] font-bold">{formatCurrency(item.subtotal)}</p>
-                      </div>
-                    </div>
-                  </article>
+                  <SelectedItemCard
+                    key={itemKey(item.product.descripcion, item.opcion)}
+                    item={item}
+                    title={title}
+                    qtyOptions={qtyOptions}
+                    onRemove={removeItem}
+                    onUpdateQuantity={updateQuantity}
+                  />
                 )
               })}
 

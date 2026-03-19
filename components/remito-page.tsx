@@ -13,7 +13,6 @@ import {
   type LineItem,
   type ClientData,
   type RemitoData,
-  type SaleRecord,
   formatRemitoNumber,
   formatCurrency,
   parseCSV,
@@ -49,9 +48,7 @@ function getTodayISODate(): string {
 
 const LS_BASE_KEYS = {
   priceListId: "priceListId",
-  salesHistory: "salesHistory",
   nextNumber: "nextNumber",
-  lastDay: "lastDay",
   productsCache: "productsCache",
 } as const
 
@@ -77,7 +74,6 @@ export default function RemitoPage() {
   const [client, setClient] = useState<ClientData>(defaultClient)
   const [nextNumber, setNextNumber] = useState(1)
   const [showPreview, setShowPreview] = useState(false)
-  const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([])
 
   const [priceListId, setPriceListId] = useState<PriceListId>("minorista")
   const remitoDateRef = useRef<string>(getTodayDateSafe())
@@ -111,20 +107,9 @@ export default function RemitoPage() {
   useEffect(() => {
     if (!userId) return
     try {
-      const today = getTodayDateSafe()
-
-      const salesKey = k(LS_BASE_KEYS.salesHistory, userId)
       const nextKey = k(LS_BASE_KEYS.nextNumber, userId)
       const listKey = k(LS_BASE_KEYS.priceListId, userId)
-      const lastDayKey = k(LS_BASE_KEYS.lastDay, userId)
       const productsCacheKey = k(LS_BASE_KEYS.productsCache, userId)
-
-      const lastDay = localStorage.getItem(lastDayKey)
-      if (lastDay && lastDay !== today) {
-        localStorage.removeItem(salesKey)
-        setSalesHistory([])
-      }
-      localStorage.setItem(lastDayKey, today)
 
       const savedList = localStorage.getItem(listKey) as PriceListId | null
       if (savedList === "minorista" || savedList === "mayorista" || savedList === "oferta") {
@@ -135,12 +120,6 @@ export default function RemitoPage() {
       if (savedNext) {
         const n = Number(savedNext)
         if (Number.isFinite(n) && n > 0) setNextNumber(n)
-      }
-
-      const savedHistory = localStorage.getItem(salesKey)
-      if (savedHistory) {
-        const parsed = JSON.parse(savedHistory) as SaleRecord[]
-        if (Array.isArray(parsed)) setSalesHistory(parsed)
       }
 
       const rawProductsCache = localStorage.getItem(productsCacheKey)
@@ -190,11 +169,9 @@ export default function RemitoPage() {
 
     const loadProducts = async () => {
       const cached = productsCacheRef.current[priceListId]
-      if (cached?.products?.length > 0) {
-        setProducts(cached.products)
-      }
 
       if (cached?.products?.length > 0) {
+        setProducts(cached.products)
         return
       }
 
@@ -241,7 +218,6 @@ export default function RemitoPage() {
     }
 
     loadProducts()
-
     return () => controller.abort()
   }, [priceListId, saveProductsCache])
 
@@ -261,31 +237,6 @@ export default function RemitoPage() {
   )
 
   const canPrint = items.length > 0
-
-  const recordSale = useCallback(() => {
-    if (!userId) return
-
-    const clienteNombre = (remitoData.client.nombre ?? "").trim()
-    const formaPago = (remitoData.client.formaPago ?? "").trim()
-
-    const record: SaleRecord = {
-      id: crypto.randomUUID(),
-      numero: remitoData.numero,
-      fecha: remitoData.fecha,
-      cliente: clienteNombre || "Sin cliente",
-      formaPago: formaPago || "Sin especificar",
-      total: remitoData.total,
-      itemCount: remitoData.items.length,
-    }
-
-    setSalesHistory((prev) => {
-      const next = [record, ...prev]
-      try {
-        localStorage.setItem(k(LS_BASE_KEYS.salesHistory, userId), JSON.stringify(next))
-      } catch {}
-      return next
-    })
-  }, [remitoData, userId])
 
   const advanceAndReset = useCallback(() => {
     setNextNumber((n) => {
@@ -427,14 +378,10 @@ ${styles}
     return win
   }, [buildPrintHtml])
 
-  const openIOSPrintWindow = useCallback(() => {
-    return openPrintWindowImmediate()
-  }, [openPrintWindowImmediate])
-
   const handlePrint = useCallback(async () => {
     if (!canPrint || isSaving) return
 
-    const printWindow = isIOS() ? openIOSPrintWindow() : null
+    const printWindow = isIOS() ? openPrintWindowImmediate() : null
 
     if (isIOS() && !printWindow) {
       showToast("No se pudo abrir impresión")
@@ -448,16 +395,15 @@ ${styles}
     const ok = await persistRemito()
     if (!ok) return
 
-    recordSale()
     advanceAndReset()
-  }, [canPrint, isSaving, openIOSPrintWindow, persistRemito, recordSale, advanceAndReset, showToast])
+  }, [canPrint, isSaving, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
 
   const handlePreviewPrint = useCallback(async () => {
     if (!canPrint || isSaving) return
 
     setShowPreview(false)
 
-    const printWindow = isIOS() ? openIOSPrintWindow() : null
+    const printWindow = isIOS() ? openPrintWindowImmediate() : null
 
     if (isIOS() && !printWindow) {
       showToast("No se pudo abrir impresión")
@@ -471,9 +417,8 @@ ${styles}
     const ok = await persistRemito()
     if (!ok) return
 
-    recordSale()
     advanceAndReset()
-  }, [canPrint, isSaving, openIOSPrintWindow, persistRemito, recordSale, advanceAndReset, showToast])
+  }, [canPrint, isSaving, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
 
   const handleNewRemito = useCallback(() => {
     setClient(defaultClient)
@@ -695,8 +640,10 @@ ${styles}
         </Dialog>
       )}
 
-      <div id="printable-remito">
-        <RemitoPrint data={remitoData} />
+      <div className="hidden" aria-hidden="true">
+        <div id="printable-remito">
+          <RemitoPrint data={remitoData} />
+        </div>
       </div>
     </>
   )

@@ -30,7 +30,7 @@ export default function LoginPage() {
     })
 
     if (signInError) {
-      setError("Email o contrasena incorrectos")
+      setError("Email o contraseña incorrectos")
       setLoading(false)
       return
     }
@@ -93,7 +93,7 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Tu contrasena"
+                placeholder="Tu contraseña"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -104,7 +104,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               >
                 {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
               </button>
