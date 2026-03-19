@@ -27,7 +27,9 @@ export async function GET(req: Request) {
   }
 
   try {
-    const res = await fetch(url, { cache: "no-store" })
+    const res = await fetch(url, {
+      next: { revalidate: 1800 },
+    })
 
     if (!res.ok) {
       return NextResponse.json({ error: "Failed to fetch price list" }, { status: 502 })
@@ -38,10 +40,13 @@ export async function GET(req: Request) {
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-store",
+        "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=86400",
       },
     })
   } catch {
-    return NextResponse.json({ error: "Unexpected error fetching price list" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Unexpected error fetching price list" },
+      { status: 500 }
+    )
   }
 }

@@ -70,14 +70,12 @@ export function parseCSV(text: string): Product[] {
 
     s = s.replace(/\$/g, "").replace(/\s+/g, "")
 
-    // 1.234,56
     if (s.includes(".") && s.includes(",")) {
       s = s.replace(/\./g, "").replace(",", ".")
       const n = Number(s)
       return Number.isFinite(n) ? n : NaN
     }
 
-    // 1.388 (miles) o 12.5 (decimal)
     if (s.includes(".") && !s.includes(",")) {
       const parts = s.split(".")
       const last = parts[parts.length - 1]
@@ -90,7 +88,6 @@ export function parseCSV(text: string): Product[] {
       return Number.isFinite(n) ? n : NaN
     }
 
-    // 12,5
     if (s.includes(",") && !s.includes(".")) {
       s = s.replace(",", ".")
       const n = Number(s)
@@ -135,7 +132,6 @@ export function parseCSV(text: string): Product[] {
       descripcion = cols[descripcionIdx] || ""
       precioRaw = cols[precioIdx] || ""
     } else {
-      // fallback sin encabezados
       if (cols.length >= 2) {
         descripcion = cols[0] || ""
         precioRaw = cols[1] || ""
@@ -187,6 +183,9 @@ export interface RemitoItemRow {
   descripcion: string
   cantidad: number
   unidad: string
+  precio_unitario?: number | null
+  subtotal: number | null
+  opcion?: string | null
 }
 
 export interface RemitoWithItems {
@@ -198,5 +197,6 @@ export interface RemitoWithItems {
   cliente_telefono?: string | null
   estado: "pendiente" | "entregado" | "cancelado"
   observaciones?: string | null
+  total?: number | null
   remito_items: RemitoItemRow[]
 }

@@ -6,7 +6,6 @@ import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -16,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, FileText, Store, Package2, MessageSquare } from "lucide-react"
 import type { RemitoWithItems } from "@/lib/remito-types"
 
 interface ItemForm {
@@ -71,6 +70,7 @@ export default function EditarRemitoPage() {
         }))
       )
     }
+
     setLoading(false)
   }, [remitoId])
 
@@ -79,18 +79,20 @@ export default function EditarRemitoPage() {
   }, [fetchRemito])
 
   function addItem() {
-    setItems([...items, { descripcion: "", cantidad: "1", unidad: "unidad" }])
+    setItems((prev) => [...prev, { descripcion: "", cantidad: "1", unidad: "unidad" }])
   }
 
   function removeItem(index: number) {
     if (items.length === 1) return
-    setItems(items.filter((_, i) => i !== index))
+    setItems((prev) => prev.filter((_, i) => i !== index))
   }
 
   function updateItem(index: number, field: keyof ItemForm, value: string) {
-    const updated = [...items]
-    updated[index] = { ...updated[index], [field]: value }
-    setItems(updated)
+    setItems((prev) => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+      return updated
+    })
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -98,7 +100,7 @@ export default function EditarRemitoPage() {
     setSaving(true)
     setError(null)
 
-    if (!form.numero_remito) {
+    if (!form.numero_remito.trim()) {
       setError("El número de pedido es obligatorio")
       setSaving(false)
       return
@@ -153,173 +155,227 @@ export default function EditarRemitoPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-4 px-4 pt-4">
+      <div className="flex flex-col gap-3 px-3 pb-5 pt-4">
         <div className="flex items-center gap-3">
           <Skeleton className="h-10 w-10 rounded-xl" />
-          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-6 w-36 rounded-lg" />
         </div>
-        <Skeleton className="h-64 rounded-xl" />
-        <Skeleton className="h-48 rounded-xl" />
+        <Skeleton className="h-40 rounded-2xl" />
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-48 rounded-2xl" />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 pt-4 pb-6">
-      <header className="flex items-center gap-3">
-        <Link
-          href={`/dashboard/${remitoId}`}
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-foreground transition-colors active:bg-accent"
-          aria-label="Volver"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="text-xl font-bold text-foreground">Editar pedido</h1>
+    <div className="flex flex-col gap-3 px-3 pb-5 pt-4">
+      <header className="rounded-2xl border bg-card px-4 py-4">
+        <div className="flex items-start gap-3">
+          <Link
+            href={`/dashboard/${remitoId}`}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background"
+            aria-label="Volver"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              Edición
+            </p>
+            <h1 className="mt-0.5 text-base font-semibold text-foreground">Editar pedido</h1>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Modificá datos, productos y estado.
+            </p>
+          </div>
+        </div>
       </header>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Datos del pedido
-          </h2>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="numero">Número *</Label>
-            <Input
-              id="numero"
-              value={form.numero_remito}
-              onChange={(e) => setForm({ ...form, numero_remito: e.target.value })}
-              required
-              className="h-11 rounded-xl"
-            />
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <section className="rounded-2xl border bg-card px-4 py-4">
+          <div className="mb-3 flex items-start gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                Pedido
+              </p>
+              <p className="mt-1 text-[12px] text-muted-foreground">Datos principales</p>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="fecha">Fecha</Label>
-            <Input
-              id="fecha"
-              type="date"
-              value={form.fecha}
-              onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-              className="h-11 rounded-xl"
-            />
-          </div>
+          <div className="flex flex-col gap-3">
+            <div className="space-y-1">
+              <p className="text-[12px] font-medium text-foreground">Número</p>
+              <Input
+                id="numero"
+                value={form.numero_remito}
+                onChange={(e) => setForm({ ...form, numero_remito: e.target.value })}
+                required
+                className="h-10 rounded-xl"
+              />
+            </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="estado">Estado</Label>
-            <Select
-              value={form.estado}
-              onValueChange={(v) => setForm({ ...form, estado: v as typeof form.estado })}
-            >
-              <SelectTrigger id="estado" className="h-11 rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pendiente">Pendiente</SelectItem>
-                <SelectItem value="entregado">Entregado</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <p className="text-[12px] font-medium text-foreground">Fecha</p>
+              <Input
+                id="fecha"
+                type="date"
+                value={form.fecha}
+                onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                className="h-10 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-[12px] font-medium text-foreground">Estado</p>
+              <Select
+                value={form.estado}
+                onValueChange={(v) => setForm({ ...form, estado: v as typeof form.estado })}
+              >
+                <SelectTrigger id="estado" className="h-10 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                  <SelectItem value="entregado">Entregado</SelectItem>
+                  <SelectItem value="cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Comercio
-          </h2>
+        <section className="rounded-2xl border bg-card px-4 py-4">
+          <div className="mb-3 flex items-start gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+              <Store className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                Comercio
+              </p>
+              <p className="mt-1 text-[12px] text-muted-foreground">Opcional</p>
+            </div>
+          </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="cliente">Comercio (opcional)</Label>
+          <div className="space-y-1">
+            <p className="text-[12px] font-medium text-foreground">Nombre del comercio</p>
             <Input
               id="cliente"
               value={form.cliente_nombre}
               onChange={(e) => setForm({ ...form, cliente_nombre: e.target.value })}
-              className="h-11 rounded-xl"
+              className="h-10 rounded-xl"
               placeholder="Ej: Kiosco Juan"
             />
           </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Items
-            </h2>
+        <section className="rounded-2xl border bg-card px-4 py-4">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+                <Package2 className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                  Items
+                </p>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  {items.length} {items.length === 1 ? "ítem" : "ítems"}
+                </p>
+              </div>
+            </div>
+
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={addItem}
-              className="h-8 gap-1 text-xs"
+              className="h-8 rounded-lg px-2.5 text-[12px]"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
               Agregar
             </Button>
           </div>
 
-          {items.map((item, index) => (
-            <div key={index} className="flex flex-col gap-3 rounded-lg border border-border/50 bg-background p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Item {index + 1}
-                </span>
-                {items.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeItem(index)}
-                    className="text-muted-foreground transition-colors active:text-destructive"
-                    aria-label="Eliminar item"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+          <div className="flex flex-col gap-2">
+            {items.map((item, index) => (
+              <div key={index} className="rounded-xl border bg-background px-3 py-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    Item {index + 1}
+                  </span>
 
-              <Input
-                placeholder="Descripción del producto"
-                value={item.descripcion}
-                onChange={(e) => updateItem(index, "descripcion", e.target.value)}
-                className="h-10 rounded-lg"
-              />
+                  {items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeItem(index)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors active:bg-accent active:text-destructive"
+                      aria-label="Eliminar item"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
 
-              <div className="flex gap-3">
-                <div className="flex-1">
+                <div className="space-y-2">
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Cant."
-                    value={item.cantidad}
-                    onChange={(e) => updateItem(index, "cantidad", e.target.value)}
-                    className="h-10 rounded-lg"
+                    placeholder="Descripción del producto"
+                    value={item.descripcion}
+                    onChange={(e) => updateItem(index, "descripcion", e.target.value)}
+                    className="h-10 rounded-xl"
                   />
-                </div>
 
-                <div className="flex-1">
-                  <Select value={item.unidad} onValueChange={(v) => updateItem(index, "unidad", v)}>
-                    <SelectTrigger className="h-10 rounded-lg">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unidad">Unidad</SelectItem>
-                      <SelectItem value="kg">Kg</SelectItem>
-                      <SelectItem value="litro">Litro</SelectItem>
-                      <SelectItem value="metro">Metro</SelectItem>
-                      <SelectItem value="caja">Caja</SelectItem>
-                      <SelectItem value="bulto">Bulto</SelectItem>
-                      <SelectItem value="pack">Pack</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Cantidad"
+                      value={item.cantidad}
+                      onChange={(e) => updateItem(index, "cantidad", e.target.value)}
+                      className="h-10 rounded-xl"
+                    />
+
+                    <Select
+                      value={item.unidad}
+                      onValueChange={(v) => updateItem(index, "unidad", v)}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unidad">Unidad</SelectItem>
+                        <SelectItem value="kg">Kg</SelectItem>
+                        <SelectItem value="litro">Litro</SelectItem>
+                        <SelectItem value="metro">Metro</SelectItem>
+                        <SelectItem value="caja">Caja</SelectItem>
+                        <SelectItem value="bulto">Bulto</SelectItem>
+                        <SelectItem value="pack">Pack</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Observaciones
-          </h2>
+        <section className="rounded-2xl border bg-card px-4 py-4">
+          <div className="mb-3 flex items-start gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                Observaciones
+              </p>
+              <p className="mt-1 text-[12px] text-muted-foreground">Notas adicionales</p>
+            </div>
+          </div>
+
           <Textarea
             placeholder="Notas adicionales..."
             value={form.observaciones}
@@ -329,12 +385,14 @@ export default function EditarRemitoPage() {
         </section>
 
         {error && (
-          <p className="text-center text-sm text-destructive" role="alert">
-            {error}
-          </p>
+          <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2.5">
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          </div>
         )}
 
-        <Button type="submit" disabled={saving} className="h-12 rounded-xl text-base font-semibold">
+        <Button type="submit" disabled={saving} className="h-10 rounded-xl">
           {saving ? "Guardando..." : "Guardar cambios"}
         </Button>
       </form>

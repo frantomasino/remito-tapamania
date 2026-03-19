@@ -106,49 +106,54 @@ export default async function DashboardPage() {
   const filename = `remitos-${safeDate}.csv`
 
   return (
-    <div className="px-4 pt-6 pb-6">
-      <div className="flex items-start gap-3">
-        <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <ClipboardList className="size-6" />
+    <div className="px-3 pb-5 pt-4">
+      <header className="rounded-2xl border bg-card px-4 py-4">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <ClipboardList className="size-5" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              Resumen diario
+            </p>
+            <h1 className="mt-0.5 text-lg font-semibold text-foreground">Pedidos del día</h1>
+            <p className="mt-1 text-[12px] text-muted-foreground">{todayLabel}</p>
+          </div>
         </div>
 
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold">Pedidos del día</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{todayLabel}</p>
-        </div>
-      </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-xl border bg-background px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Cantidad</p>
+            <p className="mt-1 text-base font-semibold text-foreground">{records.length}</p>
+          </div>
 
-      <section className="mt-6 rounded-xl border bg-card p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Cantidad</span>
-          <span className="font-semibold">{records.length}</span>
-        </div>
-
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Total</span>
-          <span className="font-semibold">{formatCurrency(totalHoy)}</span>
+          <div className="rounded-xl border bg-background px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
+            <p className="mt-1 truncate text-base font-semibold text-foreground">{formatCurrency(totalHoy)}</p>
+          </div>
         </div>
 
-        <div className="mt-4 flex gap-2">
-          <Button asChild variant="outline" size="sm" disabled={records.length === 0}>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button asChild variant="outline" disabled={records.length === 0} className="h-10 rounded-xl">
             <a href={records.length === 0 ? undefined : csvHref} download={filename}>
               <Download className="size-4" />
               Descargar
             </a>
           </Button>
 
-          <form action={clearTodayAction}>
-            <Button variant="outline" size="sm" disabled={records.length === 0}>
+          <form action={clearTodayAction} className="contents">
+            <Button variant="outline" disabled={records.length === 0} className="h-10 rounded-xl">
               <Trash2 className="size-4" />
               Limpiar
             </Button>
           </form>
         </div>
-      </section>
+      </header>
 
-      <div className="mt-4">
+      <section className="mt-3">
         <SalesHistory title="Pedidos" records={records} />
-      </div>
+      </section>
     </div>
   )
 }

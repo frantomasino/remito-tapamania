@@ -2,7 +2,15 @@
 
 import { createClient } from "@/lib/supabase/client"
 import { useState, useRef, useCallback, useEffect, useMemo, startTransition } from "react"
-import { Printer, Eye, FileText, RotateCcw, Trash2, CheckCircle2 } from "lucide-react"
+import {
+  Printer,
+  Eye,
+  FileText,
+  RotateCcw,
+  Trash2,
+  CheckCircle2,
+  Loader2,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ClientForm } from "@/components/client-form"
@@ -59,7 +67,7 @@ function k(base: string, userId: string) {
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
 
 const BOTTOM_NAV_PX = 72
-const ACTION_BAR_PX = 64
+const ACTION_BAR_PX = 68
 
 type ProductsCacheEntry = {
   loadedAt: number
@@ -68,19 +76,23 @@ type ProductsCacheEntry = {
 
 export default function RemitoPage() {
   const [userId, setUserId] = useState<string>("")
-
   const [products, setProducts] = useState<Product[]>([])
   const [items, setItems] = useState<LineItem[]>([])
   const [client, setClient] = useState<ClientData>(defaultClient)
   const [nextNumber, setNextNumber] = useState(1)
   const [showPreview, setShowPreview] = useState(false)
-
   const [priceListId, setPriceListId] = useState<PriceListId>("minorista")
-  const remitoDateRef = useRef<string>(getTodayDateSafe())
-
   const [mounted, setMounted] = useState(false)
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  const remitoDateRef = useRef<string>(getTodayDateSafe())
+  const toastTimer = useRef<number | null>(null)
+
+  const [toast, setToast] = useState<{ open: boolean; text: string }>({
+    open: false,
+    text: "",
+  })
 
   const productsCacheRef = useRef<Record<PriceListId, ProductsCacheEntry>>({
     minorista: { loadedAt: 0, products: [] },
@@ -90,13 +102,12 @@ export default function RemitoPage() {
 
   useEffect(() => setMounted(true), [])
 
-  const toastTimer = useRef<number | null>(null)
-  const [toast, setToast] = useState<{ open: boolean; text: string }>({ open: false, text: "" })
-
   const showToast = useCallback((text: string) => {
     setToast({ open: true, text })
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
-    toastTimer.current = window.setTimeout(() => setToast({ open: false, text: "" }), 1400)
+    toastTimer.current = window.setTimeout(() => {
+      setToast({ open: false, text: "" })
+    }, 1400)
   }, [])
 
   useEffect(() => {
@@ -106,6 +117,7 @@ export default function RemitoPage() {
 
   useEffect(() => {
     if (!userId) return
+
     try {
       const nextKey = k(LS_BASE_KEYS.nextNumber, userId)
       const listKey = k(LS_BASE_KEYS.priceListId, userId)
@@ -151,7 +163,7 @@ export default function RemitoPage() {
     const prev = prevCountRef.current
     const next = items.length
     prevCountRef.current = next
-    if (next > prev) showToast("Producto agregado ✅")
+    if (next > prev) showToast("Producto agregado")
   }, [items.length, showToast])
 
   const saveProductsCache = useCallback(
@@ -237,6 +249,7 @@ export default function RemitoPage() {
   )
 
   const canPrint = items.length > 0
+  const selectedListLabel = PRICE_LISTS.find((x) => x.id === priceListId)?.label ?? "Lista"
 
   const advanceAndReset = useCallback(() => {
     setNextNumber((n) => {
@@ -423,7 +436,7 @@ ${styles}
   const handleNewRemito = useCallback(() => {
     setClient(defaultClient)
     setItems([])
-    showToast("Nuevo remito listo ✅")
+    showToast("Nuevo remito listo")
   }, [showToast])
 
   const handleClearItems = useCallback(() => {
@@ -433,12 +446,12 @@ ${styles}
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-primary">
-            <FileText className="size-5 text-primary-foreground" />
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
+            <FileText className="size-4 text-primary-foreground" />
           </div>
-          <p className="text-muted-foreground">Cargando...</p>
+          <p className="text-sm text-muted-foreground">Cargando...</p>
         </div>
       </div>
     )
@@ -446,23 +459,26 @@ ${styles}
 
   return (
     <>
-      <div id="screen-ui" className="min-h-screen bg-background overflow-x-hidden">
-        <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-          <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 lg:px-6">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex size-9 items-center justify-center rounded-lg bg-primary shrink-0">
-                <FileText className="size-5 text-primary-foreground" />
+      <div id="screen-ui" className="min-h-screen overflow-x-hidden bg-background">
+        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+          <div className="mx-auto w-full max-w-5xl px-3 py-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary">
+                <FileText className="size-4 text-primary-foreground" />
               </div>
 
-              <div className="min-w-0">
-                <div className="text-xs text-muted-foreground leading-none truncate">{remitoDateRef.current}</div>
-                <div className="text-sm font-semibold text-foreground leading-tight truncate">N° {remitoNumero}</div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-semibold text-foreground">N° {remitoNumero}</p>
+                  <span className="rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">
+                    {selectedListLabel}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">{remitoDateRef.current}</p>
               </div>
-            </div>
 
-            <div className="ml-auto flex items-center gap-2">
               <select
-                className="h-9 rounded-lg border bg-background px-2 text-sm"
+                className="h-9 rounded-xl border bg-card px-2.5 text-xs font-medium text-foreground outline-none"
                 value={priceListId}
                 onChange={(e) => setPriceListId(e.target.value as PriceListId)}
                 aria-label="Lista de precios"
@@ -473,63 +489,57 @@ ${styles}
                   </option>
                 ))}
               </select>
-
-              <div className="hidden sm:flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={handleNewRemito} aria-label="Nuevo remito" className="h-9 w-9">
-                  <RotateCcw className="size-4" />
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={!canPrint}
-                  onClick={() => setShowPreview(true)}
-                  aria-label="Vista previa"
-                  className="h-9 w-9"
-                >
-                  <Eye className="size-4" />
-                </Button>
-
-                <Button size="sm" onClick={handlePrint} disabled={!canPrint || isSaving} className="h-9 rounded-lg">
-                  <Printer className="size-4" />
-                  <span className="ml-2">{isSaving ? "Guardando..." : "Imprimir"}</span>
-                </Button>
-              </div>
             </div>
           </div>
         </header>
 
         <main
-          className="mx-auto max-w-5xl px-4 py-5 lg:px-6 overflow-x-hidden"
-          style={{ paddingBottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 16px)` }}
+          className="mx-auto w-full max-w-5xl px-3 py-3"
+          style={{
+            paddingBottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 12px)`,
+          }}
         >
-          <div className="flex flex-col gap-6">
-            <section className="rounded-xl bg-card border p-4 sm:p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-base font-semibold text-foreground">Productos</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Buscá y agregá productos de la lista seleccionada.
+          <div className="space-y-3">
+            <section className="rounded-2xl border bg-card p-3">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold text-foreground">Productos</h2>
+                  <p className="text-[11px] text-muted-foreground">
+                    {isLoadingProducts ? "Cargando lista..." : `${items.length} cargados`}
                   </p>
                 </div>
 
-                <div className="shrink-0 rounded-full border px-3 py-1 text-xs text-muted-foreground">
-                  {isLoadingProducts ? "Cargando lista..." : PRICE_LISTS.find((x) => x.id === priceListId)?.label}
+                <div className="text-right">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
+                  <p className="text-sm font-semibold tabular-nums text-foreground">
+                    {formatCurrency(total)}
+                  </p>
                 </div>
               </div>
 
-              <div className="mt-4">
+              {isLoadingProducts && products.length === 0 ? (
+                <div className="space-y-2">
+                  <div className="h-10 animate-pulse rounded-xl bg-muted" />
+                  <div className="h-16 animate-pulse rounded-xl bg-muted" />
+                  <div className="h-16 animate-pulse rounded-xl bg-muted" />
+                </div>
+              ) : (
                 <ProductSelector products={products} items={items} onItemsChange={setItems} />
-              </div>
+              )}
             </section>
 
-            <section className="rounded-xl bg-card border p-4 sm:p-5">
-              <h2 className="text-sm font-semibold text-foreground">Comercio (opcional)</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Completalo solo si necesitás identificar el pedido.</p>
-
-              <div className="mt-4">
-                <ClientForm data={client} onChange={setClient} />
+            <section className="rounded-2xl border bg-card p-3">
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold text-foreground">Comercio</h2>
+                <p className="text-[11px] text-muted-foreground">Opcional</p>
               </div>
+
+              <ClientForm
+                data={client}
+                onFieldChange={(field, value) =>
+                  setClient((prev) => ({ ...prev, [field]: value }))
+                }
+              />
             </section>
           </div>
         </main>
@@ -538,22 +548,24 @@ ${styles}
           className="fixed inset-x-0 z-50 border-t bg-card/95 backdrop-blur sm:hidden"
           style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
         >
-          <div className="px-3 py-2 flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-[10px] text-muted-foreground leading-none">Total</p>
-              <p className="text-[15px] font-bold text-primary tabular-nums truncate max-w-[42vw] leading-tight">
+          <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
+              <p className="truncate text-base font-semibold leading-tight text-foreground tabular-nums">
                 {formatCurrency(total)}
               </p>
-              <p className="text-[10px] text-muted-foreground">{items.length} items</p>
+              <p className="text-[10px] text-muted-foreground">
+                {items.length} {items.length === 1 ? "item" : "items"}
+              </p>
             </div>
 
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handleNewRemito}
                 aria-label="Nuevo remito"
-                className="h-10 w-10"
+                className="h-10 w-10 rounded-xl"
               >
                 <RotateCcw className="size-4" />
               </Button>
@@ -563,8 +575,8 @@ ${styles}
                 size="icon"
                 disabled={items.length === 0}
                 onClick={handleClearItems}
-                aria-label="Vaciar"
-                className="h-10 w-10"
+                aria-label="Vaciar productos"
+                className="h-10 w-10 rounded-xl"
               >
                 <Trash2 className="size-4" />
               </Button>
@@ -575,13 +587,19 @@ ${styles}
                 disabled={!canPrint}
                 onClick={() => setShowPreview(true)}
                 aria-label="Vista previa"
-                className="h-10 w-10"
+                className="h-10 w-10 rounded-xl"
               >
                 <Eye className="size-4" />
               </Button>
 
-              <Button size="icon" disabled={!canPrint || isSaving} onClick={handlePrint} aria-label="Imprimir" className="h-10 w-10">
-                <Printer className="size-4" />
+              <Button
+                disabled={!canPrint || isSaving}
+                onClick={handlePrint}
+                aria-label="Imprimir"
+                className="h-10 rounded-xl px-3"
+              >
+                {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
+                <span className="ml-1.5 text-sm">{isSaving ? "Guardando" : "Imprimir"}</span>
               </Button>
             </div>
           </div>
@@ -589,56 +607,52 @@ ${styles}
 
         {toast.open && (
           <div
-            className="fixed left-1/2 z-[60] -translate-x-1/2 sm:hidden"
-            style={{ bottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 18px)` }}
+            className="fixed left-1/2 z-[60] w-[calc(100%-24px)] max-w-xs -translate-x-1/2 sm:hidden"
+            style={{
+              bottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 10px)`,
+            }}
           >
-            <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2 shadow">
-              <CheckCircle2 className="size-4 text-primary" />
+            <div className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 shadow">
+              <CheckCircle2 className="size-4 shrink-0 text-primary" />
               <p className="text-sm text-foreground">{toast.text}</p>
             </div>
           </div>
         )}
       </div>
 
-      {showPreview && (
-        <Dialog open={showPreview} onOpenChange={setShowPreview}>
-          <DialogContent
-            className="
-              fixed left-1/2 top-1/2 z-50
-              flex flex-col
-              w-[calc(100vw-16px)] sm:w-full
-              max-w-none sm:max-w-4xl
-              h-[calc(100vh-16px)] sm:h-auto
-              max-h-[calc(100vh-16px)] sm:max-h-[90vh]
-              -translate-x-1/2 -translate-y-1/2
-              p-0
-              overflow-hidden
-            "
-          >
-            <DialogHeader className="px-4 pt-4 sm:px-6 sm:pt-6">
-              <DialogTitle>Vista previa del remito</DialogTitle>
-            </DialogHeader>
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent
+          className="
+            fixed left-1/2 top-1/2 z-50
+            flex h-[100dvh] w-screen max-w-none
+            -translate-x-1/2 -translate-y-1/2
+            flex-col overflow-hidden rounded-none border-0 p-0
+            sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-4xl sm:rounded-2xl sm:border
+          "
+        >
+          <DialogHeader className="border-b px-4 py-3">
+            <DialogTitle className="text-sm font-semibold">Vista previa</DialogTitle>
+          </DialogHeader>
 
-            <div className="flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
-              <div className="border rounded-lg overflow-hidden bg-white">
-                <RemitoPrint data={remitoData} />
-              </div>
+          <div className="flex-1 overflow-y-auto bg-muted/20 px-3 py-3">
+            <div className="overflow-hidden rounded-xl border bg-white">
+              <RemitoPrint data={remitoData} />
             </div>
+          </div>
 
-            <div className="sticky bottom-0 border-t bg-card/95 backdrop-blur px-4 py-3 sm:px-6">
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowPreview(false)}>
-                  Cerrar
-                </Button>
-                <Button onClick={handlePreviewPrint} disabled={isSaving}>
-                  <Printer className="size-4" />
-                  Imprimir
-                </Button>
-              </div>
+          <div className="border-t bg-card px-3 py-3">
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowPreview(false)} className="h-10 flex-1 rounded-xl">
+                Cerrar
+              </Button>
+              <Button onClick={handlePreviewPrint} disabled={isSaving} className="h-10 flex-1 rounded-xl">
+                {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
+                {isSaving ? "Guardando..." : "Imprimir"}
+              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="hidden" aria-hidden="true">
         <div id="printable-remito">

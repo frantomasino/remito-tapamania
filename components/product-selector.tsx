@@ -2,10 +2,9 @@
 
 import type React from "react"
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
-import { Plus, Trash2, Search, ChevronRight } from "lucide-react"
+import { Plus, Trash2, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { type Product, type LineItem, formatCurrency } from "@/lib/remito-types"
 
@@ -15,7 +14,7 @@ interface ProductSelectorProps {
   onItemsChange: React.Dispatch<React.SetStateAction<LineItem[]>>
 }
 
-const MAX_VISIBLE_PRODUCTS = 50
+const MAX_VISIBLE_PRODUCTS = 40
 
 const normalize = (s: string) =>
   s
@@ -77,7 +76,7 @@ const detailTags = (s: string) => {
     out.push(t)
   }
 
-  return out.slice(0, 4)
+  return out.slice(0, 3)
 }
 
 const productOptions = (s: string) => {
@@ -164,16 +163,20 @@ const ProductCard = memo(function ProductCard({
   onAdd,
 }: ProductCardProps) {
   return (
-    <article className="rounded-lg border p-3">
+    <article className="rounded-xl border bg-background px-3 py-2.5">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[12px] font-semibold leading-snug break-words">{title}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            <span className="font-medium text-foreground">{formatCurrency(product.precio)}</span>
-          </p>
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">{title}</p>
+          <p className="mt-1 text-[12px] font-semibold text-foreground">{formatCurrency(product.precio)}</p>
         </div>
 
-        <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <Button
+          className="h-9 shrink-0 rounded-lg px-3 text-[12px]"
+          onClick={() => onAdd(product, selectedOpt || undefined)}
+        >
+          <Plus className="size-4" />
+          Agregar
+        </Button>
       </div>
 
       {options.length > 0 ? (
@@ -185,8 +188,10 @@ const ProductCard = memo(function ProductCard({
                 key={o}
                 type="button"
                 onClick={() => onSelectOption(product.descripcion, o)}
-                className={`rounded-full border px-2 py-0.5 text-[10px] ${
-                  active ? "border-primary bg-primary text-primary-foreground" : "bg-muted/40"
+                className={`rounded-full border px-2 py-1 text-[10px] leading-none ${
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "bg-muted/40 text-foreground"
                 }`}
               >
                 {o}
@@ -197,19 +202,15 @@ const ProductCard = memo(function ProductCard({
       ) : infoTags.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {infoTags.map((t) => (
-            <span key={t} className="rounded-full border bg-muted/40 px-2 py-0.5 text-[10px]">
+            <span
+              key={t}
+              className="rounded-full border bg-muted/40 px-2 py-1 text-[10px] leading-none text-muted-foreground"
+            >
               {t}
             </span>
           ))}
         </div>
       ) : null}
-
-      <div className="mt-3">
-        <Button className="h-9 w-full text-[12px]" onClick={() => onAdd(product, selectedOpt || undefined)}>
-          <Plus className="size-4" />
-          Agregar
-        </Button>
-      </div>
     </article>
   )
 })
@@ -230,10 +231,10 @@ const SelectedItemCard = memo(function SelectedItemCard({
   onUpdateQuantity,
 }: SelectedItemCardProps) {
   return (
-    <article className="rounded-lg border p-3">
+    <article className="rounded-xl border bg-background px-3 py-2.5">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[12px] font-semibold leading-snug break-words">
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">
             {title}
             {item.opcion ? <span className="text-muted-foreground"> — {item.opcion}</span> : null}
           </p>
@@ -242,19 +243,20 @@ const SelectedItemCard = memo(function SelectedItemCard({
 
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="icon"
           onClick={() => onRemove(item.product.descripcion, item.opcion)}
           aria-label="Eliminar"
+          className="h-8 w-8 shrink-0 rounded-lg"
         >
           <Trash2 className="size-4 text-destructive" />
         </Button>
       </div>
 
-      <div className="mt-3 flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <p className="mb-1 text-[11px] text-muted-foreground">Cantidad</p>
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <div>
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Cantidad</p>
           <select
-            className="h-9 rounded-md border bg-background px-3 text-[12px]"
+            className="h-8 rounded-lg border bg-background px-2.5 text-[12px]"
             value={item.cantidad}
             onChange={(e) =>
               onUpdateQuantity(item.product.descripcion, item.opcion, Number(e.target.value))
@@ -269,8 +271,8 @@ const SelectedItemCard = memo(function SelectedItemCard({
         </div>
 
         <div className="text-right">
-          <p className="text-[11px] text-muted-foreground">Subtotal</p>
-          <p className="text-[12px] font-bold">{formatCurrency(item.subtotal)}</p>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Subtotal</p>
+          <p className="text-[12px] font-semibold text-foreground">{formatCurrency(item.subtotal)}</p>
         </div>
       </div>
     </article>
@@ -394,67 +396,63 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
-            <DialogTitle>¿Vaciar selección?</DialogTitle>
+            <DialogTitle>Vaciar selección</DialogTitle>
           </DialogHeader>
 
           <p className="text-sm text-muted-foreground">
-            Vas a eliminar <span className="font-semibold text-foreground">{items.length}</span> producto(s).
+            Se van a eliminar {items.length} {items.length === 1 ? "producto" : "productos"}.
           </p>
 
-          <div className="mt-4 flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setConfirmClearOpen(false)}>
+          <div className="mt-2 flex gap-2">
+            <Button variant="outline" className="h-10 flex-1 rounded-xl" onClick={() => setConfirmClearOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="destructive" className="flex-1" onClick={onConfirmClearAll}>
+            <Button variant="destructive" className="h-10 flex-1 rounded-xl" onClick={onConfirmClearAll}>
               Vaciar
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-4 overflow-x-hidden">
-        <div>
-          <div className="grid grid-cols-2 gap-2 rounded-xl border bg-card p-2">
-            <button
-              type="button"
-              onClick={() => setMobileTab("catalogo")}
-              className={`h-10 rounded-lg text-sm font-semibold ${
-                mobileTab === "catalogo" ? "bg-primary text-primary-foreground" : "bg-background"
-              }`}
-            >
-              Catálogo
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileTab("seleccionados")}
-              className={`h-10 rounded-lg text-sm font-semibold ${
-                mobileTab === "seleccionados" ? "bg-primary text-primary-foreground" : "bg-background"
-              }`}
-            >
-              Seleccionados ({items.length})
-            </button>
-          </div>
+      <div className="flex flex-col gap-3 overflow-x-hidden">
+        <div className="grid grid-cols-2 gap-1 rounded-xl border bg-background p-1">
+          <button
+            type="button"
+            onClick={() => setMobileTab("catalogo")}
+            className={`h-9 rounded-lg text-[12px] font-medium ${
+              mobileTab === "catalogo" ? "bg-primary text-primary-foreground" : "text-foreground"
+            }`}
+          >
+            Catálogo
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("seleccionados")}
+            className={`h-9 rounded-lg text-[12px] font-medium ${
+              mobileTab === "seleccionados" ? "bg-primary text-primary-foreground" : "text-foreground"
+            }`}
+          >
+            Seleccionados ({items.length})
+          </button>
         </div>
 
         <div className={mobileTab === "seleccionados" ? "hidden" : "flex flex-col gap-3"}>
-          <Label>Catálogo de productos</Label>
-
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre..."
+              placeholder="Buscar producto"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="h-10 rounded-xl pl-9 text-[14px]"
             />
           </div>
 
           {products.length === 0 ? (
-            <div className="flex items-center justify-center rounded-lg border border-dashed py-10">
+            <div className="flex items-center justify-center rounded-xl border border-dashed py-8">
               <p className="text-sm text-muted-foreground">No hay productos cargados</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex items-center justify-center rounded-lg border border-dashed py-10">
+            <div className="flex items-center justify-center rounded-xl border border-dashed py-8">
               <p className="text-sm text-muted-foreground">No se encontraron productos</p>
             </div>
           ) : (
@@ -484,9 +482,9 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                 <Button
                   variant="outline"
                   onClick={() => setVisibleCount((prev) => prev + MAX_VISIBLE_PRODUCTS)}
-                  className="mt-2"
+                  className="h-10 rounded-xl"
                 >
-                  Ver más ({filtered.length - visibleCount} restantes)
+                  Ver más ({filtered.length - visibleCount})
                 </Button>
               )}
             </div>
@@ -495,16 +493,22 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
         <div className={mobileTab === "catalogo" ? "hidden" : "flex flex-col gap-3"}>
           <div className="flex items-center justify-between gap-2">
-            <Label>Seleccionados ({items.length})</Label>
+            <p className="text-[12px] font-medium text-foreground">Seleccionados ({items.length})</p>
 
-            <Button variant="outline" size="sm" onClick={onAskClearAll} disabled={items.length === 0}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onAskClearAll}
+              disabled={items.length === 0}
+              className="h-8 rounded-lg px-2.5 text-[12px]"
+            >
               <Trash2 className="size-4" />
               Vaciar
             </Button>
           </div>
 
           {items.length === 0 ? (
-            <div className="flex items-center justify-center rounded-lg border border-dashed py-10">
+            <div className="flex items-center justify-center rounded-xl border border-dashed py-8">
               <p className="text-sm text-muted-foreground">No hay productos seleccionados</p>
             </div>
           ) : (
@@ -525,15 +529,10 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                 )
               })}
 
-              <div className="rounded-lg bg-muted/50 px-4 py-3">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium">{formatCurrency(total)}</span>
-                </div>
-
-                <div className="mt-2 flex items-center justify-between text-[13px] font-bold">
-                  <span>Total</span>
-                  <span className="text-primary">{formatCurrency(total)}</span>
+              <div className="rounded-xl border bg-muted/30 px-3 py-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground">Total</span>
+                  <span className="text-[13px] font-semibold text-foreground">{formatCurrency(total)}</span>
                 </div>
               </div>
             </div>

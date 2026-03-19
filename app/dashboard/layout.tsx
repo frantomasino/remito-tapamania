@@ -2,7 +2,11 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { BottomNav } from "@/components/bottom-nav"
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const supabase = await createClient()
   const { data } = await supabase.auth.getUser()
 
@@ -12,7 +16,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-dvh bg-background">
-      <main className="pb-[88px]">{children}</main>
+      <main className="pb-[calc(72px+env(safe-area-inset-bottom))]">{children}</main>
       <BottomNav />
     </div>
   )

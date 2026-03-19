@@ -105,93 +105,109 @@ export default async function PerfilPage() {
   const filename = `remitos-${safeDate}.csv`
 
   return (
-    <div className="px-4 pt-6 pb-6">
-      <h1 className="text-2xl font-bold">Perfil</h1>
-
-      <section className="mt-6 rounded-xl border bg-card p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <UserCircle2 className="size-6" />
+    <div className="px-3 pb-5 pt-4">
+      <header className="rounded-2xl border bg-card px-4 py-4">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <UserCircle2 className="size-5" />
           </div>
 
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold">Cuenta</h2>
-            <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              Cuenta
+            </p>
+            <h1 className="mt-0.5 text-lg font-semibold text-foreground">Perfil</h1>
+
+            <div className="mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
               <Mail className="size-4 shrink-0" />
               <span className="truncate">{user.email || "Sin email"}</span>
             </div>
           </div>
         </div>
-      </section>
+      </header>
 
-      <section className="mt-6 rounded-xl border bg-card p-4">
+      <section className="mt-3 rounded-2xl border bg-card px-4 py-4">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold">Remitos de hoy</h2>
-            <p className="text-sm text-muted-foreground">{todayLabel}</p>
-          </div>
-
-          <div className="flex gap-2">
-            <Button asChild variant="outline" size="sm" disabled={records.length === 0}>
-              <a href={records.length === 0 ? undefined : csvHref} download={filename}>
-                <Download className="h-4 w-4" />
-                Descargar
-              </a>
-            </Button>
-
-            <form action={clearTodayAction}>
-              <Button variant="outline" size="sm" disabled={records.length === 0}>
-                <Trash2 className="h-4 w-4" />
-                Limpiar
-              </Button>
-            </form>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              Resumen diario
+            </p>
+            <h2 className="mt-0.5 text-sm font-semibold text-foreground">Remitos de hoy</h2>
+            <p className="mt-1 text-[12px] text-muted-foreground">{todayLabel}</p>
           </div>
         </div>
 
-        <div className="mt-3 rounded-lg border bg-background px-3 py-2 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Remitos:</span>
-            <span className="font-semibold">{records.length}</span>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-xl border bg-background px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Cantidad</p>
+            <p className="mt-1 text-base font-semibold text-foreground">{records.length}</p>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Total:</span>
-            <span className="font-semibold">{formatCurrency(totalHoy)}</span>
+
+          <div className="rounded-xl border bg-background px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
+            <p className="mt-1 truncate text-base font-semibold text-foreground">{formatCurrency(totalHoy)}</p>
           </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button asChild variant="outline" disabled={records.length === 0} className="h-10 rounded-xl">
+            <a href={records.length === 0 ? undefined : csvHref} download={filename}>
+              <Download className="size-4" />
+              Descargar
+            </a>
+          </Button>
+
+          <form action={clearTodayAction} className="contents">
+            <Button variant="outline" disabled={records.length === 0} className="h-10 rounded-xl">
+              <Trash2 className="size-4" />
+              Limpiar
+            </Button>
+          </form>
         </div>
 
         {records.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">Todavía no hay remitos para mostrar.</p>
+          <div className="mt-3 rounded-xl border border-dashed bg-background px-3 py-6 text-center">
+            <p className="text-sm text-muted-foreground">Todavía no hay remitos para mostrar.</p>
+          </div>
         ) : (
-          <div className="mt-3 overflow-hidden rounded-lg border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-semibold">Nro</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold">Cliente</th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((r) => (
-                  <tr key={r.id} className="border-t">
-                    <td className="px-3 py-2 font-mono text-xs">{r.numero}</td>
-                    <td className="px-3 py-2 text-xs">{r.cliente || "Sin cliente"}</td>
-                    <td className="px-3 py-2 text-right text-xs font-medium">{formatCurrency(r.total ?? 0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-3 flex flex-col gap-2">
+            {records.map((r) => (
+              <article key={r.id} className="rounded-xl border bg-background px-3 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[12px] font-medium text-foreground">{r.numero}</p>
+                    <p className="mt-1 truncate text-[12px] text-muted-foreground">
+                      {r.cliente || "Sin cliente"}
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    <p className="text-[13px] font-semibold text-foreground">
+                      {formatCurrency(r.total ?? 0)}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{r.fecha}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>
 
-      <section className="mt-6 rounded-xl border bg-card p-4">
-        <h2 className="text-base font-semibold">Sesión</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Cerrá sesión desde acá cuando termines de usar la app.</p>
+      <section className="mt-3 rounded-2xl border bg-card px-4 py-4">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            Sesión
+          </p>
+          <h2 className="mt-0.5 text-sm font-semibold text-foreground">Cerrar sesión</h2>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Salí de la cuenta cuando termines de usar la app.
+          </p>
+        </div>
 
-        <form action="/auth/signout" method="post" className="mt-4">
-          <Button type="submit" variant="outline" className="h-12 w-full rounded-xl text-base font-semibold">
-            <LogOut className="h-5 w-5" />
+        <form action="/auth/signout" method="post" className="mt-3">
+          <Button type="submit" variant="outline" className="h-10 w-full rounded-xl">
+            <LogOut className="size-4" />
             Cerrar sesión
           </Button>
         </form>
