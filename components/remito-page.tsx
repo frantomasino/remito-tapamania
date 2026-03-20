@@ -12,6 +12,7 @@ import {
   Loader2,
   MoreHorizontal,
   Eye,
+  ChevronDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -77,7 +78,7 @@ type ProductsCacheEntry = {
   products: Product[]
 }
 
-function PriceListSegmented({
+function PriceListSelect({
   value,
   onChange,
 }: {
@@ -85,32 +86,21 @@ function PriceListSegmented({
   onChange: (value: PriceListId) => void
 }) {
   return (
-    <div
-      className="grid grid-cols-3 gap-1 rounded-2xl bg-muted/40 p-1"
-      role="tablist"
-      aria-label="Lista de precios"
-    >
-      {PRICE_LISTS.map((list) => {
-        const active = list.id === value
-
-        return (
-          <button
-            key={list.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(list.id)}
-            className={cn(
-              "rounded-xl px-3 py-2.5 text-[12px] font-medium transition-all",
-              active
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground"
-            )}
-          >
+    <div className="relative w-full">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as PriceListId)}
+        aria-label="Lista de precios"
+        className="h-10 w-full appearance-none rounded-xl bg-muted/35 px-3 pr-9 text-[12px] font-medium text-foreground outline-none ring-1 ring-border/60 transition-colors focus-visible:ring-2 focus-visible:ring-ring/40"
+      >
+        {PRICE_LISTS.map((list) => (
+          <option key={list.id} value={list.id}>
             {list.label}
-          </button>
-        )
-      })}
+          </option>
+        ))}
+      </select>
+
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
     </div>
   )
 }
@@ -293,7 +283,6 @@ export default function RemitoPage() {
   )
 
   const canPrint = items.length > 0
-  const selectedListLabel = PRICE_LISTS.find((x) => x.id === priceListId)?.label ?? "Lista"
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
 
   const advanceAndReset = useCallback(() => {
@@ -526,8 +515,6 @@ ${styles}
                   <span className="font-medium text-foreground">{remitoNumero}</span>
                   <span>•</span>
                   <span>{remitoDateRef.current}</span>
-                  <span>•</span>
-                  <span>{selectedListLabel}</span>
                 </div>
               </div>
 
@@ -542,25 +529,8 @@ ${styles}
               </Button>
             </div>
 
-            <div className="mt-3 rounded-2xl bg-muted/30 px-4 py-3">
-              <div className="flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    Total
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold leading-none text-foreground tabular-nums">
-                    {formatCurrency(total)}
-                  </p>
-                </div>
-
-                <p className="text-[13px] text-muted-foreground">
-                  {items.length} {items.length === 1 ? "item" : "items"}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-3">
-              <PriceListSegmented value={priceListId} onChange={setPriceListId} />
+            <div className="mt-2">
+              <PriceListSelect value={priceListId} onChange={setPriceListId} />
             </div>
           </div>
         </header>
@@ -594,10 +564,15 @@ ${styles}
             </section>
 
             <section className="pt-1">
-              <div className="mb-3">
-                <h2 className="text-[15px] font-semibold text-foreground">Comercio</h2>
+              <div className="mb-2">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[15px] font-semibold text-foreground">Comercio</h2>
+                  <span className="rounded-full bg-muted/50 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                    Opcional
+                  </span>
+                </div>
                 <p className="mt-1 text-[13px] text-muted-foreground">
-                  Opcional. Solo si querés imprimir el nombre.
+                  Completalo solo si querés que salga impreso.
                 </p>
               </div>
 
@@ -612,41 +587,41 @@ ${styles}
         </main>
 
         <div
-  className="fixed inset-x-0 z-50 border-t bg-card/96 backdrop-blur-xl sm:hidden"
-  style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
->
-  <div className="mx-auto w-full max-w-md px-4 py-3">
-    <div className="flex items-center gap-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          Total
-        </p>
-        <p className="truncate text-lg font-semibold leading-tight text-foreground tabular-nums">
-          {formatCurrency(total)}
-        </p>
-        <p className="text-[12px] text-muted-foreground">
-          {items.length} {items.length === 1 ? "item" : "items"}
-        </p>
-      </div>
+          className="fixed inset-x-0 z-50 border-t bg-card/96 backdrop-blur-xl sm:hidden"
+          style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
+        >
+          <div className="mx-auto w-full max-w-md px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Total
+                </p>
+                <p className="truncate text-lg font-semibold leading-tight text-foreground tabular-nums">
+                  {formatCurrency(total)}
+                </p>
+                <p className="text-[12px] text-muted-foreground">
+                  {items.length} {items.length === 1 ? "item" : "items"}
+                </p>
+              </div>
 
-      <Button
-        disabled={!canPrint || isSaving}
-        onClick={handlePrint}
-        aria-label="Imprimir"
-        className="h-11 rounded-2xl px-4"
-      >
-        {isSaving ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <Printer className="size-4" />
-        )}
-        <span className="ml-2 text-sm font-medium">
-          {isSaving ? "Guardando..." : "Imprimir"}
-        </span>
-      </Button>
-    </div>
-  </div>
-</div>
+              <Button
+                disabled={!canPrint || isSaving}
+                onClick={handlePrint}
+                aria-label="Imprimir"
+                className="h-11 rounded-2xl px-4"
+              >
+                {isSaving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Printer className="size-4" />
+                )}
+                <span className="ml-2 text-sm font-medium">
+                  {isSaving ? "Guardando..." : "Imprimir"}
+                </span>
+              </Button>
+            </div>
+          </div>
+        </div>
 
         <AnimatePresence>
           {toast.open && (
@@ -789,10 +764,7 @@ ${styles}
             >
               Cancelar
             </Button>
-            <Button
-              className="h-11 flex-1 rounded-2xl"
-              onClick={confirmNewRemito}
-            >
+            <Button className="h-11 flex-1 rounded-2xl" onClick={confirmNewRemito}>
               Continuar
             </Button>
           </div>
@@ -806,7 +778,8 @@ ${styles}
           </DialogHeader>
 
           <p className="text-sm text-muted-foreground">
-            Se van a eliminar {items.length} {items.length === 1 ? "producto" : "productos"} del pedido actual.
+            Se van a eliminar {items.length} {items.length === 1 ? "producto" : "productos"} del
+            pedido actual.
           </p>
 
           <div className="mt-2 flex gap-2">

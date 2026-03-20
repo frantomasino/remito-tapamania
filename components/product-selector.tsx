@@ -271,9 +271,15 @@ const SelectedItemRow = memo(function SelectedItemRow({
               <span className="font-medium text-muted-foreground"> — {item.opcion}</span>
             ) : null}
           </p>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            Unitario: {formatCurrency(item.product.precio)}
-          </p>
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="text-[13px] text-muted-foreground">
+              Unitario: {formatCurrency(item.product.precio)}
+            </p>
+            <p className="text-[15px] font-semibold text-foreground tabular-nums">
+              {formatCurrency(item.subtotal)}
+            </p>
+          </div>
 
           <div className="mt-3 flex items-center gap-2">
             <button
@@ -311,21 +317,15 @@ const SelectedItemRow = memo(function SelectedItemRow({
           </div>
         </div>
 
-        <div className="shrink-0 text-right">
-          <p className="text-[15px] font-semibold text-foreground tabular-nums">
-            {formatCurrency(item.subtotal)}
-          </p>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onRemove(item.product.descripcion, item.opcion)}
-            aria-label="Eliminar"
-            className="mt-2 h-10 w-10 rounded-2xl"
-          >
-            <Trash2 className="size-4 text-destructive" />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onRemove(item.product.descripcion, item.opcion)}
+          aria-label="Eliminar"
+          className="mt-0.5 h-10 w-10 rounded-2xl"
+        >
+          <Trash2 className="size-4 text-destructive" />
+        </Button>
       </div>
     </motion.article>
   )
@@ -452,8 +452,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
     setMobileTab("catalogo")
   }, [clearAllSelected])
 
-  const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
-
+ 
   useEffect(() => {
     setVisibleCount(MAX_VISIBLE_PRODUCTS)
   }, [deferredSearch, products])
@@ -607,25 +606,14 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
               transition={{ duration: 0.14, ease: "easeOut" }}
               className="flex flex-col gap-3"
             >
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    Pedido actual
-                  </p>
-                  <p className="mt-1 text-[15px] font-semibold text-foreground">
-                    {items.length} {items.length === 1 ? "producto" : "productos"}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    Total
-                  </p>
-                  <p className="mt-1 text-[16px] font-semibold text-foreground tabular-nums">
-                    {formatCurrency(total)}
-                  </p>
-                </div>
-              </div>
+             <div>
+  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+    Pedido actual
+  </p>
+  <p className="mt-1 text-[15px] font-semibold text-foreground">
+    {items.length} {items.length === 1 ? "producto" : "productos"}
+  </p>
+</div>
 
               {items.length > 0 ? (
                 <Button

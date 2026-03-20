@@ -25,45 +25,28 @@ export const ClientForm = memo(function ClientForm({
   const hasValue = data.nombre.trim().length > 0
 
   return (
-    <fieldset className="space-y-3">
+    <fieldset className="space-y-2">
       <legend className="sr-only">Datos del comercio</legend>
 
-      <div className="rounded-2xl border bg-background px-4 py-4">
-        <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              "flex size-10 shrink-0 items-center justify-center rounded-2xl transition-colors",
-              hasValue ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground"
-            )}
-          >
-            <Building2 className="size-5" />
-          </div>
+      <div className="flex items-center gap-3 rounded-2xl bg-muted/25 px-3 py-3">
+        <div
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-2xl transition-colors",
+            hasValue ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
+          )}
+        >
+          <Building2 className="size-4" />
+        </div>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="text-[14px] font-semibold text-foreground">
-                Nombre del comercio
-              </p>
-              <span className="rounded-full border bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                Opcional
-              </span>
-            </div>
-
-            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-              Se imprime en el remito si lo completás.
-            </p>
-
-            <div className="mt-3">
-              <Input
-                id="client-nombre"
-                value={data.nombre}
-                onChange={handleNombreChange}
-                placeholder="Ej: Kiosco Juan"
-                inputMode="text"
-                className="h-11 rounded-2xl border bg-background pl-4 text-[14px]"
-              />
-            </div>
-          </div>
+        <div className="min-w-0 flex-1">
+          <Input
+            id="client-nombre"
+            value={data.nombre}
+            onChange={handleNombreChange}
+            placeholder="Nombre del comercio"
+            inputMode="text"
+            className="border-0 bg-transparent px-0 shadow-none ring-0 focus-visible:ring-0"
+          />
         </div>
       </div>
     </fieldset>
