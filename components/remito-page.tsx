@@ -91,7 +91,7 @@ function PriceListSelect({
         value={value}
         onChange={(e) => onChange(e.target.value as PriceListId)}
         aria-label="Lista de precios"
-        className="h-10 w-full appearance-none rounded-xl bg-muted/35 px-3 pr-9 text-[12px] font-medium text-foreground outline-none ring-1 ring-border/60 transition-colors focus-visible:ring-2 focus-visible:ring-ring/40"
+        className="h-10 w-full appearance-none rounded-xl bg-background px-3 pr-9 text-[12px] font-medium text-foreground outline-none ring-1 ring-border transition-colors focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         {PRICE_LISTS.map((list) => (
           <option key={list.id} value={list.id}>
@@ -485,7 +485,7 @@ ${styles}
   if (!mounted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-sm ring-1 ring-border">
           <div className="flex size-9 items-center justify-center rounded-xl bg-primary">
             <FileText className="size-4 text-primary-foreground" />
           </div>
@@ -498,12 +498,12 @@ ${styles}
   return (
     <>
       <div id="screen-ui" className="min-h-screen overflow-x-hidden bg-background">
-        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl">
-          <div className="mx-auto w-full max-w-md px-4 pb-2 pt-3">
+        <header className="sticky top-0 z-40 border-b border-border/80 bg-background/98 backdrop-blur-xl">
+          <div className="mx-auto w-full max-w-md px-4 pb-3 pt-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
                     <FileText className="size-4" />
                   </div>
                   <h1 className="truncate text-[18px] font-semibold text-foreground">
@@ -512,7 +512,7 @@ ${styles}
                 </div>
 
                 <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
-                  <span className="font-medium text-foreground">{remitoNumero}</span>
+                  <span className="font-semibold text-foreground">{remitoNumero}</span>
                   <span>•</span>
                   <span>{remitoDateRef.current}</span>
                 </div>
@@ -523,25 +523,30 @@ ${styles}
                 size="icon"
                 onClick={() => setShowActions(true)}
                 aria-label="Más acciones"
-                className="h-10 w-10 rounded-2xl"
+                className="h-10 w-10 rounded-2xl bg-background"
               >
                 <MoreHorizontal className="size-4" />
               </Button>
             </div>
 
-            <div className="mt-2">
+            <div className="mt-3">
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Lista de precios
+                </p>
+              </div>
               <PriceListSelect value={priceListId} onChange={setPriceListId} />
             </div>
           </div>
         </header>
 
         <main
-          className="mx-auto w-full max-w-md px-4 pb-4 pt-2"
+          className="mx-auto w-full max-w-md px-4 pb-4 pt-3"
           style={{
             paddingBottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 16px)`,
           }}
         >
-          <div className="space-y-5">
+          <div className="space-y-6">
             <section>
               <div className="mb-3">
                 <h2 className="text-[15px] font-semibold text-foreground">Productos</h2>
@@ -564,10 +569,10 @@ ${styles}
             </section>
 
             <section className="pt-1">
-              <div className="mb-2">
+              <div className="mb-3">
                 <div className="flex items-center gap-2">
                   <h2 className="text-[15px] font-semibold text-foreground">Comercio</h2>
-                  <span className="rounded-full bg-muted/50 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                  <span className="rounded-full bg-accent px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
                     Opcional
                   </span>
                 </div>
@@ -587,7 +592,7 @@ ${styles}
         </main>
 
         <div
-          className="fixed inset-x-0 z-50 border-t bg-card/96 backdrop-blur-xl sm:hidden"
+          className="fixed inset-x-0 z-50 border-t border-border bg-background/98 backdrop-blur-xl sm:hidden"
           style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
         >
           <div className="mx-auto w-full max-w-md px-4 py-3">
@@ -596,7 +601,7 @@ ${styles}
                 <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   Total
                 </p>
-                <p className="truncate text-lg font-semibold leading-tight text-foreground tabular-nums">
+                <p className="truncate text-xl font-semibold leading-tight text-foreground tabular-nums">
                   {formatCurrency(total)}
                 </p>
                 <p className="text-[12px] text-muted-foreground">
@@ -608,7 +613,7 @@ ${styles}
                 disabled={!canPrint || isSaving}
                 onClick={handlePrint}
                 aria-label="Imprimir"
-                className="h-11 rounded-2xl px-4"
+                className="h-11 rounded-2xl px-4 shadow-sm"
               >
                 {isSaving ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -636,9 +641,9 @@ ${styles}
               }}
               role="alert"
             >
-              <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-lg">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <CheckCircle2 className="size-4 text-primary" />
+              <div className="flex items-center gap-3 rounded-2xl bg-background px-4 py-3 shadow-lg ring-1 ring-border">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <CheckCircle2 className="size-4" />
                 </div>
                 <p className="text-sm font-medium text-foreground">{toast.text}</p>
               </div>
@@ -654,20 +659,20 @@ ${styles}
             flex h-[100dvh] w-screen max-w-none
             -translate-x-1/2 -translate-y-1/2
             flex-col overflow-hidden rounded-none border-0 p-0
-            sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-4xl sm:rounded-3xl sm:border
+            sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-4xl sm:rounded-3xl sm:border sm:border-border
           "
         >
-          <DialogHeader className="border-b px-4 py-4">
+          <DialogHeader className="border-b border-border px-4 py-4">
             <DialogTitle className="text-base font-semibold">Vista previa del remito</DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto bg-muted/20 px-3 py-3 sm:px-4 sm:py-4">
-            <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+          <div className="flex-1 overflow-y-auto bg-accent/60 px-3 py-3 sm:px-4 sm:py-4">
+            <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/10">
               <RemitoPrint data={remitoData} />
             </div>
           </div>
 
-          <div className="border-t bg-card px-4 py-3">
+          <div className="border-t border-border bg-background px-4 py-3">
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -694,7 +699,7 @@ ${styles}
       </Dialog>
 
       <Dialog open={showActions} onOpenChange={setShowActions}>
-        <DialogContent className="max-w-sm rounded-3xl">
+        <DialogContent className="max-w-sm rounded-3xl border-border">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Acciones del pedido</DialogTitle>
           </DialogHeader>
@@ -747,7 +752,7 @@ ${styles}
       </Dialog>
 
       <Dialog open={showConfirmNew} onOpenChange={setShowConfirmNew}>
-        <DialogContent className="max-w-sm rounded-3xl">
+        <DialogContent className="max-w-sm rounded-3xl border-border">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Empezar un nuevo remito</DialogTitle>
           </DialogHeader>
@@ -772,7 +777,7 @@ ${styles}
       </Dialog>
 
       <Dialog open={showConfirmClear} onOpenChange={setShowConfirmClear}>
-        <DialogContent className="max-w-sm rounded-3xl">
+        <DialogContent className="max-w-sm rounded-3xl border-border">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Vaciar productos</DialogTitle>
           </DialogHeader>

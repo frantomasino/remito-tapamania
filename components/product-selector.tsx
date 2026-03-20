@@ -172,7 +172,7 @@ const ProductRow = memo(function ProductRow({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.14, ease: "easeOut" }}
-      className="border-b border-border/60 py-3 last:border-b-0"
+      className="border-b border-border py-3 last:border-b-0"
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
@@ -186,7 +186,7 @@ const ProductRow = memo(function ProductRow({
             </p>
 
             {selectedCount > 0 ? (
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+              <span className="rounded-full bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground">
                 {selectedCount} agregado{selectedCount > 1 ? "s" : ""}
               </span>
             ) : null}
@@ -202,10 +202,10 @@ const ProductRow = memo(function ProductRow({
                     type="button"
                     onClick={() => onSelectOption(product.descripcion, o)}
                     className={cn(
-                      "min-h-[34px] rounded-full px-3 py-1.5 text-[11px] font-medium leading-none transition-colors",
+                      "min-h-[34px] rounded-full px-3 py-1.5 text-[11px] font-medium leading-none transition-colors ring-1",
                       active
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/60 text-foreground"
+                        ? "bg-primary text-primary-foreground ring-primary"
+                        : "bg-background text-foreground ring-border"
                     )}
                   >
                     {o}
@@ -218,7 +218,7 @@ const ProductRow = memo(function ProductRow({
               {infoTags.map((t) => (
                 <span
                   key={t}
-                  className="rounded-full bg-muted/60 px-3 py-1.5 text-[11px] font-medium leading-none text-muted-foreground"
+                  className="rounded-full bg-background px-3 py-1.5 text-[11px] font-medium leading-none text-muted-foreground ring-1 ring-border"
                 >
                   {t}
                 </span>
@@ -229,7 +229,7 @@ const ProductRow = memo(function ProductRow({
 
         <Button
           onClick={() => onAdd(product, selectedOpt || undefined)}
-          className="h-11 shrink-0 rounded-2xl px-4 text-[13px] font-medium"
+          className="h-11 shrink-0 rounded-2xl px-4 text-[13px] font-medium shadow-sm"
         >
           <Plus className="size-4" />
           Agregar
@@ -261,7 +261,7 @@ const SelectedItemRow = memo(function SelectedItemRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 4 }}
       transition={{ duration: 0.14, ease: "easeOut" }}
-      className="border-b border-border/60 py-3 last:border-b-0"
+      className="border-b border-border py-3 last:border-b-0"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -290,17 +290,17 @@ const SelectedItemRow = memo(function SelectedItemRow({
               }
               disabled={!canDecrease}
               className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-xl bg-muted/60 text-base font-semibold transition-colors",
+                "flex h-10 w-10 items-center justify-center rounded-xl text-base font-semibold transition-colors ring-1 ring-border",
                 canDecrease
-                  ? "text-foreground"
-                  : "cursor-not-allowed text-muted-foreground"
+                  ? "bg-background text-foreground"
+                  : "cursor-not-allowed bg-accent text-muted-foreground"
               )}
               aria-label="Restar cantidad"
             >
               −
             </button>
 
-            <div className="flex min-w-[44px] items-center justify-center rounded-xl bg-muted/40 px-3 py-2 text-[14px] font-semibold tabular-nums text-foreground">
+            <div className="flex min-w-[44px] items-center justify-center rounded-xl bg-background px-3 py-2 text-[14px] font-semibold tabular-nums text-foreground ring-1 ring-border">
               {item.cantidad}
             </div>
 
@@ -309,7 +309,7 @@ const SelectedItemRow = memo(function SelectedItemRow({
               onClick={() =>
                 onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)
               }
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/60 text-base font-semibold text-foreground transition-colors"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-background text-base font-semibold text-foreground transition-colors ring-1 ring-border"
               aria-label="Sumar cantidad"
             >
               +
@@ -452,7 +452,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
     setMobileTab("catalogo")
   }, [clearAllSelected])
 
- 
   useEffect(() => {
     setVisibleCount(MAX_VISIBLE_PRODUCTS)
   }, [deferredSearch, products])
@@ -460,7 +459,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   return (
     <>
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
-        <DialogContent className="max-w-sm rounded-3xl">
+        <DialogContent className="max-w-sm rounded-3xl border-border">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Vaciar selección</DialogTitle>
           </DialogHeader>
@@ -489,7 +488,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
       </Dialog>
 
       <div className="flex flex-col gap-4 overflow-x-hidden">
-        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-muted/40 p-1">
+        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-accent p-1 ring-1 ring-border">
           <button
             type="button"
             onClick={() => setMobileTab("catalogo")}
@@ -532,13 +531,13 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                   placeholder="Buscar producto"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-11 rounded-2xl border-0 bg-muted/40 pl-10 text-[14px] shadow-none"
+                  className="h-11 rounded-2xl bg-background pl-10 text-[14px] shadow-none ring-1 ring-border"
                 />
               </div>
 
               {products.length === 0 ? (
-                <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
-                  <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50">
+                <div className="flex flex-col items-center justify-center rounded-3xl bg-background px-4 py-10 text-center ring-1 ring-border">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-accent">
                     <Package2 className="size-5 text-muted-foreground" />
                   </div>
                   <p className="mt-3 text-sm font-medium text-foreground">No hay productos cargados</p>
@@ -547,8 +546,8 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                   </p>
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
-                  <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50">
+                <div className="flex flex-col items-center justify-center rounded-3xl bg-background px-4 py-10 text-center ring-1 ring-border">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-accent">
                     <Search className="size-5 text-muted-foreground" />
                   </div>
                   <p className="mt-3 text-sm font-medium text-foreground">No encontramos productos</p>
@@ -557,7 +556,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                   </p>
                 </div>
               ) : (
-                <div className="rounded-3xl bg-card/40">
+                <div className="rounded-3xl bg-background px-4 py-1 ring-1 ring-border">
                   {visibleProducts.map((p) => {
                     const d = derivedByDesc.get(p.descripcion)
                     const title = d?.title ?? shortDesc(p.descripcion)
@@ -606,14 +605,14 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
               transition={{ duration: 0.14, ease: "easeOut" }}
               className="flex flex-col gap-3"
             >
-             <div>
-  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-    Pedido actual
-  </p>
-  <p className="mt-1 text-[15px] font-semibold text-foreground">
-    {items.length} {items.length === 1 ? "producto" : "productos"}
-  </p>
-</div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Pedido actual
+                </p>
+                <p className="mt-1 text-[15px] font-semibold text-foreground">
+                  {items.length} {items.length === 1 ? "producto" : "productos"}
+                </p>
+              </div>
 
               {items.length > 0 ? (
                 <Button
@@ -628,8 +627,8 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
               ) : null}
 
               {items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
-                  <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50">
+                <div className="flex flex-col items-center justify-center rounded-3xl bg-background px-4 py-10 text-center ring-1 ring-border">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-accent">
                     <Package2 className="size-5 text-muted-foreground" />
                   </div>
                   <p className="mt-3 text-sm font-medium text-foreground">Todavía no agregaste productos</p>
@@ -638,7 +637,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                   </p>
                 </div>
               ) : (
-                <motion.div layout className="rounded-3xl bg-card/40">
+                <motion.div layout className="rounded-3xl bg-background px-4 py-1 ring-1 ring-border">
                   <AnimatePresence initial={false}>
                     {items.map((item) => {
                       const d = derivedByDesc.get(item.product.descripcion)

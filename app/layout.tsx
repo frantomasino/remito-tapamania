@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Generador de Remitos",
+  title: "App",
   description: "Sistema de generación de remitos y comprobantes para tu negocio",
   manifest: "/manifest.webmanifest",
 }
