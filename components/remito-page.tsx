@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   Eye,
   ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -71,7 +72,8 @@ function k(base: string, userId: string) {
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
 
 const BOTTOM_NAV_PX = 72
-const ACTION_BAR_PX = 84
+const ACTION_BAR_EXPANDED_PX = 98
+const ACTION_BAR_COLLAPSED_PX = 46
 
 type ProductsCacheEntry = {
   loadedAt: number
@@ -98,12 +100,12 @@ function PriceListSelect({
   onChange: (value: PriceListId) => void
 }) {
   return (
-    <div className="relative w-full">
+    <div className="relative min-w-[156px] max-w-[180px]">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as PriceListId)}
         aria-label="Lista de precios"
-        className="app-input w-full appearance-none pr-9"
+        className="h-10 w-full appearance-none rounded-2xl border border-border bg-background px-3 pr-9 text-sm font-medium text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         {PRICE_LISTS.map((list) => (
           <option key={list.id} value={list.id}>
@@ -131,6 +133,7 @@ export default function RemitoPage() {
   const [mounted, setMounted] = useState(false)
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [footerCollapsed, setFooterCollapsed] = useState(false)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
   const toastTimer = useRef<number | null>(null)
@@ -529,16 +532,19 @@ ${styles}
       <div id="screen-ui" className="min-h-screen overflow-x-hidden bg-background">
         <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-xl">
           <div className="mx-auto w-full max-w-md px-4 pb-3 pt-3">
-            <div className="app-card p-4">
+            <div className="app-card p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
                       <FileText className="size-4" />
                     </div>
+
                     <div className="min-w-0">
-                      <h1 className="app-page-title truncate">Nuevo remito</h1>
-                      <p className="mt-1 text-sm text-muted-foreground">
+                      <h1 className="truncate text-[18px] font-semibold text-foreground">
+                        Nuevo remito
+                      </h1>
+                      <p className="mt-0.5 text-[13px] text-muted-foreground">
                         <span className="font-semibold text-foreground">{remitoNumero}</span> ·{" "}
                         {remitoDateRef.current}
                       </p>
@@ -551,14 +557,17 @@ ${styles}
                   size="icon"
                   onClick={() => setShowActions(true)}
                   aria-label="Más acciones"
-                  className="bg-background"
+                  className="size-11 bg-background"
                 >
                   <MoreHorizontal className="size-4" />
                 </Button>
               </div>
 
-              <div className="mt-4">
-                <p className="app-field-label mb-2">Lista de precios</p>
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-muted/35 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">Lista de precios</p>
+                </div>
+
                 <PriceListSelect value={priceListId} onChange={setPriceListId} />
               </div>
             </div>
@@ -568,18 +577,13 @@ ${styles}
         <main
           className="mx-auto w-full max-w-md px-4 pb-4 pt-4"
           style={{
-            paddingBottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 16px)`,
+            paddingBottom: `calc(${BOTTOM_NAV_PX + (footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX)}px + env(safe-area-inset-bottom) + 16px)`,
           }}
         >
-          <div className="space-y-6">
+          <div className="space-y-5">
             <section>
-              <div className="mb-3">
+              <div className="mb-2.5">
                 <h2 className="app-section-title">Productos</h2>
-                <p className="app-subtitle mt-1">
-                  {isLoadingProducts
-                    ? "Cargando lista de precios..."
-                    : "Buscá, agregá y armá el pedido rápido."}
-                </p>
               </div>
 
               {isLoadingProducts && products.length === 0 ? (
@@ -601,9 +605,6 @@ ${styles}
                     Opcional
                   </span>
                 </div>
-                <p className="app-subtitle mt-1">
-                  Completalo solo si querés incluirlo en el remito.
-                </p>
               </div>
 
               <div className="app-card-soft">
@@ -622,33 +623,66 @@ ${styles}
           className="fixed inset-x-0 z-50 border-t border-border bg-background/98 backdrop-blur-xl sm:hidden"
           style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
         >
-          <div className="mx-auto w-full max-w-md px-4 py-3">
-            <div className="app-card flex items-center gap-3 p-4">
-              <div className="min-w-0 flex-1">
-                <p className="app-meta font-medium">Total</p>
-                <p className="truncate text-xl font-semibold leading-tight text-foreground tabular-nums">
-                  {formatCurrency(total)}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {items.length} {items.length === 1 ? "item" : "items"}
-                </p>
-              </div>
-
-              <Button
-                variant="default"
-                size="lg"
-                disabled={!canPrint || isSaving}
-                onClick={handlePrint}
-                aria-label="Imprimir"
-                className="shadow-sm"
+          <div className="mx-auto w-full max-w-md px-4 py-2">
+            <div className="app-card overflow-hidden p-0">
+              <button
+                type="button"
+                onClick={() => setFooterCollapsed((prev) => !prev)}
+                className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left"
+                aria-expanded={!footerCollapsed}
+                aria-label={footerCollapsed ? "Mostrar total e imprimir" : "Ocultar total e imprimir"}
               >
-                {isSaving ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Printer className="size-4" />
+                <div className="min-w-0">
+                  <p className="app-meta font-medium">Total</p>
+                  <p className="mt-0.5 truncate text-[17px] font-semibold text-foreground tabular-nums">
+                    {formatCurrency(total)}
+                  </p>
+                </div>
+
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-muted ring-1 ring-border">
+                  {footerCollapsed ? (
+                    <ChevronUp className="size-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="size-4 text-muted-foreground" />
+                  )}
+                </div>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {!footerCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="overflow-hidden border-t border-border"
+                  >
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-muted-foreground">
+                          {items.length} {items.length === 1 ? "item" : "items"}
+                        </p>
+                      </div>
+
+                      <Button
+                        variant="default"
+                        size="default"
+                        disabled={!canPrint || isSaving}
+                        onClick={handlePrint}
+                        aria-label="Imprimir"
+                        className="shadow-sm"
+                      >
+                        {isSaving ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Printer className="size-4" />
+                        )}
+                        <span>{isSaving ? "Imprimiendo..." : "Imprimir"}</span>
+                      </Button>
+                    </div>
+                  </motion.div>
                 )}
-                <span>{isSaving ? "Imprimiendo..." : "Imprimir"}</span>
-              </Button>
+              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -662,7 +696,7 @@ ${styles}
               transition={{ duration: 0.18, ease: "easeOut" }}
               className="fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 sm:hidden"
               style={{
-                bottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 12px)`,
+                bottom: `calc(${BOTTOM_NAV_PX + (footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX)}px + env(safe-area-inset-bottom) + 12px)`,
               }}
               role="alert"
             >
