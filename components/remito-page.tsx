@@ -5,13 +5,13 @@ import { useState, useRef, useCallback, useEffect, useMemo, startTransition } fr
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Printer,
-  Eye,
   FileText,
   RotateCcw,
   Trash2,
   CheckCircle2,
   Loader2,
   MoreHorizontal,
+  Eye,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -612,52 +612,41 @@ ${styles}
         </main>
 
         <div
-          className="fixed inset-x-0 z-50 border-t bg-card/96 backdrop-blur-xl sm:hidden"
-          style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
-        >
-          <div className="mx-auto w-full max-w-md px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Total
-                </p>
-                <p className="truncate text-lg font-semibold leading-tight text-foreground tabular-nums">
-                  {formatCurrency(total)}
-                </p>
-                <p className="text-[12px] text-muted-foreground">
-                  {items.length} {items.length === 1 ? "item" : "items"}
-                </p>
-              </div>
+  className="fixed inset-x-0 z-50 border-t bg-card/96 backdrop-blur-xl sm:hidden"
+  style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
+>
+  <div className="mx-auto w-full max-w-md px-4 py-3">
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Total
+        </p>
+        <p className="truncate text-lg font-semibold leading-tight text-foreground tabular-nums">
+          {formatCurrency(total)}
+        </p>
+        <p className="text-[12px] text-muted-foreground">
+          {items.length} {items.length === 1 ? "item" : "items"}
+        </p>
+      </div>
 
-              <Button
-                variant="ghost"
-                disabled={!canPrint}
-                onClick={() => setShowPreview(true)}
-                aria-label="Vista previa"
-                className="h-11 rounded-2xl px-3 text-[13px] text-muted-foreground"
-              >
-                <Eye className="size-4" />
-                <span className="ml-2">Vista previa</span>
-              </Button>
-
-              <Button
-                disabled={!canPrint || isSaving}
-                onClick={handlePrint}
-                aria-label="Imprimir"
-                className="h-11 rounded-2xl px-4"
-              >
-                {isSaving ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Printer className="size-4" />
-                )}
-                <span className="ml-2 text-sm font-medium">
-                  {isSaving ? "Guardando..." : "Imprimir"}
-                </span>
-              </Button>
-            </div>
-          </div>
-        </div>
+      <Button
+        disabled={!canPrint || isSaving}
+        onClick={handlePrint}
+        aria-label="Imprimir"
+        className="h-11 rounded-2xl px-4"
+      >
+        {isSaving ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Printer className="size-4" />
+        )}
+        <span className="ml-2 text-sm font-medium">
+          {isSaving ? "Guardando..." : "Imprimir"}
+        </span>
+      </Button>
+    </div>
+  </div>
+</div>
 
         <AnimatePresence>
           {toast.open && (
