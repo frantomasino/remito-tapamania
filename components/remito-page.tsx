@@ -105,7 +105,7 @@ function PriceListSelect({
         value={value}
         onChange={(e) => onChange(e.target.value as PriceListId)}
         aria-label="Lista de precios"
-        className="h-10 w-full appearance-none rounded-2xl border border-border bg-background px-3 pr-9 text-sm font-medium text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40"
+        className="h-10 w-full appearance-none rounded-2xl border border-border bg-background px-3 pr-9 text-base font-medium text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40 md:text-sm"
       >
         {PRICE_LISTS.map((list) => (
           <option key={list.id} value={list.id}>
@@ -593,7 +593,11 @@ ${styles}
                   <div className="h-20 animate-pulse rounded-3xl bg-muted" />
                 </div>
               ) : (
-                <ProductSelector products={products} items={items} onItemsChange={handleItemsChange} />
+                <ProductSelector
+                  products={products}
+                  items={items}
+                  onItemsChange={handleItemsChange}
+                />
               )}
             </section>
 
@@ -736,7 +740,12 @@ ${styles}
               <Button variant="outline" onClick={() => setShowPreview(false)} className="flex-1">
                 Cerrar
               </Button>
-              <Button onClick={handlePreviewPrint} disabled={isSaving} size="lg" className="flex-1">
+              <Button
+                onClick={handlePreviewPrint}
+                disabled={isSaving}
+                size="lg"
+                className="flex-1"
+              >
                 {isSaving ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
@@ -835,10 +844,19 @@ ${styles}
           </p>
 
           <div className="mt-2 flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setShowConfirmClear(false)}>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowConfirmClear(false)}
+            >
               Cancelar
             </Button>
-            <Button variant="destructive" size="lg" className="flex-1" onClick={confirmClearItems}>
+            <Button
+              variant="destructive"
+              size="lg"
+              className="flex-1"
+              onClick={confirmClearItems}
+            >
               Vaciar
             </Button>
           </div>
