@@ -11,6 +11,7 @@ import {
   Trash2,
   CheckCircle2,
   Loader2,
+  MoreHorizontal,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -69,7 +70,7 @@ function k(base: string, userId: string) {
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
 
 const BOTTOM_NAV_PX = 72
-const ACTION_BAR_PX = 76
+const ACTION_BAR_PX = 84
 
 type ProductsCacheEntry = {
   loadedAt: number
@@ -85,7 +86,7 @@ function PriceListSegmented({
 }) {
   return (
     <div
-      className="grid grid-cols-3 gap-1 rounded-2xl border bg-muted/30 p-1"
+      className="grid grid-cols-3 gap-1 rounded-2xl bg-muted/40 p-1"
       role="tablist"
       aria-label="Lista de precios"
     >
@@ -100,7 +101,7 @@ function PriceListSegmented({
             aria-selected={active}
             onClick={() => onChange(list.id)}
             className={cn(
-              "rounded-xl px-3 py-2 text-[12px] font-medium transition-all",
+              "rounded-xl px-3 py-2.5 text-[12px] font-medium transition-all",
               active
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground"
@@ -121,6 +122,9 @@ export default function RemitoPage() {
   const [client, setClient] = useState<ClientData>(defaultClient)
   const [nextNumber, setNextNumber] = useState(1)
   const [showPreview, setShowPreview] = useState(false)
+  const [showActions, setShowActions] = useState(false)
+  const [showConfirmNew, setShowConfirmNew] = useState(false)
+  const [showConfirmClear, setShowConfirmClear] = useState(false)
   const [priceListId, setPriceListId] = useState<PriceListId>("minorista")
   const [mounted, setMounted] = useState(false)
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
@@ -290,6 +294,7 @@ export default function RemitoPage() {
 
   const canPrint = items.length > 0
   const selectedListLabel = PRICE_LISTS.find((x) => x.id === priceListId)?.label ?? "Lista"
+  const hasDraft = items.length > 0 || client.nombre.trim().length > 0
 
   const advanceAndReset = useCallback(() => {
     setNextNumber((n) => {
@@ -473,21 +478,25 @@ ${styles}
     advanceAndReset()
   }, [canPrint, isSaving, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
 
-  const handleNewRemito = useCallback(() => {
+  const confirmNewRemito = useCallback(() => {
     setClient(defaultClient)
     setItems([])
+    setShowActions(false)
+    setShowConfirmNew(false)
     showToast("Nuevo remito listo")
   }, [showToast])
 
-  const handleClearItems = useCallback(() => {
+  const confirmClearItems = useCallback(() => {
     setItems([])
+    setShowActions(false)
+    setShowConfirmClear(false)
     showToast("Productos vaciados")
   }, [showToast])
 
   if (!mounted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-sm">
           <div className="flex size-9 items-center justify-center rounded-xl bg-primary">
             <FileText className="size-4 text-primary-foreground" />
           </div>
@@ -500,81 +509,77 @@ ${styles}
   return (
     <>
       <div id="screen-ui" className="min-h-screen overflow-x-hidden bg-background">
-        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-xl">
-          <div className="mx-auto w-full max-w-5xl px-4 py-3">
-            <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
-              <div className="border-b px-4 py-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary shadow-sm">
-                    <FileText className="size-5 text-primary-foreground" />
+        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl">
+          <div className="mx-auto w-full max-w-md px-4 pb-2 pt-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                    <FileText className="size-4" />
                   </div>
+                  <h1 className="truncate text-[18px] font-semibold text-foreground">
+                    Nuevo remito
+                  </h1>
+                </div>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                      Nuevo remito
-                    </p>
-
-                    <div className="mt-1 flex items-center gap-2">
-                      <h1 className="truncate text-xl font-semibold leading-none text-foreground">
-                        N° {remitoNumero}
-                      </h1>
-                      <span className="rounded-full border bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-                        {selectedListLabel}
-                      </span>
-                    </div>
-
-                    <p className="mt-2 text-[13px] text-muted-foreground">
-                      Fecha: {remitoDateRef.current}
-                    </p>
-                  </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+                  <span className="font-medium text-foreground">{remitoNumero}</span>
+                  <span>•</span>
+                  <span>{remitoDateRef.current}</span>
+                  <span>•</span>
+                  <span>{selectedListLabel}</span>
                 </div>
               </div>
 
-              <div className="grid gap-4 px-4 py-4">
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    Lista de precios
-                  </p>
-                  <div className="mt-2">
-                    <PriceListSegmented value={priceListId} onChange={setPriceListId} />
-                  </div>
-                </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowActions(true)}
+                aria-label="Más acciones"
+                className="h-10 w-10 rounded-2xl"
+              >
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </div>
 
-                <div className="rounded-2xl bg-muted/30 px-4 py-3">
+            <div className="mt-3 rounded-2xl bg-muted/30 px-4 py-3">
+              <div className="flex items-end justify-between gap-3">
+                <div className="min-w-0">
                   <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    Total actual
+                    Total
                   </p>
                   <p className="mt-1 text-2xl font-semibold leading-none text-foreground tabular-nums">
                     {formatCurrency(total)}
                   </p>
-                  <p className="mt-1 text-[13px] text-muted-foreground">
-                    {items.length} {items.length === 1 ? "producto cargado" : "productos cargados"}
-                  </p>
                 </div>
+
+                <p className="text-[13px] text-muted-foreground">
+                  {items.length} {items.length === 1 ? "item" : "items"}
+                </p>
               </div>
+            </div>
+
+            <div className="mt-3">
+              <PriceListSegmented value={priceListId} onChange={setPriceListId} />
             </div>
           </div>
         </header>
 
         <main
-          className="mx-auto w-full max-w-5xl px-4 py-4"
+          className="mx-auto w-full max-w-md px-4 pb-4 pt-2"
           style={{
             paddingBottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 16px)`,
           }}
         >
-          <div className="space-y-4">
-            <section className="rounded-3xl border bg-card p-4 shadow-sm">
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-base font-semibold text-foreground">Productos</h2>
-                  <p className="mt-1 text-[13px] text-muted-foreground">
-                    {isLoadingProducts ? "Cargando lista de precios..." : "Buscá y agregá productos al remito"}
-                  </p>
-                </div>
-
-                <div className="shrink-0 rounded-full border bg-background px-3 py-1 text-[11px] font-medium text-muted-foreground">
-                  {selectedListLabel}
-                </div>
+          <div className="space-y-5">
+            <section>
+              <div className="mb-3">
+                <h2 className="text-[15px] font-semibold text-foreground">Productos</h2>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  {isLoadingProducts
+                    ? "Cargando lista de precios..."
+                    : "Buscá, agregá y cerrá el pedido rápido."}
+                </p>
               </div>
 
               {isLoadingProducts && products.length === 0 ? (
@@ -588,11 +593,11 @@ ${styles}
               )}
             </section>
 
-            <section className="rounded-3xl border bg-card p-4 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-base font-semibold text-foreground">Datos del comercio</h2>
+            <section className="pt-1">
+              <div className="mb-3">
+                <h2 className="text-[15px] font-semibold text-foreground">Comercio</h2>
                 <p className="mt-1 text-[13px] text-muted-foreground">
-                  Opcional. Completalo solo si querés que aparezca en el remito.
+                  Opcional. Solo si querés imprimir el nombre.
                 </p>
               </div>
 
@@ -610,7 +615,7 @@ ${styles}
           className="fixed inset-x-0 z-50 border-t bg-card/96 backdrop-blur-xl sm:hidden"
           style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
         >
-          <div className="mx-auto w-full max-w-5xl px-4 py-3">
+          <div className="mx-auto w-full max-w-md px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -624,55 +629,32 @@ ${styles}
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleNewRemito}
-                  aria-label="Nuevo remito"
-                  className="h-11 w-11 rounded-2xl"
-                >
-                  <RotateCcw className="size-4" />
-                </Button>
+              <Button
+                variant="ghost"
+                disabled={!canPrint}
+                onClick={() => setShowPreview(true)}
+                aria-label="Vista previa"
+                className="h-11 rounded-2xl px-3 text-[13px] text-muted-foreground"
+              >
+                <Eye className="size-4" />
+                <span className="ml-2">Vista previa</span>
+              </Button>
 
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={items.length === 0}
-                  onClick={handleClearItems}
-                  aria-label="Vaciar productos"
-                  className="h-11 w-11 rounded-2xl"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={!canPrint}
-                  onClick={() => setShowPreview(true)}
-                  aria-label="Vista previa"
-                  className="h-11 w-11 rounded-2xl"
-                >
-                  <Eye className="size-4" />
-                </Button>
-
-                <Button
-                  disabled={!canPrint || isSaving}
-                  onClick={handlePrint}
-                  aria-label="Imprimir"
-                  className="h-11 rounded-2xl px-4"
-                >
-                  {isSaving ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Printer className="size-4" />
-                  )}
-                  <span className="ml-2 text-sm font-medium">
-                    {isSaving ? "Guardando..." : "Imprimir"}
-                  </span>
-                </Button>
-              </div>
+              <Button
+                disabled={!canPrint || isSaving}
+                onClick={handlePrint}
+                aria-label="Imprimir"
+                className="h-11 rounded-2xl px-4"
+              >
+                {isSaving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Printer className="size-4" />
+                )}
+                <span className="ml-2 text-sm font-medium">
+                  {isSaving ? "Guardando..." : "Imprimir"}
+                </span>
+              </Button>
             </div>
           </div>
         </div>
@@ -690,7 +672,7 @@ ${styles}
               }}
               role="alert"
             >
-              <div className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3 shadow-lg">
+              <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-lg">
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                   <CheckCircle2 className="size-4 text-primary" />
                 </div>
@@ -716,7 +698,7 @@ ${styles}
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto bg-muted/20 px-3 py-3 sm:px-4 sm:py-4">
-            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
               <RemitoPrint data={remitoData} />
             </div>
           </div>
@@ -743,6 +725,116 @@ ${styles}
                 <span className="ml-2">{isSaving ? "Guardando..." : "Imprimir"}</span>
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showActions} onOpenChange={setShowActions}>
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Acciones del pedido</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowActions(false)
+                if (!hasDraft) {
+                  confirmNewRemito()
+                  return
+                }
+                setShowConfirmNew(true)
+              }}
+              className="h-11 justify-start rounded-2xl"
+            >
+              <RotateCcw className="size-4" />
+              Nuevo remito
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowActions(false)
+                if (items.length === 0) return
+                setShowConfirmClear(true)
+              }}
+              disabled={items.length === 0}
+              className="h-11 justify-start rounded-2xl"
+            >
+              <Trash2 className="size-4" />
+              Vaciar productos
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowActions(false)
+                setShowPreview(true)
+              }}
+              disabled={!canPrint}
+              className="h-11 justify-start rounded-2xl"
+            >
+              <Eye className="size-4" />
+              Vista previa
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showConfirmNew} onOpenChange={setShowConfirmNew}>
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Empezar un nuevo remito</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground">
+            Se va a limpiar el pedido actual y vas a empezar uno nuevo.
+          </p>
+
+          <div className="mt-2 flex gap-2">
+            <Button
+              variant="outline"
+              className="h-11 flex-1 rounded-2xl"
+              onClick={() => setShowConfirmNew(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="h-11 flex-1 rounded-2xl"
+              onClick={confirmNewRemito}
+            >
+              Continuar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showConfirmClear} onOpenChange={setShowConfirmClear}>
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Vaciar productos</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground">
+            Se van a eliminar {items.length} {items.length === 1 ? "producto" : "productos"} del pedido actual.
+          </p>
+
+          <div className="mt-2 flex gap-2">
+            <Button
+              variant="outline"
+              className="h-11 flex-1 rounded-2xl"
+              onClick={() => setShowConfirmClear(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              className="h-11 flex-1 rounded-2xl"
+              onClick={confirmClearItems}
+            >
+              Vaciar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

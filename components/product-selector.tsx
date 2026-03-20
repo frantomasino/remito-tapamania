@@ -145,7 +145,7 @@ type Derived = {
   haystack: string
 }
 
-interface ProductCardProps {
+interface ProductRowProps {
   product: Product
   title: string
   infoTags: string[]
@@ -156,7 +156,7 @@ interface ProductCardProps {
   onAdd: (product: Product, opcion?: string) => void
 }
 
-const ProductCard = memo(function ProductCard({
+const ProductRow = memo(function ProductRow({
   product,
   title,
   infoTags,
@@ -165,14 +165,14 @@ const ProductCard = memo(function ProductCard({
   selectedCount,
   onSelectOption,
   onAdd,
-}: ProductCardProps) {
+}: ProductRowProps) {
   return (
     <motion.article
       layout
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.16, ease: "easeOut" }}
-      className="rounded-2xl border bg-background px-4 py-4 shadow-sm"
+      transition={{ duration: 0.14, ease: "easeOut" }}
+      className="border-b border-border/60 py-3 last:border-b-0"
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
@@ -180,7 +180,7 @@ const ProductCard = memo(function ProductCard({
             {title}
           </p>
 
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <p className="text-[15px] font-semibold text-foreground tabular-nums">
               {formatCurrency(product.precio)}
             </p>
@@ -191,130 +191,119 @@ const ProductCard = memo(function ProductCard({
               </span>
             ) : null}
           </div>
+
+          {options.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {options.map((o) => {
+                const active = normalize(o) === normalize(selectedOpt)
+                return (
+                  <button
+                    key={o}
+                    type="button"
+                    onClick={() => onSelectOption(product.descripcion, o)}
+                    className={cn(
+                      "min-h-[34px] rounded-full px-3 py-1.5 text-[11px] font-medium leading-none transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/60 text-foreground"
+                    )}
+                  >
+                    {o}
+                  </button>
+                )
+              })}
+            </div>
+          ) : infoTags.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {infoTags.map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-muted/60 px-3 py-1.5 text-[11px] font-medium leading-none text-muted-foreground"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <Button
-          className="h-11 shrink-0 rounded-2xl px-4 text-[13px] font-medium"
           onClick={() => onAdd(product, selectedOpt || undefined)}
+          className="h-11 shrink-0 rounded-2xl px-4 text-[13px] font-medium"
         >
           <Plus className="size-4" />
           Agregar
         </Button>
       </div>
-
-      {options.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {options.map((o) => {
-            const active = normalize(o) === normalize(selectedOpt)
-            return (
-              <button
-                key={o}
-                type="button"
-                onClick={() => onSelectOption(product.descripcion, o)}
-                className={cn(
-                  "min-h-[34px] rounded-full border px-3 py-1.5 text-[11px] font-medium leading-none transition-colors",
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "bg-muted/40 text-foreground"
-                )}
-              >
-                {o}
-              </button>
-            )
-          })}
-        </div>
-      ) : infoTags.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {infoTags.map((t) => (
-            <span
-              key={t}
-              className="rounded-full border bg-muted/40 px-3 py-1.5 text-[11px] font-medium leading-none text-muted-foreground"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-      ) : null}
     </motion.article>
   )
 })
 
-interface SelectedItemCardProps {
+interface SelectedItemRowProps {
   item: LineItem
   title: string
   onRemove: (desc: string, opcion?: string) => void
   onUpdateQuantity: (desc: string, opcion: string | undefined, cantidad: number) => void
 }
 
-const SelectedItemCard = memo(function SelectedItemCard({
+const SelectedItemRow = memo(function SelectedItemRow({
   item,
   title,
   onRemove,
   onUpdateQuantity,
-}: SelectedItemCardProps) {
+}: SelectedItemRowProps) {
   const canDecrease = item.cantidad > 1
 
   return (
     <motion.article
       layout
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 6 }}
-      transition={{ duration: 0.15, ease: "easeOut" }}
-      className="rounded-2xl border bg-background px-4 py-4 shadow-sm"
+      exit={{ opacity: 0, y: 4 }}
+      transition={{ duration: 0.14, ease: "easeOut" }}
+      className="border-b border-border/60 py-3 last:border-b-0"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-[14px] font-semibold leading-snug text-foreground">
             {title}
-            {item.opcion ? <span className="font-medium text-muted-foreground"> — {item.opcion}</span> : null}
+            {item.opcion ? (
+              <span className="font-medium text-muted-foreground"> — {item.opcion}</span>
+            ) : null}
           </p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             Unitario: {formatCurrency(item.product.precio)}
           </p>
-        </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onRemove(item.product.descripcion, item.opcion)}
-          aria-label="Eliminar"
-          className="h-10 w-10 shrink-0 rounded-2xl"
-        >
-          <Trash2 className="size-4 text-destructive" />
-        </Button>
-      </div>
-
-      <div className="mt-4 flex items-end justify-between gap-3">
-        <div>
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            Cantidad
-          </p>
-
-          <div className="flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2">
             <button
               type="button"
-              onClick={() => canDecrease && onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1)}
+              onClick={() =>
+                canDecrease &&
+                onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1)
+              }
               disabled={!canDecrease}
               className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-xl border text-base font-semibold transition-colors",
+                "flex h-10 w-10 items-center justify-center rounded-xl bg-muted/60 text-base font-semibold transition-colors",
                 canDecrease
-                  ? "bg-background text-foreground"
-                  : "cursor-not-allowed bg-muted/40 text-muted-foreground"
+                  ? "text-foreground"
+                  : "cursor-not-allowed text-muted-foreground"
               )}
               aria-label="Restar cantidad"
             >
               −
             </button>
 
-            <div className="flex min-w-[44px] items-center justify-center rounded-xl border bg-muted/20 px-3 py-2 text-[14px] font-semibold tabular-nums text-foreground">
+            <div className="flex min-w-[44px] items-center justify-center rounded-xl bg-muted/40 px-3 py-2 text-[14px] font-semibold tabular-nums text-foreground">
               {item.cantidad}
             </div>
 
             <button
               type="button"
-              onClick={() => onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border bg-background text-base font-semibold text-foreground transition-colors"
+              onClick={() =>
+                onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)
+              }
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/60 text-base font-semibold text-foreground transition-colors"
               aria-label="Sumar cantidad"
             >
               +
@@ -322,13 +311,20 @@ const SelectedItemCard = memo(function SelectedItemCard({
           </div>
         </div>
 
-        <div className="text-right">
-          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            Subtotal
-          </p>
-          <p className="mt-1 text-[15px] font-semibold text-foreground tabular-nums">
+        <div className="shrink-0 text-right">
+          <p className="text-[15px] font-semibold text-foreground tabular-nums">
             {formatCurrency(item.subtotal)}
           </p>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onRemove(item.product.descripcion, item.opcion)}
+            aria-label="Eliminar"
+            className="mt-2 h-10 w-10 rounded-2xl"
+          >
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
         </div>
       </div>
     </motion.article>
@@ -494,15 +490,15 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
       </Dialog>
 
       <div className="flex flex-col gap-4 overflow-x-hidden">
-        <div className="grid grid-cols-2 gap-1 rounded-2xl border bg-background p-1">
+        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-muted/40 p-1">
           <button
             type="button"
             onClick={() => setMobileTab("catalogo")}
             className={cn(
               "h-11 rounded-xl text-[13px] font-medium transition-colors",
               mobileTab === "catalogo"
-                ? "bg-primary text-primary-foreground"
-                : "text-foreground"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground"
             )}
           >
             Catálogo
@@ -513,8 +509,8 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
             className={cn(
               "h-11 rounded-xl text-[13px] font-medium transition-colors",
               mobileTab === "seleccionados"
-                ? "bg-primary text-primary-foreground"
-                : "text-foreground"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground"
             )}
           >
             Seleccionados ({items.length})
@@ -525,11 +521,11 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
           {mobileTab === "catalogo" ? (
             <motion.div
               key="catalogo"
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.16, ease: "easeOut" }}
-              className="flex flex-col gap-4"
+              transition={{ duration: 0.14, ease: "easeOut" }}
+              className="flex flex-col gap-3"
             >
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -537,12 +533,12 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                   placeholder="Buscar producto"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-11 rounded-2xl pl-10 text-[14px]"
+                  className="h-11 rounded-2xl border-0 bg-muted/40 pl-10 text-[14px] shadow-none"
                 />
               </div>
 
               {products.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-10 text-center">
+                <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
                   <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50">
                     <Package2 className="size-5 text-muted-foreground" />
                   </div>
@@ -552,7 +548,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                   </p>
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-10 text-center">
+                <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
                   <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50">
                     <Search className="size-5 text-muted-foreground" />
                   </div>
@@ -562,7 +558,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                   </p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
+                <div className="rounded-3xl bg-card/40">
                   {visibleProducts.map((p) => {
                     const d = derivedByDesc.get(p.descripcion)
                     const title = d?.title ?? shortDesc(p.descripcion)
@@ -576,7 +572,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                         : itemCountByDesc.get(p.descripcion) ?? 0
 
                     return (
-                      <ProductCard
+                      <ProductRow
                         key={itemKey(p.descripcion)}
                         product={p}
                         title={title}
@@ -589,63 +585,62 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                       />
                     )
                   })}
-
-                  {filtered.length > visibleCount && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setVisibleCount((prev) => prev + MAX_VISIBLE_PRODUCTS)}
-                      className="h-11 rounded-2xl"
-                    >
-                      Ver más ({filtered.length - visibleCount})
-                    </Button>
-                  )}
                 </div>
+              )}
+
+              {filtered.length > visibleCount && (
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleCount((prev) => prev + MAX_VISIBLE_PRODUCTS)}
+                  className="h-11 rounded-2xl"
+                >
+                  Ver más ({filtered.length - visibleCount})
+                </Button>
               )}
             </motion.div>
           ) : (
             <motion.div
               key="seleccionados"
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.16, ease: "easeOut" }}
-              className="flex flex-col gap-4"
+              transition={{ duration: 0.14, ease: "easeOut" }}
+              className="flex flex-col gap-3"
             >
-              <div className="rounded-2xl border bg-muted/20 px-4 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                      Seleccionados
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">
-                      {items.length} {items.length === 1 ? "producto" : "productos"}
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                      Total
-                    </p>
-                    <p className="mt-1 text-[15px] font-semibold text-foreground tabular-nums">
-                      {formatCurrency(total)}
-                    </p>
-                  </div>
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    Pedido actual
+                  </p>
+                  <p className="mt-1 text-[15px] font-semibold text-foreground">
+                    {items.length} {items.length === 1 ? "producto" : "productos"}
+                  </p>
                 </div>
 
+                <div className="text-right">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    Total
+                  </p>
+                  <p className="mt-1 text-[16px] font-semibold text-foreground tabular-nums">
+                    {formatCurrency(total)}
+                  </p>
+                </div>
+              </div>
+
+              {items.length > 0 ? (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onAskClearAll}
-                  disabled={items.length === 0}
-                  className="mt-3 h-10 rounded-2xl px-3 text-[13px]"
+                  className="h-10 w-fit rounded-2xl px-3 text-[13px]"
                 >
                   <Trash2 className="size-4" />
                   Vaciar selección
                 </Button>
-              </div>
+              ) : null}
 
               {items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-10 text-center">
+                <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
                   <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50">
                     <Package2 className="size-5 text-muted-foreground" />
                   </div>
@@ -655,14 +650,14 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                   </p>
                 </div>
               ) : (
-                <motion.div layout className="flex flex-col gap-3">
+                <motion.div layout className="rounded-3xl bg-card/40">
                   <AnimatePresence initial={false}>
                     {items.map((item) => {
                       const d = derivedByDesc.get(item.product.descripcion)
                       const title = d?.title ?? shortDesc(item.product.descripcion)
 
                       return (
-                        <SelectedItemCard
+                        <SelectedItemRow
                           key={itemKey(item.product.descripcion, item.opcion)}
                           item={item}
                           title={title}

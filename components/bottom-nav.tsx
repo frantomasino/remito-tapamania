@@ -8,7 +8,7 @@ import { PlusCircle, User, ClipboardList } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { href: "/dashboard", label: "Pedidos", icon: ClipboardList },
+  { href: "/dashboard/pedidos", label: "Pedidos", icon: ClipboardList },
   { href: "/dashboard/nuevo", label: "Nuevo", icon: PlusCircle, primary: true },
   { href: "/dashboard/perfil", label: "Perfil", icon: User },
 ]
@@ -28,8 +28,8 @@ export function BottomNav() {
       <div className="mx-auto grid max-w-5xl grid-cols-3 items-end px-3 pb-[calc(env(safe-area-inset-bottom)+10px)] pt-2">
         {navItems.map((item) => {
           const isActive =
-            item.href === "/dashboard"
-              ? pathname === "/dashboard"
+            item.href === "/dashboard/pedidos"
+              ? pathname === "/dashboard/pedidos"
               : pathname.startsWith(item.href)
 
           if (item.primary) {
