@@ -54,22 +54,19 @@ export default function ForgotPasswordPage() {
           </div>
 
           <div className="mt-5">
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              App
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-foreground">
+            <h1 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">
               Recuperar contraseña
             </h1>
-            <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Ingresá tu email y te mandamos un enlace para restablecer el acceso.
             </p>
           </div>
         </div>
 
-        <div className="rounded-3xl bg-muted/25 p-4">
+        <div className="rounded-3xl bg-card p-4 shadow-sm ring-1 ring-border">
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className="text-[13px] font-medium text-foreground">
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email
               </Label>
               <Input
@@ -79,12 +76,13 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-11 rounded-2xl"
               />
             </div>
 
             {error && (
               <div
-                className="rounded-2xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                className="rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
                 role="alert"
               >
                 {error}
@@ -92,18 +90,28 @@ export default function ForgotPasswordPage() {
             )}
 
             {msg && (
-              <div className="flex items-start gap-3 rounded-2xl bg-primary/10 px-3 py-3 text-primary">
-                <MailSearch className="mt-0.5 size-4 shrink-0" />
+              <div
+                className="flex items-start gap-3 rounded-2xl border border-primary/15 bg-primary/10 px-3 py-3 text-foreground"
+                role="status"
+              >
+                <MailSearch className="mt-0.5 size-4 shrink-0 text-primary" />
                 <p className="text-sm">{msg}</p>
               </div>
             )}
 
-            <Button type="submit" disabled={loading} className="mt-1 h-12 text-[15px] font-semibold">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="mt-1 h-12 rounded-2xl text-sm font-semibold"
+            >
               {loading ? "Enviando..." : "Enviar link"}
             </Button>
 
-            <p className="text-center text-[13px] text-muted-foreground">
-              <Link href="/auth/login" className="font-medium text-primary underline underline-offset-4">
+            <p className="text-center text-sm text-muted-foreground">
+              <Link
+                href="/auth/login"
+                className="font-medium text-primary underline underline-offset-4"
+              >
                 Volver a ingresar
               </Link>
             </p>

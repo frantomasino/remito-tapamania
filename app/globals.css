@@ -7,7 +7,7 @@
   --background: oklch(0.985 0.002 85);
   --foreground: oklch(0.2 0.01 50);
 
-  --card: oklch(0.998 0.001 85);
+  --card: oklch(0.996 0.001 85);
   --card-foreground: oklch(0.2 0.01 50);
 
   --popover: oklch(1 0 0);
@@ -28,8 +28,8 @@
   --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: oklch(0.985 0 0);
 
-  --border: oklch(0.86 0.008 85);
-  --input: oklch(0.9 0.006 85);
+  --border: oklch(0.88 0.007 85);
+  --input: oklch(0.975 0.003 85);
   --ring: oklch(0.39 0.1 158);
 
   --chart-1: oklch(0.646 0.222 41.116);
@@ -38,7 +38,7 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
 
-  --radius: 1rem;
+  --radius: 1.15rem;
 
   --sidebar: oklch(0.985 0.002 85);
   --sidebar-foreground: oklch(0.2 0.01 50);
@@ -54,7 +54,7 @@
   --background: oklch(0.17 0.004 85);
   --foreground: oklch(0.96 0.002 85);
 
-  --card: oklch(0.2 0.004 85);
+  --card: oklch(0.205 0.004 85);
   --card-foreground: oklch(0.96 0.002 85);
 
   --popover: oklch(0.19 0.004 85);
@@ -75,8 +75,8 @@
   --destructive: oklch(0.45 0.17 27);
   --destructive-foreground: oklch(0.96 0.002 85);
 
-  --border: oklch(0.29 0.004 85);
-  --input: oklch(0.29 0.004 85);
+  --border: oklch(0.3 0.004 85);
+  --input: oklch(0.235 0.004 85);
   --ring: oklch(0.76 0.12 158);
 
   --chart-1: oklch(0.488 0.243 264.376);
@@ -133,10 +133,10 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 3px);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 6px);
+  --radius-xl: calc(var(--radius) + 8px);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -151,6 +151,7 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
   }
 
   html {
@@ -178,6 +179,26 @@
     letter-spacing: -0.02em;
   }
 
+  h1 {
+    line-height: 1.05;
+  }
+
+  h2,
+  h3,
+  h4 {
+    line-height: 1.15;
+  }
+
+  p,
+  label,
+  span,
+  button,
+  input,
+  textarea,
+  select {
+    line-height: 1.35;
+  }
+
   button,
   input,
   textarea,
@@ -187,16 +208,106 @@
       box-shadow 160ms ease,
       background-color 160ms ease,
       color 160ms ease,
-      transform 120ms ease;
+      transform 120ms ease,
+      opacity 120ms ease;
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
   }
 
   button:focus-visible,
   input:focus-visible,
   textarea:focus-visible,
-  select:focus-visible {
+  select:focus-visible,
+  a:focus-visible {
     box-shadow:
       0 0 0 1px color-mix(in oklab, var(--ring) 38%, white),
       0 0 0 4px color-mix(in oklab, var(--ring) 14%, white);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: color-mix(in oklab, var(--muted-foreground) 78%, white);
+    opacity: 1;
+  }
+
+  input:disabled,
+  textarea:disabled,
+  select:disabled,
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+@layer utilities {
+  .app-page-title {
+    @apply text-xl font-semibold text-foreground;
+  }
+
+  .app-section-title {
+    @apply text-base font-semibold text-foreground;
+  }
+
+  .app-subtitle {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .app-field-label {
+    @apply text-sm font-medium text-foreground;
+  }
+
+  .app-meta {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .app-card {
+    @apply rounded-3xl bg-card p-4 ring-1 ring-border shadow-sm;
+  }
+
+  .app-card-soft {
+    @apply rounded-3xl bg-background p-4 ring-1 ring-border;
+  }
+
+  .app-card-accent {
+    @apply rounded-3xl border border-primary/20 bg-primary/[0.05] p-4 shadow-sm;
+  }
+
+  .app-button-primary {
+    @apply h-12 rounded-2xl text-sm font-semibold;
+  }
+
+  .app-button-secondary {
+    @apply h-11 rounded-2xl text-sm;
+  }
+
+  .app-button-icon {
+    @apply h-10 w-10 rounded-2xl;
+  }
+
+  .app-input {
+    @apply h-11 rounded-2xl;
+  }
+
+  .app-textarea {
+    @apply min-h-24 resize-none rounded-2xl;
+  }
+
+  .app-empty {
+    @apply rounded-3xl border bg-background px-4 py-8 text-center;
+  }
+
+  .app-feedback-error {
+    @apply rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive;
+  }
+
+  .app-feedback-success {
+    @apply rounded-2xl border border-primary/15 bg-primary/10 px-3 py-2.5 text-sm text-foreground;
   }
 }
 
@@ -214,14 +325,6 @@ body {
 
 body {
   overscroll-behavior-x: none;
-}
-
-button,
-a,
-input,
-textarea,
-select {
-  -webkit-tap-highlight-color: transparent;
 }
 
 /* --- Print: por defecto oculto en pantalla --- */

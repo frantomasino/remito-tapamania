@@ -15,12 +15,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "App",
-  description: "Sistema de generación de remitos y comprobantes para tu negocio",
+  description: "App para cargar pedidos, generar remitos e imprimir comprobantes desde el celular.",
   manifest: "/manifest.webmanifest",
 }
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a",
+  themeColor: "#2f7a57",
 }
 
 export default function RootLayout({

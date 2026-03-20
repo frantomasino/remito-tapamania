@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { redirect, notFound } from "next/navigation"
-import { ArrowLeft, Pencil, Store, Calendar, Package } from "lucide-react"
+import { ArrowLeft, Pencil, Store, Calendar, Package, ReceiptText } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
@@ -54,37 +54,39 @@ export default async function RemitoDetailPage({
   const remito = data as RemitoWithItems
   const cfg = estadoConfig[remito.estado] ?? estadoConfig.pendiente
   const total = Number(remito.total || 0)
+  const itemCount = remito.remito_items.length
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-3 pb-5 pt-4">
-      <header className="rounded-2xl border bg-card px-4 py-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-5 pt-4">
+      <header className="app-card">
         <div className="flex items-start gap-3">
           <Link
-            href="/dashboard"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background"
-            aria-label="Volver"
+            href="/dashboard/pedidos"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border"
+            aria-label="Volver a pedidos"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-              Detalle
-            </p>
+            <div className="flex items-center gap-2">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                <ReceiptText className="h-4 w-4" />
+              </div>
 
-            <div className="mt-1 flex items-center gap-2">
-              <h1 className="truncate text-base font-semibold text-foreground">
-                #{remito.numero_remito}
-              </h1>
-              <Badge variant={cfg.variant}>{cfg.label}</Badge>
+              <div className="min-w-0">
+                <p className="app-subtitle">Detalle del pedido</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <h1 className="app-page-title truncate">#{remito.numero_remito}</h1>
+                  <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                </div>
+              </div>
             </div>
 
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              {formatDate(remito.fecha)}
-            </p>
+            <p className="app-subtitle mt-3">{formatDate(remito.fecha)}</p>
           </div>
 
-          <Button asChild variant="outline" className="h-10 rounded-xl px-3">
+          <Button asChild variant="outline" size="default">
             <Link href={`/dashboard/${id}/editar`}>
               <Pencil className="h-4 w-4" />
               Editar
@@ -93,81 +95,85 @@ export default async function RemitoDetailPage({
         </div>
       </header>
 
-      <section className="rounded-2xl border bg-card px-4 py-4">
-        <div className="mb-3">
-          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-            Datos
-          </p>
-        </div>
-
-        <div className="space-y-3">
+      <section className="grid gap-3 sm:grid-cols-3">
+        <div className="app-card">
           <div className="flex items-start gap-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background border">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border">
               <Store className="h-4 w-4 text-muted-foreground" />
             </div>
 
             <div className="min-w-0">
-              <p className="text-[11px] text-muted-foreground">Comercio</p>
-              <p className="text-sm text-foreground">{remito.cliente_nombre || "Sin comercio"}</p>
+              <p className="app-meta font-medium">Comercio</p>
+              <p className="mt-1 text-sm font-medium text-foreground">
+                {remito.cliente_nombre || "Sin comercio"}
+              </p>
             </div>
           </div>
+        </div>
 
+        <div className="app-card">
           <div className="flex items-start gap-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background border">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border">
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </div>
 
             <div className="min-w-0">
-              <p className="text-[11px] text-muted-foreground">Fecha</p>
-              <p className="text-sm text-foreground">{formatDate(remito.fecha)}</p>
+              <p className="app-meta font-medium">Fecha</p>
+              <p className="mt-1 text-sm font-medium text-foreground">{formatDate(remito.fecha)}</p>
             </div>
           </div>
         </div>
+
+        <div className="app-card">
+          <p className="app-meta font-medium">Total</p>
+          <p className="mt-2 text-xl font-semibold leading-none text-foreground tabular-nums">
+            {formatCurrency(total)}
+          </p>
+          <p className="app-subtitle mt-2">
+            {itemCount} {itemCount === 1 ? "ítem" : "ítems"}
+          </p>
+        </div>
       </section>
 
-      <section className="rounded-2xl border bg-card px-4 py-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
+      <section className="app-card">
+        <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-              Productos
-            </p>
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              {remito.remito_items.length} {remito.remito_items.length === 1 ? "ítem" : "ítems"}
+            <h2 className="app-section-title">Productos</h2>
+            <p className="app-subtitle mt-1">
+              {itemCount} {itemCount === 1 ? "producto cargado" : "productos cargados"}
             </p>
           </div>
 
           <div className="text-right">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
-            <p className="text-sm font-semibold text-foreground">{formatCurrency(total)}</p>
+            <p className="app-meta font-medium">Total</p>
+            <p className="text-base font-semibold text-foreground tabular-nums">
+              {formatCurrency(total)}
+            </p>
           </div>
         </div>
 
         <div className="flex flex-col gap-2">
           {remito.remito_items.map((item) => (
-            <article
-              key={item.id}
-              className="rounded-xl border bg-background px-3 py-3"
-            >
+            <article key={item.id} className="app-card-soft px-3 py-3">
               <div className="flex items-start gap-3">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-card">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-card ring-1 ring-border">
                   <Package className="h-4 w-4 text-muted-foreground" />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium leading-snug text-foreground">
+                  <p className="text-sm font-medium leading-snug text-foreground">
                     {item.descripcion}
                   </p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">
+
+                  <p className="app-subtitle mt-1">
                     {item.cantidad} {item.unidad}
                   </p>
                 </div>
 
                 <div className="shrink-0 text-right">
-                  <p className="text-[12px] font-semibold text-foreground">
-  {formatCurrency(
-    Number((item as { subtotal?: number | null }).subtotal ?? 0)
-  )}
-</p>
+                  <p className="text-sm font-semibold text-foreground tabular-nums">
+                    {formatCurrency(Number((item as { subtotal?: number | null }).subtotal ?? 0))}
+                  </p>
                 </div>
               </div>
             </article>

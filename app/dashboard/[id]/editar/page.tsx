@@ -15,7 +15,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Plus, Trash2, FileText, Store, Package2, MessageSquare } from "lucide-react"
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  FileText,
+  Store,
+  Package2,
+  MessageSquare,
+  ReceiptText,
+} from "lucide-react"
 import type { RemitoWithItems } from "@/lib/remito-types"
 
 interface ItemForm {
@@ -155,86 +164,86 @@ export default function EditarRemitoPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-3 px-3 pb-5 pt-4">
+      <div className="flex flex-col gap-4 px-4 pb-5 pt-4">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-xl" />
-          <Skeleton className="h-6 w-36 rounded-lg" />
+          <Skeleton className="h-10 w-10 rounded-2xl" />
+          <Skeleton className="h-6 w-40 rounded-2xl" />
         </div>
-        <Skeleton className="h-40 rounded-2xl" />
-        <Skeleton className="h-24 rounded-2xl" />
-        <Skeleton className="h-48 rounded-2xl" />
+        <Skeleton className="h-36 rounded-3xl" />
+        <Skeleton className="h-64 rounded-3xl" />
+        <Skeleton className="h-28 rounded-3xl" />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-3 px-3 pb-5 pt-4">
-      <header className="rounded-2xl border bg-card px-4 py-4">
+    <div className="flex flex-col gap-4 px-4 pb-5 pt-4">
+      <header className="app-card">
         <div className="flex items-start gap-3">
           <Link
             href={`/dashboard/${remitoId}`}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background"
-            aria-label="Volver"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border"
+            aria-label="Volver al detalle"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-              Edición
-            </p>
-            <h1 className="mt-0.5 text-base font-semibold text-foreground">Editar pedido</h1>
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              Modificá datos, productos y estado.
-            </p>
+            <div className="flex items-center gap-2">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                <ReceiptText className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="app-section-title">Editar pedido</h1>
+                <p className="app-subtitle mt-1">Pedido {form.numero_remito || "sin número"}</p>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <section className="rounded-2xl border bg-card px-4 py-4">
-          <div className="mb-3 flex items-start gap-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <section className="app-card">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border">
               <FileText className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                Pedido
-              </p>
-              <p className="mt-1 text-[12px] text-muted-foreground">Datos principales</p>
+              <h2 className="app-section-title">Datos del pedido</h2>
+              <p className="app-subtitle mt-1">Número, fecha y estado actual.</p>
             </div>
           </div>
 
           <div className="flex flex-col gap-3">
-            <div className="space-y-1">
-              <p className="text-[12px] font-medium text-foreground">Número</p>
+            <div className="space-y-1.5">
+              <p className="app-field-label">Número</p>
               <Input
                 id="numero"
                 value={form.numero_remito}
                 onChange={(e) => setForm({ ...form, numero_remito: e.target.value })}
                 required
-                className="h-10 rounded-xl"
+                className="app-input"
               />
             </div>
 
-            <div className="space-y-1">
-              <p className="text-[12px] font-medium text-foreground">Fecha</p>
+            <div className="space-y-1.5">
+              <p className="app-field-label">Fecha</p>
               <Input
                 id="fecha"
                 type="date"
                 value={form.fecha}
                 onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-                className="h-10 rounded-xl"
+                className="app-input"
               />
             </div>
 
-            <div className="space-y-1">
-              <p className="text-[12px] font-medium text-foreground">Estado</p>
+            <div className="space-y-1.5">
+              <p className="app-field-label">Estado</p>
               <Select
                 value={form.estado}
                 onValueChange={(v) => setForm({ ...form, estado: v as typeof form.estado })}
               >
-                <SelectTrigger id="estado" className="h-10 rounded-xl">
+                <SelectTrigger id="estado">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -247,115 +256,89 @@ export default function EditarRemitoPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border bg-card px-4 py-4">
-          <div className="mb-3 flex items-start gap-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
-              <Store className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                Comercio
-              </p>
-              <p className="mt-1 text-[12px] text-muted-foreground">Opcional</p>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-[12px] font-medium text-foreground">Nombre del comercio</p>
-            <Input
-              id="cliente"
-              value={form.cliente_nombre}
-              onChange={(e) => setForm({ ...form, cliente_nombre: e.target.value })}
-              className="h-10 rounded-xl"
-              placeholder="Ej: Kiosco Juan"
-            />
-          </div>
-        </section>
-
-        <section className="rounded-2xl border bg-card px-4 py-4">
-          <div className="mb-3 flex items-start justify-between gap-3">
+        <section className="app-card">
+          <div className="mb-4 flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border">
                 <Package2 className="h-4 w-4 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                  Items
-                </p>
-                <p className="mt-1 text-[12px] text-muted-foreground">
-                  {items.length} {items.length === 1 ? "ítem" : "ítems"}
+                <h2 className="app-section-title">Productos</h2>
+                <p className="app-subtitle mt-1">
+                  {items.length} {items.length === 1 ? "producto" : "productos"}
                 </p>
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addItem}
-              className="h-8 rounded-lg px-2.5 text-[12px]"
-            >
+            <Button type="button" variant="outline" size="default" onClick={addItem}>
               <Plus className="h-4 w-4" />
               Agregar
             </Button>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             {items.map((item, index) => (
-              <div key={index} className="rounded-xl border bg-background px-3 py-3">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="text-[11px] font-medium text-muted-foreground">
-                    Item {index + 1}
-                  </span>
+              <div key={index} className="app-card-soft px-3 py-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground">Producto {index + 1}</p>
 
                   {items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors active:bg-accent active:text-destructive"
-                      aria-label="Eliminar item"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl text-muted-foreground transition-colors active:bg-accent active:text-destructive"
+                      aria-label="Eliminar producto"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Descripción del producto"
-                    value={item.descripcion}
-                    onChange={(e) => updateItem(index, "descripcion", e.target.value)}
-                    className="h-10 rounded-xl"
-                  />
+                <div className="space-y-2.5">
+                  <div className="space-y-1.5">
+                    <p className="app-field-label">Descripción</p>
+                    <Input
+                      placeholder="Descripción del producto"
+                      value={item.descripcion}
+                      onChange={(e) => updateItem(index, "descripcion", e.target.value)}
+                      className="app-input"
+                    />
+                  </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Cantidad"
-                      value={item.cantidad}
-                      onChange={(e) => updateItem(index, "cantidad", e.target.value)}
-                      className="h-10 rounded-xl"
-                    />
+                    <div className="space-y-1.5">
+                      <p className="app-field-label">Cantidad</p>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Cantidad"
+                        value={item.cantidad}
+                        onChange={(e) => updateItem(index, "cantidad", e.target.value)}
+                        className="app-input"
+                      />
+                    </div>
 
-                    <Select
-                      value={item.unidad}
-                      onValueChange={(v) => updateItem(index, "unidad", v)}
-                    >
-                      <SelectTrigger className="h-10 rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unidad">Unidad</SelectItem>
-                        <SelectItem value="kg">Kg</SelectItem>
-                        <SelectItem value="litro">Litro</SelectItem>
-                        <SelectItem value="metro">Metro</SelectItem>
-                        <SelectItem value="caja">Caja</SelectItem>
-                        <SelectItem value="bulto">Bulto</SelectItem>
-                        <SelectItem value="pack">Pack</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-1.5">
+                      <p className="app-field-label">Unidad</p>
+                      <Select
+                        value={item.unidad}
+                        onValueChange={(v) => updateItem(index, "unidad", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unidad">Unidad</SelectItem>
+                          <SelectItem value="kg">Kg</SelectItem>
+                          <SelectItem value="litro">Litro</SelectItem>
+                          <SelectItem value="metro">Metro</SelectItem>
+                          <SelectItem value="caja">Caja</SelectItem>
+                          <SelectItem value="bulto">Bulto</SelectItem>
+                          <SelectItem value="pack">Pack</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -363,16 +346,37 @@ export default function EditarRemitoPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border bg-card px-4 py-4">
-          <div className="mb-3 flex items-start gap-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+        <section className="app-card">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border">
+              <Store className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <h2 className="app-section-title">Cliente o comercio</h2>
+              <p className="app-subtitle mt-1">Opcional. Solo si querés dejarlo cargado.</p>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="app-field-label">Nombre</p>
+            <Input
+              id="cliente"
+              value={form.cliente_nombre}
+              onChange={(e) => setForm({ ...form, cliente_nombre: e.target.value })}
+              className="app-input"
+              placeholder="Ej: Kiosco Juan"
+            />
+          </div>
+        </section>
+
+        <section className="app-card">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border">
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                Observaciones
-              </p>
-              <p className="mt-1 text-[12px] text-muted-foreground">Notas adicionales</p>
+              <h2 className="app-section-title">Observaciones</h2>
+              <p className="app-subtitle mt-1">Notas adicionales del pedido.</p>
             </div>
           </div>
 
@@ -380,19 +384,19 @@ export default function EditarRemitoPage() {
             placeholder="Notas adicionales..."
             value={form.observaciones}
             onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
-            className="min-h-20 resize-none rounded-xl"
+            className="app-textarea"
           />
         </section>
 
         {error && (
-          <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2.5">
+          <div className="app-feedback-error">
             <p className="text-sm text-destructive" role="alert">
               {error}
             </p>
           </div>
         )}
 
-        <Button type="submit" disabled={saving} className="h-10 rounded-xl">
+        <Button type="submit" disabled={saving} size="lg">
           {saving ? "Guardando..." : "Guardar cambios"}
         </Button>
       </form>

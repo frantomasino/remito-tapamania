@@ -3,7 +3,6 @@
 import { memo, useCallback } from "react"
 import { Building2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
 import type { ClientData } from "@/lib/remito-types"
 
 interface ClientFormProps {
@@ -22,33 +21,31 @@ export const ClientForm = memo(function ClientForm({
     [onFieldChange]
   )
 
-  const hasValue = data.nombre.trim().length > 0
-
   return (
-    <fieldset className="space-y-2">
+    <fieldset className="space-y-3">
       <legend className="sr-only">Datos del comercio</legend>
 
-      <div className="flex items-center gap-3 rounded-2xl bg-muted/25 px-3 py-3">
-        <div
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-2xl transition-colors",
-            hasValue ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"
-          )}
-        >
+      <div className="flex items-start gap-3">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background text-muted-foreground ring-1 ring-border">
           <Building2 className="size-4" />
         </div>
 
         <div className="min-w-0 flex-1">
-          <Input
-            id="client-nombre"
-            value={data.nombre}
-            onChange={handleNombreChange}
-            placeholder="Nombre del comercio"
-            inputMode="text"
-            className="border-0 bg-transparent px-0 shadow-none ring-0 focus-visible:ring-0"
-          />
+          <p className="app-field-label">Nombre</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Solo si querés incluirlo en el remito.
+          </p>
         </div>
       </div>
+
+      <Input
+        id="client-nombre"
+        value={data.nombre}
+        onChange={handleNombreChange}
+        placeholder="Nombre del comercio"
+        inputMode="text"
+        className="app-input"
+      />
     </fieldset>
   )
 })

@@ -3,7 +3,15 @@
 import type React from "react"
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Plus, Trash2, Search, Package2 } from "lucide-react"
+import {
+  Plus,
+  Trash2,
+  Search,
+  Package2,
+  ChevronDown,
+  ChevronUp,
+  ShoppingBag,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -167,29 +175,25 @@ const ProductRow = memo(function ProductRow({
   onAdd,
 }: ProductRowProps) {
   return (
-    <motion.article
-      layout
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.14, ease: "easeOut" }}
-      className="border-b border-border py-3 last:border-b-0"
-    >
+    <article className="border-b border-border/70 py-3 last:border-b-0">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-[14px] font-semibold leading-snug text-foreground">
-            {title}
-          </p>
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <p className="text-[15px] font-semibold text-foreground tabular-nums">
-              {formatCurrency(product.precio)}
+          <div className="flex flex-wrap items-start gap-2">
+            <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
+              {title}
             </p>
 
             {selectedCount > 0 ? (
-              <span className="rounded-full bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground">
-                {selectedCount} agregado{selectedCount > 1 ? "s" : ""}
+              <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground">
+                x{selectedCount}
               </span>
             ) : null}
+          </div>
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <p className="text-base font-semibold text-foreground tabular-nums">
+              {formatCurrency(product.precio)}
+            </p>
           </div>
 
           {options.length > 0 ? (
@@ -202,7 +206,7 @@ const ProductRow = memo(function ProductRow({
                     type="button"
                     onClick={() => onSelectOption(product.descripcion, o)}
                     className={cn(
-                      "min-h-[34px] rounded-full px-3 py-1.5 text-[11px] font-medium leading-none transition-colors ring-1",
+                      "min-h-[34px] rounded-full px-3 py-1.5 text-xs font-medium leading-none transition-colors ring-1",
                       active
                         ? "bg-primary text-primary-foreground ring-primary"
                         : "bg-background text-foreground ring-border"
@@ -218,7 +222,7 @@ const ProductRow = memo(function ProductRow({
               {infoTags.map((t) => (
                 <span
                   key={t}
-                  className="rounded-full bg-background px-3 py-1.5 text-[11px] font-medium leading-none text-muted-foreground ring-1 ring-border"
+                  className="rounded-full bg-background px-3 py-1.5 text-xs font-medium leading-none text-muted-foreground ring-1 ring-border"
                 >
                   {t}
                 </span>
@@ -227,15 +231,12 @@ const ProductRow = memo(function ProductRow({
           ) : null}
         </div>
 
-        <Button
-          onClick={() => onAdd(product, selectedOpt || undefined)}
-          className="h-11 shrink-0 rounded-2xl px-4 text-[13px] font-medium shadow-sm"
-        >
+        <Button onClick={() => onAdd(product, selectedOpt || undefined)} variant="default" size="default">
           <Plus className="size-4" />
           Agregar
         </Button>
       </div>
-    </motion.article>
+    </article>
   )
 })
 
@@ -255,17 +256,10 @@ const SelectedItemRow = memo(function SelectedItemRow({
   const canDecrease = item.cantidad > 1
 
   return (
-    <motion.article
-      layout
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 4 }}
-      transition={{ duration: 0.14, ease: "easeOut" }}
-      className="border-b border-border py-3 last:border-b-0"
-    >
+    <article className="border-b border-border/70 py-3 last:border-b-0">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-[14px] font-semibold leading-snug text-foreground">
+          <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
             {title}
             {item.opcion ? (
               <span className="font-medium text-muted-foreground"> — {item.opcion}</span>
@@ -273,10 +267,10 @@ const SelectedItemRow = memo(function SelectedItemRow({
           </p>
 
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Unitario: {formatCurrency(item.product.precio)}
             </p>
-            <p className="text-[15px] font-semibold text-foreground tabular-nums">
+            <p className="text-base font-semibold text-foreground tabular-nums">
               {formatCurrency(item.subtotal)}
             </p>
           </div>
@@ -290,17 +284,17 @@ const SelectedItemRow = memo(function SelectedItemRow({
               }
               disabled={!canDecrease}
               className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-xl text-base font-semibold transition-colors ring-1 ring-border",
+                "flex h-10 w-10 items-center justify-center rounded-2xl text-base font-semibold transition-colors ring-1 ring-border",
                 canDecrease
                   ? "bg-background text-foreground"
-                  : "cursor-not-allowed bg-accent text-muted-foreground"
+                  : "cursor-not-allowed bg-muted text-muted-foreground"
               )}
               aria-label="Restar cantidad"
             >
               −
             </button>
 
-            <div className="flex min-w-[44px] items-center justify-center rounded-xl bg-background px-3 py-2 text-[14px] font-semibold tabular-nums text-foreground ring-1 ring-border">
+            <div className="flex min-w-[44px] items-center justify-center rounded-2xl bg-background px-3 py-2 text-sm font-semibold tabular-nums text-foreground ring-1 ring-border">
               {item.cantidad}
             </div>
 
@@ -309,7 +303,7 @@ const SelectedItemRow = memo(function SelectedItemRow({
               onClick={() =>
                 onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)
               }
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-background text-base font-semibold text-foreground transition-colors ring-1 ring-border"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-background text-base font-semibold text-foreground transition-colors ring-1 ring-border"
               aria-label="Sumar cantidad"
             >
               +
@@ -322,22 +316,22 @@ const SelectedItemRow = memo(function SelectedItemRow({
           size="icon"
           onClick={() => onRemove(item.product.descripcion, item.opcion)}
           aria-label="Eliminar"
-          className="mt-0.5 h-10 w-10 rounded-2xl"
+          className="mt-0.5"
         >
           <Trash2 className="size-4 text-destructive" />
         </Button>
       </div>
-    </motion.article>
+    </article>
   )
 })
 
 export function ProductSelector({ products, items, onItemsChange }: ProductSelectorProps) {
   const [search, setSearch] = useState("")
   const deferredSearch = useDeferredValue(search)
-  const [mobileTab, setMobileTab] = useState<"catalogo" | "seleccionados">("catalogo")
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
   const [selectedOptionByDesc, setSelectedOptionByDesc] = useState<Record<string, string>>({})
   const [visibleCount, setVisibleCount] = useState(MAX_VISIBLE_PRODUCTS)
+  const [showSelected, setShowSelected] = useState(false)
 
   const getSelectedOpt = useCallback(
     (desc: string) => selectedOptionByDesc[desc] ?? "",
@@ -384,6 +378,9 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
     }
     return map
   }, [items])
+
+  const totalUnits = useMemo(() => items.reduce((acc, item) => acc + item.cantidad, 0), [items])
+  const totalAmount = useMemo(() => items.reduce((acc, item) => acc + item.subtotal, 0), [items])
 
   const addItem = useCallback(
     (product: Product, opcion?: string) => {
@@ -449,7 +446,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const onConfirmClearAll = useCallback(() => {
     clearAllSelected()
     setConfirmClearOpen(false)
-    setMobileTab("catalogo")
+    setShowSelected(false)
   }, [clearAllSelected])
 
   useEffect(() => {
@@ -459,206 +456,197 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   return (
     <>
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
-        <DialogContent className="max-w-sm rounded-3xl border-border">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Vaciar selección</DialogTitle>
+            <DialogTitle className="app-section-title">Vaciar selección</DialogTitle>
           </DialogHeader>
 
-          <p className="text-sm text-muted-foreground">
+          <p className="app-subtitle">
             Se van a eliminar {items.length} {items.length === 1 ? "producto" : "productos"}.
           </p>
 
           <div className="mt-2 flex gap-2">
-            <Button
-              variant="outline"
-              className="h-11 flex-1 rounded-2xl"
-              onClick={() => setConfirmClearOpen(false)}
-            >
+            <Button variant="outline" className="flex-1" onClick={() => setConfirmClearOpen(false)}>
               Cancelar
             </Button>
-            <Button
-              variant="destructive"
-              className="h-11 flex-1 rounded-2xl"
-              onClick={onConfirmClearAll}
-            >
+            <Button variant="destructive" size="lg" className="flex-1" onClick={onConfirmClearAll}>
               Vaciar
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-4 overflow-x-hidden">
-        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-accent p-1 ring-1 ring-border">
-          <button
-            type="button"
-            onClick={() => setMobileTab("catalogo")}
-            className={cn(
-              "h-11 rounded-xl text-[13px] font-medium transition-colors",
-              mobileTab === "catalogo"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground"
-            )}
-          >
-            Catálogo
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileTab("seleccionados")}
-            className={cn(
-              "h-11 rounded-xl text-[13px] font-medium transition-colors",
-              mobileTab === "seleccionados"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground"
-            )}
-          >
-            Seleccionados ({items.length})
-          </button>
+      <div className="flex flex-col gap-5 overflow-x-hidden">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar producto"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="app-input pl-10"
+          />
         </div>
 
-        <AnimatePresence mode="wait">
-          {mobileTab === "catalogo" ? (
-            <motion.div
-              key="catalogo"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.14, ease: "easeOut" }}
-              className="flex flex-col gap-3"
-            >
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar producto"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-11 rounded-2xl bg-background pl-10 text-[14px] shadow-none ring-1 ring-border"
-                />
+        <section className="app-card-accent">
+          <button
+            type="button"
+            onClick={() => setShowSelected((prev) => !prev)}
+            className="flex w-full items-start justify-between gap-3 text-left"
+          >
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                <ShoppingBag className="size-4" />
               </div>
 
-              {products.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl bg-background px-4 py-10 text-center ring-1 ring-border">
-                  <div className="flex size-10 items-center justify-center rounded-2xl bg-accent">
-                    <Package2 className="size-5 text-muted-foreground" />
+              <div className="min-w-0">
+                <p className="app-section-title">Pedido actual</p>
+                <p className="app-subtitle mt-1">
+                  {items.length} {items.length === 1 ? "producto" : "productos"} · {totalUnits}{" "}
+                  {totalUnits === 1 ? "unidad" : "unidades"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="text-right">
+                <p className="app-meta font-medium">Subtotal</p>
+                <p className="text-base font-semibold text-foreground tabular-nums">
+                  {formatCurrency(totalAmount)}
+                </p>
+              </div>
+
+              <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-2xl bg-background/80 ring-1 ring-border">
+                {showSelected ? (
+                  <ChevronUp className="size-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="size-4 text-muted-foreground" />
+                )}
+              </div>
+            </div>
+          </button>
+
+          <AnimatePresence initial={false}>
+            {showSelected && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: "auto", marginTop: 16 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="overflow-hidden"
+              >
+                {items.length > 0 ? (
+                  <>
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <p className="app-meta font-medium">Productos ya agregados</p>
+
+                      <Button variant="outline" size="sm" onClick={onAskClearAll}>
+                        <Trash2 className="size-4" />
+                        Vaciar
+                      </Button>
+                    </div>
+
+                    <div className="app-card-soft px-4 py-1">
+                      {items.map((item) => {
+                        const d = derivedByDesc.get(item.product.descripcion)
+                        const title = d?.title ?? shortDesc(item.product.descripcion)
+
+                        return (
+                          <SelectedItemRow
+                            key={itemKey(item.product.descripcion, item.opcion)}
+                            item={item}
+                            title={title}
+                            onRemove={removeItem}
+                            onUpdateQuantity={updateQuantity}
+                          />
+                        )
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="app-empty border-dashed">
+                    <div className="mx-auto flex size-10 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                      <ShoppingBag className="size-5" />
+                    </div>
+                    <p className="mt-3 text-sm font-medium text-foreground">
+                      Todavía no agregaste productos
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Sumalos desde la lista de productos de abajo.
+                    </p>
                   </div>
-                  <p className="mt-3 text-sm font-medium text-foreground">No hay productos cargados</p>
-                  <p className="mt-1 text-[13px] text-muted-foreground">
-                    Revisá la lista de precios seleccionada.
-                  </p>
-                </div>
-              ) : filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl bg-background px-4 py-10 text-center ring-1 ring-border">
-                  <div className="flex size-10 items-center justify-center rounded-2xl bg-accent">
-                    <Search className="size-5 text-muted-foreground" />
-                  </div>
-                  <p className="mt-3 text-sm font-medium text-foreground">No encontramos productos</p>
-                  <p className="mt-1 text-[13px] text-muted-foreground">
-                    Probá con otro nombre o una palabra más corta.
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-3xl bg-background px-4 py-1 ring-1 ring-border">
-                  {visibleProducts.map((p) => {
-                    const d = derivedByDesc.get(p.descripcion)
-                    const title = d?.title ?? shortDesc(p.descripcion)
-                    const options = d?.options ?? productOptions(p.descripcion)
-                    const infoTags = d?.tags ?? detailTags(p.descripcion)
-                    const selectedOpt = options.length > 0 ? (getSelectedOpt(p.descripcion) || options[0]) : ""
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </section>
 
-                    const selectedCount =
-                      options.length > 0
-                        ? itemCountByKey.get(itemKey(p.descripcion, selectedOpt)) ?? 0
-                        : itemCountByDesc.get(p.descripcion) ?? 0
+        <section>
+          <div className="mb-3">
+            <h3 className="app-section-title">Lista de productos</h3>
+            <p className="app-subtitle mt-1">Buscá y agregá productos al pedido.</p>
+          </div>
 
-                    return (
-                      <ProductRow
-                        key={itemKey(p.descripcion)}
-                        product={p}
-                        title={title}
-                        infoTags={infoTags}
-                        options={options}
-                        selectedOpt={selectedOpt}
-                        selectedCount={selectedCount}
-                        onSelectOption={setSelectedOpt}
-                        onAdd={addItem}
-                      />
-                    )
-                  })}
-                </div>
-              )}
-
-              {filtered.length > visibleCount && (
-                <Button
-                  variant="outline"
-                  onClick={() => setVisibleCount((prev) => prev + MAX_VISIBLE_PRODUCTS)}
-                  className="h-11 rounded-2xl"
-                >
-                  Ver más ({filtered.length - visibleCount})
-                </Button>
-              )}
-            </motion.div>
+          {products.length === 0 ? (
+            <div className="app-empty">
+              <div className="mx-auto flex size-10 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <Package2 className="size-5" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-foreground">No hay productos cargados</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Revisá la lista de precios seleccionada.
+              </p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="app-empty">
+              <div className="mx-auto flex size-10 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <Search className="size-5" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-foreground">No encontramos productos</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Probá con otro nombre o una palabra más corta.
+              </p>
+            </div>
           ) : (
-            <motion.div
-              key="seleccionados"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.14, ease: "easeOut" }}
-              className="flex flex-col gap-3"
-            >
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Pedido actual
-                </p>
-                <p className="mt-1 text-[15px] font-semibold text-foreground">
-                  {items.length} {items.length === 1 ? "producto" : "productos"}
-                </p>
-              </div>
+            <div className="app-card-soft px-4 py-1">
+              {visibleProducts.map((p) => {
+                const d = derivedByDesc.get(p.descripcion)
+                const title = d?.title ?? shortDesc(p.descripcion)
+                const options = d?.options ?? productOptions(p.descripcion)
+                const infoTags = d?.tags ?? detailTags(p.descripcion)
+                const selectedOpt = options.length > 0 ? (getSelectedOpt(p.descripcion) || options[0]) : ""
 
-              {items.length > 0 ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onAskClearAll}
-                  className="h-10 w-fit rounded-2xl px-3 text-[13px]"
-                >
-                  <Trash2 className="size-4" />
-                  Vaciar selección
-                </Button>
-              ) : null}
+                const selectedCount =
+                  options.length > 0
+                    ? itemCountByKey.get(itemKey(p.descripcion, selectedOpt)) ?? 0
+                    : itemCountByDesc.get(p.descripcion) ?? 0
 
-              {items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl bg-background px-4 py-10 text-center ring-1 ring-border">
-                  <div className="flex size-10 items-center justify-center rounded-2xl bg-accent">
-                    <Package2 className="size-5 text-muted-foreground" />
-                  </div>
-                  <p className="mt-3 text-sm font-medium text-foreground">Todavía no agregaste productos</p>
-                  <p className="mt-1 text-[13px] text-muted-foreground">
-                    Sumalos desde la pestaña de catálogo.
-                  </p>
-                </div>
-              ) : (
-                <motion.div layout className="rounded-3xl bg-background px-4 py-1 ring-1 ring-border">
-                  <AnimatePresence initial={false}>
-                    {items.map((item) => {
-                      const d = derivedByDesc.get(item.product.descripcion)
-                      const title = d?.title ?? shortDesc(item.product.descripcion)
-
-                      return (
-                        <SelectedItemRow
-                          key={itemKey(item.product.descripcion, item.opcion)}
-                          item={item}
-                          title={title}
-                          onRemove={removeItem}
-                          onUpdateQuantity={updateQuantity}
-                        />
-                      )
-                    })}
-                  </AnimatePresence>
-                </motion.div>
-              )}
-            </motion.div>
+                return (
+                  <ProductRow
+                    key={itemKey(p.descripcion)}
+                    product={p}
+                    title={title}
+                    infoTags={infoTags}
+                    options={options}
+                    selectedOpt={selectedOpt}
+                    selectedCount={selectedCount}
+                    onSelectOption={setSelectedOpt}
+                    onAdd={addItem}
+                  />
+                )
+              })}
+            </div>
           )}
-        </AnimatePresence>
+
+          {filtered.length > visibleCount && (
+            <Button
+              variant="outline"
+              onClick={() => setVisibleCount((prev) => prev + MAX_VISIBLE_PRODUCTS)}
+              className="mt-3 w-full"
+            >
+              Ver más ({filtered.length - visibleCount})
+            </Button>
+          )}
+        </section>
       </div>
     </>
   )

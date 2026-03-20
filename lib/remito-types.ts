@@ -61,6 +61,7 @@ export function parseCSV(text: string): Product[] {
       ";": (sample.match(/;/g) || []).length,
       ",": (sample.match(/,/g) || []).length,
     }
+
     return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] as "\t" | ";" | ",") || ";"
   }
 
@@ -103,8 +104,13 @@ export function parseCSV(text: string): Product[] {
   const headers = headerLine.split(separator).map(normalizeHeader)
 
   const descripcionIdx = headers.findIndex(
-    (h) => h.includes("descripcion") || h.includes("nombre") || h.includes("producto") || h.includes("detalle")
+    (h) =>
+      h.includes("descripcion") ||
+      h.includes("nombre") ||
+      h.includes("producto") ||
+      h.includes("detalle")
   )
+
   const precioIdx = headers.findIndex(
     (h) =>
       h.includes("precio") ||

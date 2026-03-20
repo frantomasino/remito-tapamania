@@ -108,63 +108,52 @@ export default async function PedidosPage() {
 
   return (
     <div className="px-4 pb-5 pt-4">
-      <div className="space-y-5">
-        <header>
+      <div className="space-y-6">
+        <header className="space-y-4">
           <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
               <ClipboardList className="size-5" />
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Control del día
-              </p>
-              <h1 className="mt-1 text-xl font-semibold leading-none text-foreground">
-                Pedidos
-              </h1>
-              <p className="mt-2 text-[13px] text-muted-foreground">{todayLabel}</p>
+              <h1 className="app-page-title">Pedidos de hoy</h1>
+              <p className="app-subtitle mt-2">{todayLabel}</p>
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-muted/30 px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Cantidad
-              </p>
-              <p className="mt-1 text-2xl font-semibold leading-none text-foreground tabular-nums">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="app-card">
+              <p className="app-meta font-medium">Cantidad</p>
+              <p className="mt-2 text-2xl font-semibold leading-none text-foreground tabular-nums">
                 {records.length}
               </p>
-              <p className="mt-1 text-[13px] text-muted-foreground">
-                {records.length === 1 ? "remito cargado" : "remitos cargados"}
+              <p className="app-subtitle mt-2">
+                {records.length === 1 ? "pedido cargado" : "pedidos cargados"}
               </p>
             </div>
 
-            <div className="rounded-2xl bg-muted/30 px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Total
-              </p>
-              <p className="mt-1 truncate text-xl font-semibold leading-none text-foreground tabular-nums">
+            <div className="app-card">
+              <p className="app-meta font-medium">Total del día</p>
+              <p className="mt-2 truncate text-xl font-semibold leading-none text-foreground tabular-nums">
                 {formatCurrency(totalHoy)}
               </p>
-              <p className="mt-1 text-[13px] text-muted-foreground">Acumulado del día</p>
+              <p className="app-subtitle mt-2">Acumulado</p>
             </div>
           </div>
 
-          <div className="mt-4">
-            <Button asChild className="h-12 w-full rounded-2xl text-[14px] font-medium">
-              <Link href="/dashboard/nuevo">
-                <PlusCircle className="size-4" />
-                Nuevo remito
-              </Link>
-            </Button>
-          </div>
+          <Button asChild size="lg" className="w-full shadow-sm">
+            <Link href="/dashboard/nuevo">
+              <PlusCircle className="size-4" />
+              Nuevo pedido
+            </Link>
+          </Button>
         </header>
 
         <section>
           <div className="mb-3">
-            <h2 className="text-[15px] font-semibold text-foreground">Remitos de hoy</h2>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              Revisá rápido lo cargado y seguí con el recorrido.
+            <h2 className="app-section-title">Cargados hoy</h2>
+            <p className="app-subtitle mt-1">
+              Revisá rápido lo que ya hiciste y seguí con el recorrido.
             </p>
           </div>
 
@@ -173,12 +162,7 @@ export default async function PedidosPage() {
 
         <section className="pt-1">
           <div className="grid grid-cols-2 gap-2">
-            <Button
-              asChild
-              variant="outline"
-              disabled={records.length === 0}
-              className="h-11 rounded-2xl text-[13px]"
-            >
+            <Button asChild variant="outline" disabled={records.length === 0}>
               <a href={records.length === 0 ? undefined : csvHref} download={filename}>
                 <Download className="size-4" />
                 Descargar
@@ -186,11 +170,7 @@ export default async function PedidosPage() {
             </Button>
 
             <form action={clearTodayAction} className="contents">
-              <Button
-                variant="outline"
-                disabled={records.length === 0}
-                className="h-11 rounded-2xl text-[13px]"
-              >
+              <Button variant="outline" disabled={records.length === 0}>
                 <Trash2 className="size-4" />
                 Limpiar
               </Button>

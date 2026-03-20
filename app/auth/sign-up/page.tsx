@@ -69,22 +69,19 @@ export default function SignUpPage() {
           </div>
 
           <div className="mt-5">
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              App
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-foreground">
+            <h1 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">
               Crear cuenta
             </h1>
-            <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Registrate para empezar a cargar pedidos e imprimir remitos.
             </p>
           </div>
         </div>
 
-        <div className="rounded-3xl bg-muted/25 p-4">
+        <div className="rounded-3xl bg-card p-4 shadow-sm ring-1 ring-border">
           <form onSubmit={handleSignUp} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className="text-[13px] font-medium text-foreground">
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email
               </Label>
               <Input
@@ -94,11 +91,12 @@ export default function SignUpPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-11 rounded-2xl"
               />
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="password" className="text-[13px] font-medium text-foreground">
+              <Label htmlFor="password" className="text-sm font-medium text-foreground">
                 Contraseña
               </Label>
 
@@ -110,7 +108,7 @@ export default function SignUpPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="pr-12"
+                  className="h-11 rounded-2xl pr-12"
                 />
 
                 <button
@@ -125,7 +123,7 @@ export default function SignUpPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="confirm-password" className="text-[13px] font-medium text-foreground">
+              <Label htmlFor="confirm-password" className="text-sm font-medium text-foreground">
                 Confirmar contraseña
               </Label>
 
@@ -137,38 +135,51 @@ export default function SignUpPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="pr-12"
+                  className="h-11 rounded-2xl pr-12"
                 />
 
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword((v) => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors"
-                  aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  aria-label={
+                    showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                  }
                 >
-                  {showConfirmPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                  {showConfirmPassword ? (
+                    <Eye className="h-5 w-5" />
+                  ) : (
+                    <EyeOff className="h-5 w-5" />
+                  )}
                 </button>
               </div>
             </div>
 
             {error && (
               <div
-                className="rounded-2xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                className="rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
                 role="alert"
               >
                 {error}
               </div>
             )}
 
-            <Button type="submit" disabled={loading} className="mt-1 h-12 text-[15px] font-semibold">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="mt-1 h-12 rounded-2xl text-sm font-semibold"
+            >
               {loading ? "Creando cuenta..." : "Crear cuenta"}
             </Button>
           </form>
         </div>
 
-        <p className="mt-6 text-center text-[13px] text-muted-foreground">
-          Ya tenés cuenta?{" "}
-          <Link href="/auth/login" className="font-medium text-primary underline underline-offset-4">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          ¿Ya tenés cuenta?{" "}
+          <Link
+            href="/auth/login"
+            className="font-medium text-primary underline underline-offset-4"
+          >
             Ingresar
           </Link>
         </p>

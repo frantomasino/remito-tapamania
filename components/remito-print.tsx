@@ -1,6 +1,6 @@
 "use client"
 
-import { forwardRef } from "react"
+import { forwardRef, useMemo } from "react"
 import type { RemitoData } from "@/lib/remito-types"
 import { formatCurrency } from "@/lib/remito-types"
 
@@ -18,7 +18,16 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
   { data },
   ref
 ) {
-  const total = data.items.reduce((sum, item) => sum + item.subtotal, 0)
+  const total = useMemo(
+    () => data.items.reduce((sum, item) => sum + item.subtotal, 0),
+    [data.items]
+  )
+
+  const totalUnidades = useMemo(
+    () => data.items.reduce((sum, item) => sum + item.cantidad, 0),
+    [data.items]
+  )
+
   const comercio = (data.client.nombre ?? "").trim()
 
   return (
@@ -31,27 +40,35 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
                 <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-black/70">
                   Pedido
                 </p>
-                <h1 className="mt-0.5 text-[20px] font-bold leading-none">Preventa</h1>
+                <h1 className="mt-0.5 text-[22px] font-bold leading-none">Comprobante</h1>
               </div>
 
               <div className="shrink-0 text-right">
-                <p className="text-[12px] font-semibold">N° {data.numero}</p>
+                <p className="text-[13px] font-semibold">N° {data.numero}</p>
                 <p className="mt-1 text-[11px] text-black/75">Fecha: {data.fecha}</p>
               </div>
             </div>
           </div>
 
           <div className="border-b border-black px-4 py-3">
-            <div className="grid grid-cols-[84px_1fr] gap-x-3 gap-y-1 text-[11px] sm:grid-cols-[96px_1fr] sm:text-[12px]">
+            <div className="grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-[11px] sm:grid-cols-[100px_1fr] sm:text-[12px]">
               <span className="font-semibold">Comercio</span>
               <span className="break-words">{comercio || "Sin especificar"}</span>
+
+              <span className="font-semibold">Productos</span>
+              <span>
+                {data.items.length} {data.items.length === 1 ? "ítem" : "ítems"} · {totalUnidades}{" "}
+                {totalUnidades === 1 ? "unidad" : "unidades"}
+              </span>
             </div>
           </div>
 
           <table className="w-full table-fixed text-[11px] sm:text-[12px]">
             <thead>
               <tr className="border-b border-black bg-black/[0.03]">
-                <th className="border-r border-black px-2 py-2 text-left font-semibold">Producto</th>
+                <th className="border-r border-black px-2 py-2 text-left font-semibold">
+                  Producto
+                </th>
                 <th className="w-12 border-r border-black px-2 py-2 text-center font-semibold sm:w-14">
                   Cant.
                 </th>
@@ -78,15 +95,20 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
                     <td className="border-r border-black/20 px-2 py-2 align-top break-words">
                       <div className="leading-snug">
                         <span>{cleanDesc(item.product.descripcion)}</span>
-                        {item.opcion ? <span className="text-black/65"> — {item.opcion}</span> : null}
+                        {item.opcion ? (
+                          <span className="text-black/65"> — {item.opcion}</span>
+                        ) : null}
                       </div>
                     </td>
+
                     <td className="border-r border-black/20 px-2 py-2 text-center align-top">
                       {item.cantidad}
                     </td>
+
                     <td className="border-r border-black/20 px-2 py-2 text-right align-top tabular-nums">
                       {formatCurrency(item.product.precio)}
                     </td>
+
                     <td className="px-2 py-2 text-right align-top font-medium tabular-nums">
                       {formatCurrency(item.subtotal)}
                     </td>
@@ -103,7 +125,7 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
                 <span className="tabular-nums">{formatCurrency(total)}</span>
               </div>
 
-              <div className="flex items-center justify-between border-t border-black pt-2 text-[14px] font-bold sm:text-[15px]">
+              <div className="flex items-center justify-between border-t border-black pt-2 text-[15px] font-bold sm:text-[16px]">
                 <span>Total</span>
                 <span className="tabular-nums">{formatCurrency(total)}</span>
               </div>

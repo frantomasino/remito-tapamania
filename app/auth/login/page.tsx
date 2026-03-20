@@ -66,22 +66,19 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-5">
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              App
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-foreground">
+            <h1 className="text-3xl font-semibold tracking-[-0.03em] text-foreground">
               Ingresar
             </h1>
-            <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Entrá para cargar pedidos, imprimir remitos y seguir el recorrido.
             </p>
           </div>
         </div>
 
-        <div className="rounded-3xl bg-muted/25 p-4">
+        <div className="rounded-3xl bg-card p-4 shadow-sm ring-1 ring-border">
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className="text-[13px] font-medium text-foreground">
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email
               </Label>
               <Input
@@ -91,11 +88,12 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-11 rounded-2xl"
               />
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="password" className="text-[13px] font-medium text-foreground">
+              <Label htmlFor="password" className="text-sm font-medium text-foreground">
                 Contraseña
               </Label>
 
@@ -107,7 +105,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="pr-12"
+                  className="h-11 rounded-2xl pr-12"
                 />
 
                 <button
@@ -123,7 +121,7 @@ export default function LoginPage() {
               <div className="pt-0.5 text-right">
                 <Link
                   href="/auth/forgot-password"
-                  className="text-[13px] font-medium text-primary underline underline-offset-4"
+                  className="text-sm font-medium text-primary underline underline-offset-4"
                 >
                   ¿Olvidaste tu contraseña?
                 </Link>
@@ -132,22 +130,29 @@ export default function LoginPage() {
 
             {error && (
               <div
-                className="rounded-2xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                className="rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
                 role="alert"
               >
                 {error}
               </div>
             )}
 
-            <Button type="submit" disabled={loading} className="mt-1 h-12 text-[15px] font-semibold">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="mt-1 h-12 rounded-2xl text-sm font-semibold"
+            >
               {loading ? "Ingresando..." : "Ingresar"}
             </Button>
           </form>
         </div>
 
-        <p className="mt-6 text-center text-[13px] text-muted-foreground">
-          No tenés cuenta?{" "}
-          <Link href="/auth/sign-up" className="font-medium text-primary underline underline-offset-4">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          ¿No tenés cuenta?{" "}
+          <Link
+            href="/auth/sign-up"
+            className="font-medium text-primary underline underline-offset-4"
+          >
             Registrate
           </Link>
         </p>
