@@ -1,4 +1,5 @@
-import { Download, Trash2, ClipboardList } from "lucide-react"
+import Link from "next/link"
+import { Download, Trash2, ClipboardList, PlusCircle } from "lucide-react"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -106,54 +107,97 @@ export default async function DashboardPage() {
   const filename = `remitos-${safeDate}.csv`
 
   return (
-    <div className="px-3 pb-5 pt-4">
-      <header className="rounded-2xl border bg-card px-4 py-4">
-        <div className="flex items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <ClipboardList className="size-5" />
+    <div className="px-4 pb-5 pt-4">
+      <div className="space-y-4">
+        <header className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+          <div className="border-b px-4 py-4">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+                <ClipboardList className="size-5" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Resumen diario
+                </p>
+                <h1 className="mt-1 text-xl font-semibold leading-none text-foreground">
+                  Pedidos del día
+                </h1>
+                <p className="mt-2 text-[13px] text-muted-foreground">{todayLabel}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-              Resumen diario
-            </p>
-            <h1 className="mt-0.5 text-lg font-semibold text-foreground">Pedidos del día</h1>
-            <p className="mt-1 text-[12px] text-muted-foreground">{todayLabel}</p>
-          </div>
-        </div>
+          <div className="grid gap-4 px-4 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border bg-background px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Cantidad
+                </p>
+                <p className="mt-1 text-2xl font-semibold leading-none text-foreground tabular-nums">
+                  {records.length}
+                </p>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  {records.length === 1 ? "remito cargado" : "remitos cargados"}
+                </p>
+              </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-xl border bg-background px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Cantidad</p>
-            <p className="mt-1 text-base font-semibold text-foreground">{records.length}</p>
-          </div>
+              <div className="rounded-2xl border bg-background px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Total
+                </p>
+                <p className="mt-1 truncate text-xl font-semibold leading-none text-foreground tabular-nums">
+                  {formatCurrency(totalHoy)}
+                </p>
+                <p className="mt-1 text-[13px] text-muted-foreground">Acumulado del día</p>
+              </div>
+            </div>
 
-          <div className="rounded-xl border bg-background px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
-            <p className="mt-1 truncate text-base font-semibold text-foreground">{formatCurrency(totalHoy)}</p>
-          </div>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button asChild variant="outline" disabled={records.length === 0} className="h-10 rounded-xl">
-            <a href={records.length === 0 ? undefined : csvHref} download={filename}>
-              <Download className="size-4" />
-              Descargar
-            </a>
-          </Button>
-
-          <form action={clearTodayAction} className="contents">
-            <Button variant="outline" disabled={records.length === 0} className="h-10 rounded-xl">
-              <Trash2 className="size-4" />
-              Limpiar
+            <Button asChild className="h-12 rounded-2xl text-[14px] font-medium shadow-sm">
+              <Link href="/dashboard/nuevo">
+                <PlusCircle className="size-4" />
+                Nuevo remito
+              </Link>
             </Button>
-          </form>
-        </div>
-      </header>
 
-      <section className="mt-3">
-        <SalesHistory title="Pedidos" records={records} />
-      </section>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                asChild
+                variant="outline"
+                disabled={records.length === 0}
+                className="h-11 rounded-2xl text-[13px]"
+              >
+                <a href={records.length === 0 ? undefined : csvHref} download={filename}>
+                  <Download className="size-4" />
+                  Descargar
+                </a>
+              </Button>
+
+              <form action={clearTodayAction} className="contents">
+                <Button
+                  variant="outline"
+                  disabled={records.length === 0}
+                  className="h-11 rounded-2xl text-[13px]"
+                >
+                  <Trash2 className="size-4" />
+                  Limpiar
+                </Button>
+              </form>
+            </div>
+          </div>
+        </header>
+
+        <section className="rounded-3xl border bg-card p-4 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-foreground">Remitos de hoy</h2>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              Revisá, exportá o eliminá los pedidos cargados durante el día.
+            </p>
+          </div>
+
+          <SalesHistory title="Pedidos" records={records} />
+        </section>
+      </div>
     </div>
   )
 }

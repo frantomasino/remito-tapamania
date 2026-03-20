@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client"
 import { useState, useRef, useCallback, useEffect, useMemo, startTransition } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   Printer,
   Eye,
@@ -16,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ClientForm } from "@/components/client-form"
 import { ProductSelector } from "@/components/product-selector"
 import { RemitoPrint } from "@/components/remito-print"
+import { cn } from "@/lib/utils"
 import {
   type Product,
   type LineItem,
@@ -67,11 +69,49 @@ function k(base: string, userId: string) {
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
 
 const BOTTOM_NAV_PX = 72
-const ACTION_BAR_PX = 68
+const ACTION_BAR_PX = 76
 
 type ProductsCacheEntry = {
   loadedAt: number
   products: Product[]
+}
+
+function PriceListSegmented({
+  value,
+  onChange,
+}: {
+  value: PriceListId
+  onChange: (value: PriceListId) => void
+}) {
+  return (
+    <div
+      className="grid grid-cols-3 gap-1 rounded-2xl border bg-muted/30 p-1"
+      role="tablist"
+      aria-label="Lista de precios"
+    >
+      {PRICE_LISTS.map((list) => {
+        const active = list.id === value
+
+        return (
+          <button
+            key={list.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(list.id)}
+            className={cn(
+              "rounded-xl px-3 py-2 text-[12px] font-medium transition-all",
+              active
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground"
+            )}
+          >
+            {list.label}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 export default function RemitoPage() {
@@ -107,7 +147,7 @@ export default function RemitoPage() {
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => {
       setToast({ open: false, text: "" })
-    }, 1400)
+    }, 1600)
   }, [])
 
   useEffect(() => {
@@ -447,11 +487,11 @@ ${styles}
   if (!mounted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
+        <div className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3 shadow-sm">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-primary">
             <FileText className="size-4 text-primary-foreground" />
           </div>
-          <p className="text-sm text-muted-foreground">Cargando...</p>
+          <p className="text-sm font-medium text-muted-foreground">Cargando remito...</p>
         </div>
       </div>
     )
@@ -460,56 +500,56 @@ ${styles}
   return (
     <>
       <div id="screen-ui" className="min-h-screen overflow-x-hidden bg-background">
-        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-          <div className="mx-auto w-full max-w-5xl px-3 py-2.5">
-            <div className="rounded-2xl border bg-card px-3 py-3">
-              <div className="flex items-start gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary">
-                  <FileText className="size-4 text-primary-foreground" />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                    Nuevo remito
-                  </p>
-
-                  <div className="mt-1 flex items-center gap-2">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      N° {remitoNumero}
-                    </p>
-                    <span className="rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">
-                      {selectedListLabel}
-                    </span>
+        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-xl">
+          <div className="mx-auto w-full max-w-5xl px-4 py-3">
+            <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+              <div className="border-b px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary shadow-sm">
+                    <FileText className="size-5 text-primary-foreground" />
                   </div>
 
-                  <p className="mt-1 text-[11px] text-muted-foreground">{remitoDateRef.current}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                      Nuevo remito
+                    </p>
+
+                    <div className="mt-1 flex items-center gap-2">
+                      <h1 className="truncate text-xl font-semibold leading-none text-foreground">
+                        N° {remitoNumero}
+                      </h1>
+                      <span className="rounded-full border bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                        {selectedListLabel}
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-[13px] text-muted-foreground">
+                      Fecha: {remitoDateRef.current}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-[1fr_auto] items-end gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
-                  <p className="truncate text-base font-semibold leading-tight text-foreground tabular-nums">
-                    {formatCurrency(total)}
+              <div className="grid gap-4 px-4 py-4">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    Lista de precios
                   </p>
+                  <div className="mt-2">
+                    <PriceListSegmented value={priceListId} onChange={setPriceListId} />
+                  </div>
                 </div>
 
-                <div className="min-w-[124px]">
-                  <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Lista
-                  </label>
-                  <select
-                    className="h-9 w-full rounded-xl border bg-background px-2.5 text-xs font-medium text-foreground outline-none"
-                    value={priceListId}
-                    onChange={(e) => setPriceListId(e.target.value as PriceListId)}
-                    aria-label="Lista de precios"
-                  >
-                    {PRICE_LISTS.map((list) => (
-                      <option key={list.id} value={list.id}>
-                        {list.label}
-                      </option>
-                    ))}
-                  </select>
+                <div className="rounded-2xl bg-muted/30 px-4 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    Total actual
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold leading-none text-foreground tabular-nums">
+                    {formatCurrency(total)}
+                  </p>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    {items.length} {items.length === 1 ? "producto cargado" : "productos cargados"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -517,41 +557,43 @@ ${styles}
         </header>
 
         <main
-          className="mx-auto w-full max-w-5xl px-3 py-3"
+          className="mx-auto w-full max-w-5xl px-4 py-4"
           style={{
-            paddingBottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 12px)`,
+            paddingBottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 16px)`,
           }}
         >
-          <div className="space-y-3">
-            <section className="rounded-2xl border bg-card p-3">
-              <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="space-y-4">
+            <section className="rounded-3xl border bg-card p-4 shadow-sm">
+              <div className="mb-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className="text-sm font-semibold text-foreground">Productos</h2>
-                  <p className="text-[11px] text-muted-foreground">
-                    {isLoadingProducts ? "Cargando lista..." : `${items.length} cargados`}
+                  <h2 className="text-base font-semibold text-foreground">Productos</h2>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    {isLoadingProducts ? "Cargando lista de precios..." : "Buscá y agregá productos al remito"}
                   </p>
                 </div>
 
-                <div className="shrink-0 rounded-full border bg-background px-2.5 py-1 text-[10px] text-muted-foreground">
+                <div className="shrink-0 rounded-full border bg-background px-3 py-1 text-[11px] font-medium text-muted-foreground">
                   {selectedListLabel}
                 </div>
               </div>
 
               {isLoadingProducts && products.length === 0 ? (
-                <div className="space-y-2">
-                  <div className="h-10 animate-pulse rounded-xl bg-muted" />
-                  <div className="h-16 animate-pulse rounded-xl bg-muted" />
-                  <div className="h-16 animate-pulse rounded-xl bg-muted" />
+                <div className="space-y-3">
+                  <div className="h-11 animate-pulse rounded-2xl bg-muted" />
+                  <div className="h-20 animate-pulse rounded-2xl bg-muted" />
+                  <div className="h-20 animate-pulse rounded-2xl bg-muted" />
                 </div>
               ) : (
                 <ProductSelector products={products} items={items} onItemsChange={setItems} />
               )}
             </section>
 
-            <section className="rounded-2xl border bg-card p-3">
-              <div className="mb-3">
-                <h2 className="text-sm font-semibold text-foreground">Comercio</h2>
-                <p className="text-[11px] text-muted-foreground">Opcional</p>
+            <section className="rounded-3xl border bg-card p-4 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-base font-semibold text-foreground">Datos del comercio</h2>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  Opcional. Completalo solo si querés que aparezca en el remito.
+                </p>
               </div>
 
               <ClientForm
@@ -565,79 +607,98 @@ ${styles}
         </main>
 
         <div
-          className="fixed inset-x-0 z-50 border-t bg-card/95 backdrop-blur sm:hidden"
+          className="fixed inset-x-0 z-50 border-t bg-card/96 backdrop-blur-xl sm:hidden"
           style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
         >
-          <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-3 py-2">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</p>
-              <p className="truncate text-base font-semibold leading-tight text-foreground tabular-nums">
-                {formatCurrency(total)}
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {items.length} {items.length === 1 ? "item" : "items"}
-              </p>
-            </div>
+          <div className="mx-auto w-full max-w-5xl px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Total
+                </p>
+                <p className="truncate text-lg font-semibold leading-tight text-foreground tabular-nums">
+                  {formatCurrency(total)}
+                </p>
+                <p className="text-[12px] text-muted-foreground">
+                  {items.length} {items.length === 1 ? "item" : "items"}
+                </p>
+              </div>
 
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleNewRemito}
-                aria-label="Nuevo remito"
-                className="h-10 w-10 rounded-xl"
-              >
-                <RotateCcw className="size-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleNewRemito}
+                  aria-label="Nuevo remito"
+                  className="h-11 w-11 rounded-2xl"
+                >
+                  <RotateCcw className="size-4" />
+                </Button>
 
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={items.length === 0}
-                onClick={handleClearItems}
-                aria-label="Vaciar productos"
-                className="h-10 w-10 rounded-xl"
-              >
-                <Trash2 className="size-4" />
-              </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={items.length === 0}
+                  onClick={handleClearItems}
+                  aria-label="Vaciar productos"
+                  className="h-11 w-11 rounded-2xl"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
 
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={!canPrint}
-                onClick={() => setShowPreview(true)}
-                aria-label="Vista previa"
-                className="h-10 w-10 rounded-xl"
-              >
-                <Eye className="size-4" />
-              </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={!canPrint}
+                  onClick={() => setShowPreview(true)}
+                  aria-label="Vista previa"
+                  className="h-11 w-11 rounded-2xl"
+                >
+                  <Eye className="size-4" />
+                </Button>
 
-              <Button
-                disabled={!canPrint || isSaving}
-                onClick={handlePrint}
-                aria-label="Imprimir"
-                className="h-10 rounded-xl px-3"
-              >
-                {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
-                <span className="ml-1.5 text-sm">{isSaving ? "Guardando" : "Imprimir"}</span>
-              </Button>
+                <Button
+                  disabled={!canPrint || isSaving}
+                  onClick={handlePrint}
+                  aria-label="Imprimir"
+                  className="h-11 rounded-2xl px-4"
+                >
+                  {isSaving ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Printer className="size-4" />
+                  )}
+                  <span className="ml-2 text-sm font-medium">
+                    {isSaving ? "Guardando..." : "Imprimir"}
+                  </span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
 
-        {toast.open && (
-          <div
-            className="fixed left-1/2 z-[60] w-[calc(100%-24px)] max-w-xs -translate-x-1/2 sm:hidden"
-            style={{
-              bottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 10px)`,
-            }}
-          >
-            <div className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 shadow">
-              <CheckCircle2 className="size-4 shrink-0 text-primary" />
-              <p className="text-sm text-foreground">{toast.text}</p>
-            </div>
-          </div>
-        )}
+        <AnimatePresence>
+          {toast.open && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 sm:hidden"
+              style={{
+                bottom: `calc(${BOTTOM_NAV_PX + ACTION_BAR_PX}px + env(safe-area-inset-bottom) + 12px)`,
+              }}
+              role="alert"
+            >
+              <div className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3 shadow-lg">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <CheckCircle2 className="size-4 text-primary" />
+                </div>
+                <p className="text-sm font-medium text-foreground">{toast.text}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
@@ -647,27 +708,39 @@ ${styles}
             flex h-[100dvh] w-screen max-w-none
             -translate-x-1/2 -translate-y-1/2
             flex-col overflow-hidden rounded-none border-0 p-0
-            sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-4xl sm:rounded-2xl sm:border
+            sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-4xl sm:rounded-3xl sm:border
           "
         >
-          <DialogHeader className="border-b px-4 py-3">
-            <DialogTitle className="text-sm font-semibold">Vista previa</DialogTitle>
+          <DialogHeader className="border-b px-4 py-4">
+            <DialogTitle className="text-base font-semibold">Vista previa del remito</DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto bg-muted/20 px-3 py-3">
-            <div className="overflow-hidden rounded-xl border bg-white">
+          <div className="flex-1 overflow-y-auto bg-muted/20 px-3 py-3 sm:px-4 sm:py-4">
+            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
               <RemitoPrint data={remitoData} />
             </div>
           </div>
 
-          <div className="border-t bg-card px-3 py-3">
+          <div className="border-t bg-card px-4 py-3">
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowPreview(false)} className="h-10 flex-1 rounded-xl">
+              <Button
+                variant="outline"
+                onClick={() => setShowPreview(false)}
+                className="h-11 flex-1 rounded-2xl"
+              >
                 Cerrar
               </Button>
-              <Button onClick={handlePreviewPrint} disabled={isSaving} className="h-10 flex-1 rounded-xl">
-                {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
-                {isSaving ? "Guardando..." : "Imprimir"}
+              <Button
+                onClick={handlePreviewPrint}
+                disabled={isSaving}
+                className="h-11 flex-1 rounded-2xl"
+              >
+                {isSaving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Printer className="size-4" />
+                )}
+                <span className="ml-2">{isSaving ? "Guardando..." : "Imprimir"}</span>
               </Button>
             </div>
           </div>

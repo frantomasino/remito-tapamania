@@ -2,10 +2,12 @@
 
 import type React from "react"
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react"
-import { Plus, Trash2, Search } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
+import { Plus, Trash2, Search, Package2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
 import { type Product, type LineItem, formatCurrency } from "@/lib/remito-types"
 
 interface ProductSelectorProps {
@@ -149,6 +151,7 @@ interface ProductCardProps {
   infoTags: string[]
   options: string[]
   selectedOpt: string
+  selectedCount: number
   onSelectOption: (desc: string, opt: string) => void
   onAdd: (product: Product, opcion?: string) => void
 }
@@ -159,23 +162,39 @@ const ProductCard = memo(function ProductCard({
   infoTags,
   options,
   selectedOpt,
+  selectedCount,
   onSelectOption,
   onAdd,
 }: ProductCardProps) {
   return (
-    <article className="rounded-xl border bg-background px-3 py-3">
-      <div className="flex items-start justify-between gap-3">
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.16, ease: "easeOut" }}
+      className="rounded-2xl border bg-background px-4 py-4 shadow-sm"
+    >
+      <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">
+          <p className="line-clamp-2 text-[14px] font-semibold leading-snug text-foreground">
             {title}
           </p>
-          <p className="mt-1 text-[12px] font-semibold text-foreground">
-            {formatCurrency(product.precio)}
-          </p>
+
+          <div className="mt-2 flex items-center gap-2">
+            <p className="text-[15px] font-semibold text-foreground tabular-nums">
+              {formatCurrency(product.precio)}
+            </p>
+
+            {selectedCount > 0 ? (
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+                {selectedCount} agregado{selectedCount > 1 ? "s" : ""}
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <Button
-          className="h-9 shrink-0 rounded-lg px-3 text-[12px]"
+          className="h-11 shrink-0 rounded-2xl px-4 text-[13px] font-medium"
           onClick={() => onAdd(product, selectedOpt || undefined)}
         >
           <Plus className="size-4" />
@@ -184,7 +203,7 @@ const ProductCard = memo(function ProductCard({
       </div>
 
       {options.length > 0 ? (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           {options.map((o) => {
             const active = normalize(o) === normalize(selectedOpt)
             return (
@@ -192,11 +211,12 @@ const ProductCard = memo(function ProductCard({
                 key={o}
                 type="button"
                 onClick={() => onSelectOption(product.descripcion, o)}
-                className={`rounded-full border px-2 py-1 text-[10px] leading-none ${
+                className={cn(
+                  "min-h-[34px] rounded-full border px-3 py-1.5 text-[11px] font-medium leading-none transition-colors",
                   active
                     ? "border-primary bg-primary text-primary-foreground"
                     : "bg-muted/40 text-foreground"
-                }`}
+                )}
               >
                 {o}
               </button>
@@ -204,25 +224,24 @@ const ProductCard = memo(function ProductCard({
           })}
         </div>
       ) : infoTags.length > 0 ? (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           {infoTags.map((t) => (
             <span
               key={t}
-              className="rounded-full border bg-muted/40 px-2 py-1 text-[10px] leading-none text-muted-foreground"
+              className="rounded-full border bg-muted/40 px-3 py-1.5 text-[11px] font-medium leading-none text-muted-foreground"
             >
               {t}
             </span>
           ))}
         </div>
       ) : null}
-    </article>
+    </motion.article>
   )
 })
 
 interface SelectedItemCardProps {
   item: LineItem
   title: string
-  qtyOptions: number[]
   onRemove: (desc: string, opcion?: string) => void
   onUpdateQuantity: (desc: string, opcion: string | undefined, cantidad: number) => void
 }
@@ -230,20 +249,28 @@ interface SelectedItemCardProps {
 const SelectedItemCard = memo(function SelectedItemCard({
   item,
   title,
-  qtyOptions,
   onRemove,
   onUpdateQuantity,
 }: SelectedItemCardProps) {
+  const canDecrease = item.cantidad > 1
+
   return (
-    <article className="rounded-xl border bg-background px-3 py-3">
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 6 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
+      className="rounded-2xl border bg-background px-4 py-4 shadow-sm"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">
+          <p className="line-clamp-2 text-[14px] font-semibold leading-snug text-foreground">
             {title}
-            {item.opcion ? <span className="text-muted-foreground"> — {item.opcion}</span> : null}
+            {item.opcion ? <span className="font-medium text-muted-foreground"> — {item.opcion}</span> : null}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            {formatCurrency(item.product.precio)}
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Unitario: {formatCurrency(item.product.precio)}
           </p>
         </div>
 
@@ -252,40 +279,59 @@ const SelectedItemCard = memo(function SelectedItemCard({
           size="icon"
           onClick={() => onRemove(item.product.descripcion, item.opcion)}
           aria-label="Eliminar"
-          className="h-8 w-8 shrink-0 rounded-lg"
+          className="h-10 w-10 shrink-0 rounded-2xl"
         >
           <Trash2 className="size-4 text-destructive" />
         </Button>
       </div>
 
-      <div className="mt-2.5 flex items-end justify-between gap-3">
+      <div className="mt-4 flex items-end justify-between gap-3">
         <div>
-          <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
             Cantidad
           </p>
-          <select
-            className="h-8 rounded-lg border bg-background px-2.5 text-[12px]"
-            value={item.cantidad}
-            onChange={(e) =>
-              onUpdateQuantity(item.product.descripcion, item.opcion, Number(e.target.value))
-            }
-          >
-            {qtyOptions.map((qty) => (
-              <option key={qty} value={qty}>
-                {qty}
-              </option>
-            ))}
-          </select>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => canDecrease && onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1)}
+              disabled={!canDecrease}
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-xl border text-base font-semibold transition-colors",
+                canDecrease
+                  ? "bg-background text-foreground"
+                  : "cursor-not-allowed bg-muted/40 text-muted-foreground"
+              )}
+              aria-label="Restar cantidad"
+            >
+              −
+            </button>
+
+            <div className="flex min-w-[44px] items-center justify-center rounded-xl border bg-muted/20 px-3 py-2 text-[14px] font-semibold tabular-nums text-foreground">
+              {item.cantidad}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border bg-background text-base font-semibold text-foreground transition-colors"
+              aria-label="Sumar cantidad"
+            >
+              +
+            </button>
+          </div>
         </div>
 
         <div className="text-right">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Subtotal</p>
-          <p className="text-[12px] font-semibold text-foreground">
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            Subtotal
+          </p>
+          <p className="mt-1 text-[15px] font-semibold text-foreground tabular-nums">
             {formatCurrency(item.subtotal)}
           </p>
         </div>
       </div>
-    </article>
+    </motion.article>
   )
 })
 
@@ -296,8 +342,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
   const [selectedOptionByDesc, setSelectedOptionByDesc] = useState<Record<string, string>>({})
   const [visibleCount, setVisibleCount] = useState(MAX_VISIBLE_PRODUCTS)
-
-  const qtyOptions = useMemo(() => Array.from({ length: 100 }, (_, i) => i + 1), [])
 
   const getSelectedOpt = useCallback(
     (desc: string) => selectedOptionByDesc[desc] ?? "",
@@ -327,6 +371,23 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   }, [products, deferredSearch, derivedByDesc])
 
   const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+
+  const itemCountByKey = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const item of items) {
+      const key = itemKey(item.product.descripcion, item.opcion)
+      map.set(key, (map.get(key) ?? 0) + item.cantidad)
+    }
+    return map
+  }, [items])
+
+  const itemCountByDesc = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const item of items) {
+      map.set(item.product.descripcion, (map.get(item.product.descripcion) ?? 0) + item.cantidad)
+    }
+    return map
+  }, [items])
 
   const addItem = useCallback(
     (product: Product, opcion?: string) => {
@@ -404,9 +465,9 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   return (
     <>
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
-        <DialogContent className="max-w-sm rounded-2xl">
+        <DialogContent className="max-w-sm rounded-3xl">
           <DialogHeader>
-            <DialogTitle>Vaciar selección</DialogTitle>
+            <DialogTitle className="text-base font-semibold">Vaciar selección</DialogTitle>
           </DialogHeader>
 
           <p className="text-sm text-muted-foreground">
@@ -416,14 +477,14 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
           <div className="mt-2 flex gap-2">
             <Button
               variant="outline"
-              className="h-10 flex-1 rounded-xl"
+              className="h-11 flex-1 rounded-2xl"
               onClick={() => setConfirmClearOpen(false)}
             >
               Cancelar
             </Button>
             <Button
               variant="destructive"
-              className="h-10 flex-1 rounded-xl"
+              className="h-11 flex-1 rounded-2xl"
               onClick={onConfirmClearAll}
             >
               Vaciar
@@ -432,134 +493,190 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-3 overflow-x-hidden">
-        <div className="grid grid-cols-2 gap-1 rounded-xl border bg-background p-1">
+      <div className="flex flex-col gap-4 overflow-x-hidden">
+        <div className="grid grid-cols-2 gap-1 rounded-2xl border bg-background p-1">
           <button
             type="button"
             onClick={() => setMobileTab("catalogo")}
-            className={`h-9 rounded-lg text-[12px] font-medium ${
-              mobileTab === "catalogo" ? "bg-primary text-primary-foreground" : "text-foreground"
-            }`}
+            className={cn(
+              "h-11 rounded-xl text-[13px] font-medium transition-colors",
+              mobileTab === "catalogo"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground"
+            )}
           >
             Catálogo
           </button>
           <button
             type="button"
             onClick={() => setMobileTab("seleccionados")}
-            className={`h-9 rounded-lg text-[12px] font-medium ${
-              mobileTab === "seleccionados" ? "bg-primary text-primary-foreground" : "text-foreground"
-            }`}
+            className={cn(
+              "h-11 rounded-xl text-[13px] font-medium transition-colors",
+              mobileTab === "seleccionados"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground"
+            )}
           >
             Seleccionados ({items.length})
           </button>
         </div>
 
-        <div className={mobileTab === "seleccionados" ? "hidden" : "flex flex-col gap-3"}>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar producto"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-10 rounded-xl pl-9 text-[14px]"
-            />
-          </div>
-
-          {products.length === 0 ? (
-            <div className="flex items-center justify-center rounded-xl border border-dashed py-8">
-              <p className="text-sm text-muted-foreground">No hay productos cargados</p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex items-center justify-center rounded-xl border border-dashed py-8">
-              <p className="text-sm text-muted-foreground">No se encontraron productos</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {visibleProducts.map((p) => {
-                const d = derivedByDesc.get(p.descripcion)
-                const title = d?.title ?? shortDesc(p.descripcion)
-                const options = d?.options ?? productOptions(p.descripcion)
-                const infoTags = d?.tags ?? detailTags(p.descripcion)
-                const selectedOpt = options.length > 0 ? (getSelectedOpt(p.descripcion) || options[0]) : ""
-
-                return (
-                  <ProductCard
-                    key={itemKey(p.descripcion)}
-                    product={p}
-                    title={title}
-                    infoTags={infoTags}
-                    options={options}
-                    selectedOpt={selectedOpt}
-                    onSelectOption={setSelectedOpt}
-                    onAdd={addItem}
-                  />
-                )
-              })}
-
-              {filtered.length > visibleCount && (
-                <Button
-                  variant="outline"
-                  onClick={() => setVisibleCount((prev) => prev + MAX_VISIBLE_PRODUCTS)}
-                  className="h-10 rounded-xl"
-                >
-                  Ver más ({filtered.length - visibleCount})
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className={mobileTab === "catalogo" ? "hidden" : "flex flex-col gap-3"}>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[12px] font-medium text-foreground">
-              Seleccionados ({items.length})
-            </p>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onAskClearAll}
-              disabled={items.length === 0}
-              className="h-8 rounded-lg px-2.5 text-[12px]"
+        <AnimatePresence mode="wait">
+          {mobileTab === "catalogo" ? (
+            <motion.div
+              key="catalogo"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.16, ease: "easeOut" }}
+              className="flex flex-col gap-4"
             >
-              <Trash2 className="size-4" />
-              Vaciar
-            </Button>
-          </div>
-
-          {items.length === 0 ? (
-            <div className="flex items-center justify-center rounded-xl border border-dashed py-8">
-              <p className="text-sm text-muted-foreground">No hay productos seleccionados</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <div className="rounded-xl border bg-muted/30 px-3 py-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground">Total</span>
-                  <span className="text-[13px] font-semibold text-foreground">
-                    {formatCurrency(total)}
-                  </span>
-                </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar producto"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-11 rounded-2xl pl-10 text-[14px]"
+                />
               </div>
 
-              {items.map((item) => {
-                const d = derivedByDesc.get(item.product.descripcion)
-                const title = d?.title ?? shortDesc(item.product.descripcion)
+              {products.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-10 text-center">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50">
+                    <Package2 className="size-5 text-muted-foreground" />
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-foreground">No hay productos cargados</p>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    Revisá la lista de precios seleccionada.
+                  </p>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-10 text-center">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50">
+                    <Search className="size-5 text-muted-foreground" />
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-foreground">No encontramos productos</p>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    Probá con otro nombre o una palabra más corta.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {visibleProducts.map((p) => {
+                    const d = derivedByDesc.get(p.descripcion)
+                    const title = d?.title ?? shortDesc(p.descripcion)
+                    const options = d?.options ?? productOptions(p.descripcion)
+                    const infoTags = d?.tags ?? detailTags(p.descripcion)
+                    const selectedOpt = options.length > 0 ? (getSelectedOpt(p.descripcion) || options[0]) : ""
 
-                return (
-                  <SelectedItemCard
-                    key={itemKey(item.product.descripcion, item.opcion)}
-                    item={item}
-                    title={title}
-                    qtyOptions={qtyOptions}
-                    onRemove={removeItem}
-                    onUpdateQuantity={updateQuantity}
-                  />
-                )
-              })}
-            </div>
+                    const selectedCount =
+                      options.length > 0
+                        ? itemCountByKey.get(itemKey(p.descripcion, selectedOpt)) ?? 0
+                        : itemCountByDesc.get(p.descripcion) ?? 0
+
+                    return (
+                      <ProductCard
+                        key={itemKey(p.descripcion)}
+                        product={p}
+                        title={title}
+                        infoTags={infoTags}
+                        options={options}
+                        selectedOpt={selectedOpt}
+                        selectedCount={selectedCount}
+                        onSelectOption={setSelectedOpt}
+                        onAdd={addItem}
+                      />
+                    )
+                  })}
+
+                  {filtered.length > visibleCount && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setVisibleCount((prev) => prev + MAX_VISIBLE_PRODUCTS)}
+                      className="h-11 rounded-2xl"
+                    >
+                      Ver más ({filtered.length - visibleCount})
+                    </Button>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="seleccionados"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.16, ease: "easeOut" }}
+              className="flex flex-col gap-4"
+            >
+              <div className="rounded-2xl border bg-muted/20 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                      Seleccionados
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {items.length} {items.length === 1 ? "producto" : "productos"}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                      Total
+                    </p>
+                    <p className="mt-1 text-[15px] font-semibold text-foreground tabular-nums">
+                      {formatCurrency(total)}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onAskClearAll}
+                  disabled={items.length === 0}
+                  className="mt-3 h-10 rounded-2xl px-3 text-[13px]"
+                >
+                  <Trash2 className="size-4" />
+                  Vaciar selección
+                </Button>
+              </div>
+
+              {items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-10 text-center">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50">
+                    <Package2 className="size-5 text-muted-foreground" />
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-foreground">Todavía no agregaste productos</p>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    Sumalos desde la pestaña de catálogo.
+                  </p>
+                </div>
+              ) : (
+                <motion.div layout className="flex flex-col gap-3">
+                  <AnimatePresence initial={false}>
+                    {items.map((item) => {
+                      const d = derivedByDesc.get(item.product.descripcion)
+                      const title = d?.title ?? shortDesc(item.product.descripcion)
+
+                      return (
+                        <SelectedItemCard
+                          key={itemKey(item.product.descripcion, item.opcion)}
+                          item={item}
+                          title={title}
+                          onRemove={removeItem}
+                          onUpdateQuantity={updateQuantity}
+                        />
+                      )
+                    })}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
     </>
   )
