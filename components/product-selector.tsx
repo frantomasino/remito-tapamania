@@ -46,12 +46,11 @@ const shortDesc = (s: string) =>
 
 const detailTags = (s: string) => {
   const parts = extractParenParts(s)
-  const raw = parts
     .flatMap((p) => p.split(","))
     .map((x) => x.trim())
     .filter(Boolean)
 
-  const mapped = raw.map((t) => {
+  const mapped = parts.map((t) => {
     const n = normalize(t)
     if (n === "freir" || n === "freir.") return "Freír"
     if (n === "horno" || n === "horno.") return "Horno"
@@ -172,7 +171,7 @@ const ProductRow = memo(function ProductRow({
   onAdd,
 }: ProductRowProps) {
   return (
-    <article className="border-b border-white/10 py-3 last:border-b-0">
+    <article className="border-b border-white/10 py-3.5 last:border-b-0">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-semibold leading-5 text-white">{title}</p>
@@ -188,10 +187,10 @@ const ProductRow = memo(function ProductRow({
                     type="button"
                     onClick={() => onSelectOption(product.descripcion, o)}
                     className={cn(
-                      "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                      "rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
                       active
                         ? "bg-[#1f6fbe] text-white"
-                        : "bg-[#2a2a2d] text-[#d2d2d4] ring-1 ring-white/10"
+                        : "bg-[#2a2a2d] text-[#aeb0b8] ring-1 ring-white/10"
                     )}
                   >
                     {o}
@@ -204,7 +203,7 @@ const ProductRow = memo(function ProductRow({
               {infoTags.map((t) => (
                 <span
                   key={t}
-                  className="rounded-full bg-[#2a2a2d] px-2.5 py-1 text-[11px] font-medium text-[#c8c8cc] ring-1 ring-white/10"
+                  className="rounded-full bg-[#2a2a2d] px-2 py-0.5 text-[10px] font-medium text-[#aeb0b8] ring-1 ring-white/10"
                 >
                   {t}
                 </span>
@@ -212,7 +211,7 @@ const ProductRow = memo(function ProductRow({
             </div>
           ) : null}
 
-          <p className="mt-2 text-[22px] font-bold leading-none tracking-tight text-white">
+          <p className="mt-2.5 text-[21px] font-bold leading-none tracking-tight text-white">
             {formatCurrency(product.precio)}
           </p>
         </div>
@@ -227,7 +226,7 @@ const ProductRow = memo(function ProductRow({
           <button
             type="button"
             onClick={() => onAdd(product, selectedOpt || undefined)}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/20 bg-transparent px-4 text-sm font-semibold text-white transition-colors hover:bg-white/5"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-white/15 bg-[#232326] px-3 text-[13px] font-semibold text-white transition-colors hover:bg-white/5"
           >
             <Plus className="size-4" />
             Agregar
@@ -260,13 +259,13 @@ const SelectedItemRow = memo(function SelectedItemRow({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-white">
             {title}
-            {item.opcion ? <span className="text-[#b0b0b6]"> · {item.opcion}</span> : null}
+            {item.opcion ? <span className="text-[#9fa1a9]"> · {item.opcion}</span> : null}
           </p>
 
           <div className="mt-1 flex items-center gap-3">
             {showBothPrices ? (
               <>
-                <p className="text-sm text-[#9e9ea6]">
+                <p className="text-sm text-[#8f9199]">
                   {item.cantidad} x {formatCurrency(item.product.precio)}
                 </p>
                 <p className="text-base font-semibold text-white">
@@ -318,7 +317,7 @@ const SelectedItemRow = memo(function SelectedItemRow({
           variant="ghost"
           size="icon"
           onClick={() => onRemove(item.product.descripcion, item.opcion)}
-          className="text-[#ff6b6b] hover:bg-white/5 hover:text-[#ff6b6b]"
+          className="mt-0.5 text-[#ff6b6b] hover:bg-white/5 hover:text-[#ff6b6b]"
         >
           <Trash2 className="size-4" />
         </Button>
@@ -452,11 +451,15 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
             <Button variant="outline" className="flex-1" onClick={() => setConfirmClearOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="destructive" className="flex-1" onClick={() => {
-              clearAllSelected()
-              setConfirmClearOpen(false)
-              setShowSelected(false)
-            }}>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => {
+                clearAllSelected()
+                setConfirmClearOpen(false)
+                setShowSelected(false)
+              }}
+            >
               Vaciar
             </Button>
           </div>
@@ -474,20 +477,20 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
           />
         </div>
 
-        <section className="rounded-2xl border border-white/10 bg-[#242426] px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+        <section className="rounded-[22px] border border-white/10 bg-[#242426] px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
           <button
             type="button"
             onClick={() => setShowSelected((prev) => !prev)}
             className="flex w-full items-center justify-between gap-3 text-left"
           >
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#1976d2] text-white">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#1976d2] text-white shadow-[0_8px_20px_rgba(25,118,210,0.22)]">
                 <ShoppingBag className="size-4" />
               </div>
 
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-white">Pedido actual</p>
-                <p className="text-xs text-[#b0b0b6]">
+                <p className="text-[18px] font-semibold leading-none text-white">Pedido actual</p>
+                <p className="mt-1 text-[12px] text-[#9c9ea6]">
                   {items.length} productos · {totalUnits} unidades
                 </p>
               </div>
@@ -495,17 +498,21 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-[11px] font-medium text-[#a2a2a8]">Subtotal</p>
-                <p className="text-[22px] font-bold leading-none text-white">
+                <p className="text-[11px] font-medium uppercase tracking-[0.04em] text-[#8f9199]">
+                  Subtotal
+                </p>
+                <p className="mt-1 text-[18px] font-bold leading-none text-white tabular-nums">
                   {formatCurrency(totalAmount)}
                 </p>
               </div>
 
-              {showSelected ? (
-                <ChevronUp className="size-4 text-[#b0b0b6]" />
-              ) : (
-                <ChevronDown className="size-4 text-[#b0b0b6]" />
-              )}
+              <div className="flex size-8 items-center justify-center rounded-xl bg-black/15 ring-1 ring-white/10">
+                {showSelected ? (
+                  <ChevronUp className="size-4 text-[#b0b0b6]" />
+                ) : (
+                  <ChevronDown className="size-4 text-[#b0b0b6]" />
+                )}
+              </div>
             </div>
           </button>
 
@@ -518,15 +525,19 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="overflow-hidden"
               >
-                <div className="mt-3 border-t border-white/10 pt-2">
+                <div className="mt-3 border-t border-white/10 pt-3">
                   {items.length > 0 ? (
                     <>
-                      <div className="mb-2 flex justify-end">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <p className="text-xs font-medium text-[#8f9199]">
+                          Tocá + o − para ajustar rápido
+                        </p>
+
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => setConfirmClearOpen(true)}
-                          className="text-[#b0b0b6] hover:bg-white/5 hover:text-white"
+                          className="h-8 px-2.5 text-[#b0b0b6] hover:bg-white/5 hover:text-white"
                         >
                           <Trash2 className="size-4" />
                           Vaciar
