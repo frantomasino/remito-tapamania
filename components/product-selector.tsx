@@ -252,6 +252,7 @@ const SelectedItemRow = memo(function SelectedItemRow({
   onUpdateQuantity,
 }: SelectedItemRowProps) {
   const canDecrease = item.cantidad > 1
+  const showBothPrices = item.cantidad > 1
 
   return (
     <article className="border-b border-white/10 py-3 last:border-b-0">
@@ -263,8 +264,20 @@ const SelectedItemRow = memo(function SelectedItemRow({
           </p>
 
           <div className="mt-1 flex items-center gap-3">
-            <p className="text-sm text-[#9e9ea6]">{formatCurrency(item.product.precio)}</p>
-            <p className="text-base font-semibold text-white">{formatCurrency(item.subtotal)}</p>
+            {showBothPrices ? (
+              <>
+                <p className="text-sm text-[#9e9ea6]">
+                  {item.cantidad} x {formatCurrency(item.product.precio)}
+                </p>
+                <p className="text-base font-semibold text-white">
+                  {formatCurrency(item.subtotal)}
+                </p>
+              </>
+            ) : (
+              <p className="text-base font-semibold text-white">
+                {formatCurrency(item.subtotal)}
+              </p>
+            )}
           </div>
 
           <div className="mt-3 flex items-center gap-2">

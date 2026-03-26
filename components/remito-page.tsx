@@ -152,6 +152,7 @@ export default function RemitoPage() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isPrintingBluetooth, setIsPrintingBluetooth] = useState(false)
+  const [isOnline, setIsOnline] = useState(true)
   const [footerCollapsed, setFooterCollapsed] = useState(true)
   const [headerCollapsed, setHeaderCollapsed] = useState(true)
 
@@ -170,6 +171,24 @@ export default function RemitoPage() {
   })
 
   useEffect(() => setMounted(true), [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const syncOnlineStatus = () => {
+      setIsOnline(window.navigator.onLine)
+    }
+
+    syncOnlineStatus()
+
+    window.addEventListener("online", syncOnlineStatus)
+    window.addEventListener("offline", syncOnlineStatus)
+
+    return () => {
+      window.removeEventListener("online", syncOnlineStatus)
+      window.removeEventListener("offline", syncOnlineStatus)
+    }
+  }, [])
 
   const showToast = useCallback((text: string) => {
     setToast({ open: true, text })
@@ -356,6 +375,11 @@ export default function RemitoPage() {
   }, [])
 
   const persistRemito = useCallback(async (): Promise<number | null> => {
+    if (!isOnline) {
+      showToast("Sin internet. No se puede guardar el pedido")
+      return null
+    }
+
     if (!userId) {
       showToast("Falta sesión")
       return null
@@ -429,7 +453,7 @@ export default function RemitoPage() {
     } finally {
       setIsSaving(false)
     }
-  }, [userId, items, client.nombre, priceListId, total, showToast])
+  }, [isOnline, userId, items, client.nombre, priceListId, total, showToast])
 
   const buildPrintHtml = useCallback(() => {
     const printable = document.getElementById("printable-remito")
@@ -599,6 +623,11 @@ ${styles}
   }, [buildPrintHtml])
 
   const handlePrint = useCallback(async () => {
+    if (!isOnline) {
+      showToast("Sin internet. No se puede registrar el pedido")
+      return
+    }
+
     if (!canPrint || isSaving || isPrintingBluetooth) return
 
     const printWindow = isIOS() ? openPrintWindowImmediate() : null
@@ -617,6 +646,7 @@ ${styles}
 
     advanceAndReset(nextVisibleNumber)
   }, [
+    isOnline,
     canPrint,
     isSaving,
     isPrintingBluetooth,
@@ -627,6 +657,11 @@ ${styles}
   ])
 
   const handlePreviewPrint = useCallback(async () => {
+    if (!isOnline) {
+      showToast("Sin internet. No se puede registrar el pedido")
+      return
+    }
+
     if (!canPrint || isSaving || isPrintingBluetooth) return
 
     setShowPreview(false)
@@ -647,6 +682,7 @@ ${styles}
 
     advanceAndReset(nextVisibleNumber)
   }, [
+    isOnline,
     canPrint,
     isSaving,
     isPrintingBluetooth,
@@ -657,6 +693,11 @@ ${styles}
   ])
 
   const handleBluetoothPrint = useCallback(async () => {
+    if (!isOnline) {
+      showToast("Sin internet. No se puede registrar el pedido")
+      return
+    }
+
     if (!canPrint || isSaving || isPrintingBluetooth) return
 
     try {
@@ -710,6 +751,7 @@ ${styles}
       setIsPrintingBluetooth(false)
     }
   }, [
+    isOnline,
     canPrint,
     isSaving,
     isPrintingBluetooth,
@@ -780,6 +822,15 @@ ${styles}
                     >
                       {getPriceListLabel(priceListId)}
                     </span>
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                        isOnline
+                          ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+                          : "border-red-400/20 bg-red-500/10 text-red-200"
+                      }`}
+                    >
+                      {isOnline ? "Online" : "Sin internet"}
+                    </span>
                   </div>
                 </div>
 
@@ -838,10 +889,32 @@ ${styles}
           </div>
         </header>
 
+        {!isOnline && (
+          <div className="mx-auto w-full max-w-md px-4 pt-3">
+            <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-red-500/15 text-red-200">
+                  <span className="text-sm font-bold">!</span>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-red-100">Sin internet</p>
+                  <p className="mt-1 text-sm leading-relaxed text-red-100/80">
+                    Podés ver el pedido, pero no se puede guardar ni imprimir hasta recuperar conexión.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <main
           className="mx-auto w-full max-w-md px-4 pb-4 pt-3"
           style={{
-            paddingBottom: `calc(${BOTTOM_NAV_PX + (footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX)}px + env(safe-area-inset-bottom) + 18px)`,
+            paddingBottom:
+              items.length > 0
+                ? `calc(${BOTTOM_NAV_PX + (footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX)}px + env(safe-area-inset-bottom) + 18px)`
+                : `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom) + 18px)`,
           }}
         >
           <div className="space-y-5">
@@ -889,96 +962,98 @@ ${styles}
           </div>
         </main>
 
-        <div
-          className="fixed inset-x-0 z-50 border-t border-white/10 bg-[#2a2926]/98 backdrop-blur-xl"
-          style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
-        >
-          <div className="mx-auto w-full max-w-md px-4 py-3">
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#2f2d29] shadow-lg">
-              <button
-                type="button"
-                onClick={() => setFooterCollapsed((prev) => !prev)}
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                aria-expanded={!footerCollapsed}
-                aria-label={footerCollapsed ? "Mostrar acciones del remito" : "Ocultar acciones del remito"}
-              >
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
-                    Total del remito
-                  </p>
-                  <p className="mt-1 truncate text-[18px] font-semibold tracking-tight text-white tabular-nums">
-                    {formatCurrency(total)}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full bg-black/15 px-2.5 py-1 text-[11px] font-medium text-[#d1d1d5]">
-                    {items.length} {items.length === 1 ? "item" : "items"}
+        {items.length > 0 && (
+          <div
+            className="fixed inset-x-0 z-50 border-t border-white/10 bg-[#2a2926]/98 backdrop-blur-xl"
+            style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
+          >
+            <div className="mx-auto w-full max-w-md px-4 py-3">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#2f2d29] shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => setFooterCollapsed((prev) => !prev)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                  aria-expanded={!footerCollapsed}
+                  aria-label={footerCollapsed ? "Mostrar acciones del remito" : "Ocultar acciones del remito"}
+                >
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
+                      Total del remito
+                    </p>
+                    <p className="mt-1 truncate text-[18px] font-semibold tracking-tight text-white tabular-nums">
+                      {formatCurrency(total)}
+                    </p>
                   </div>
 
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-black/15 ring-1 ring-white/10">
-                    {footerCollapsed ? (
-                      <ChevronUp className="size-4 text-[#c4c4c8]" />
-                    ) : (
-                      <ChevronDown className="size-4 text-[#c4c4c8]" />
-                    )}
-                  </div>
-                </div>
-              </button>
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-black/15 px-2.5 py-1 text-[11px] font-medium text-[#d1d1d5]">
+                      {items.length} {items.length === 1 ? "item" : "items"}
+                    </div>
 
-              <AnimatePresence initial={false}>
-                {!footerCollapsed && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.18, ease: "easeOut" }}
-                    className="overflow-hidden border-t border-white/10"
-                  >
-                    <div className="px-4 py-3">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-[#b0b0b6]">
-                            {items.length} {items.length === 1 ? "producto" : "productos"} cargados
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-black/15 ring-1 ring-white/10">
+                      {footerCollapsed ? (
+                        <ChevronUp className="size-4 text-[#c4c4c8]" />
+                      ) : (
+                        <ChevronDown className="size-4 text-[#c4c4c8]" />
+                      )}
+                    </div>
+                  </div>
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {!footerCollapsed && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className="overflow-hidden border-t border-white/10"
+                    >
+                      <div className="px-4 py-3">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-[#b0b0b6]">
+                              {items.length} {items.length === 1 ? "producto" : "productos"} cargados
+                            </p>
+                          </div>
+                          <p className="text-sm font-semibold text-white tabular-nums">
+                            {formatCurrency(total)}
                           </p>
                         </div>
-                        <p className="text-sm font-semibold text-white tabular-nums">
-                          {formatCurrency(total)}
-                        </p>
-                      </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant="default"
-                          onClick={handleBluetoothPrint}
-                          disabled={!canPrint || isSaving || isPrintingBluetooth}
-                          className="h-11 rounded-xl bg-[#1976d2] text-white hover:bg-[#1c82e4]"
-                        >
-                          {isPrintingBluetooth ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            <Bluetooth className="size-4" />
-                          )}
-                          <span>{isPrintingBluetooth ? "Conectando..." : "Imprimir BT"}</span>
-                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            variant="default"
+                            onClick={handleBluetoothPrint}
+                            disabled={!canPrint || !isOnline || isSaving || isPrintingBluetooth}
+                            className="h-11 rounded-xl bg-[#1976d2] text-white hover:bg-[#1c82e4]"
+                          >
+                            {isPrintingBluetooth ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <Bluetooth className="size-4" />
+                            )}
+                            <span>{isPrintingBluetooth ? "Conectando..." : "Imprimir BT"}</span>
+                          </Button>
 
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowPreview(true)}
-                          disabled={!canPrint || isPrintingBluetooth}
-                          className="h-11 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/5"
-                        >
-                          <Eye className="size-4" />
-                          <span>Ver ticket</span>
-                        </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowPreview(true)}
+                            disabled={!canPrint || isPrintingBluetooth}
+                            className="h-11 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/5"
+                          >
+                            <Eye className="size-4" />
+                            <span>Ver ticket</span>
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <AnimatePresence>
           {toast.open && (
@@ -989,7 +1064,7 @@ ${styles}
               transition={{ duration: 0.18, ease: "easeOut" }}
               className="fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2"
               style={{
-                bottom: `calc(${BOTTOM_NAV_PX + (footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX)}px + env(safe-area-inset-bottom) + 12px)`,
+                bottom: `calc(${BOTTOM_NAV_PX + (items.length > 0 ? footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX : 0)}px + env(safe-area-inset-bottom) + 12px)`,
               }}
               role="alert"
             >
@@ -1037,7 +1112,7 @@ ${styles}
               </Button>
               <Button
                 onClick={handlePreviewPrint}
-                disabled={isSaving || isPrintingBluetooth}
+                disabled={!isOnline || isSaving || isPrintingBluetooth}
                 size="lg"
                 className="flex-1 bg-[#1976d2] text-white hover:bg-[#1c82e4]"
               >
