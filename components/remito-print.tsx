@@ -31,106 +31,86 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
   const comercio = (data.client.nombre ?? "").trim()
 
   return (
-    <div ref={ref} id="remito-print" className="w-full overflow-x-hidden bg-white text-black">
-      <div className="mx-auto w-full max-w-full font-sans">
-        <div className="border border-black">
-          <div className="border-b border-black px-4 py-3">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-black/70">
-                  Pedido
+    <div
+      ref={ref}
+      id="remito-print"
+      className="remito-ticket mx-auto w-[48mm] max-w-[48mm] overflow-hidden bg-white font-mono text-black"
+    >
+      <div className="px-[2mm] py-[2mm] text-[10px] leading-tight">
+        <div className="border-b border-dashed border-black pb-[2mm] text-center">
+          <p className="text-[12px] font-bold uppercase">Tapamanía</p>
+          <p className="mt-1 text-[10px] font-semibold">Remito / Comprobante</p>
+          <p className="mt-1">N° {data.numero}</p>
+          <p>{data.fecha}</p>
+        </div>
+
+        <div className="border-b border-dashed border-black py-[2mm]">
+          <div className="flex justify-between gap-2">
+            <span className="font-semibold">Comercio:</span>
+            <span className="max-w-[26mm] text-right break-words">
+              {comercio || "Sin especificar"}
+            </span>
+          </div>
+
+          <div className="mt-1 flex justify-between gap-2">
+            <span className="font-semibold">Items:</span>
+            <span>{data.items.length}</span>
+          </div>
+
+          <div className="mt-1 flex justify-between gap-2">
+            <span className="font-semibold">Unidades:</span>
+            <span>{totalUnidades}</span>
+          </div>
+        </div>
+
+        <div className="border-b border-dashed border-black py-[2mm]">
+          <div className="grid grid-cols-[1fr_auto] gap-2 text-[10px] font-bold">
+            <span>Producto</span>
+            <span className="text-right">Subtotal</span>
+          </div>
+        </div>
+
+        <div className="py-[1.5mm]">
+          {data.items.length === 0 ? (
+            <p className="py-[2mm] text-center">Sin productos</p>
+          ) : (
+            data.items.map((item, idx) => (
+              <div
+                key={`${item.product.descripcion}-${item.opcion ?? ""}-${idx}`}
+                className="border-b border-dashed border-black py-[2mm] last:border-b-0"
+              >
+                <p className="break-words font-semibold">
+                  {cleanDesc(item.product.descripcion)}
+                  {item.opcion ? ` · ${item.opcion}` : ""}
                 </p>
-                <h1 className="mt-0.5 text-[22px] font-bold leading-none">Comprobante</h1>
-              </div>
 
-              <div className="shrink-0 text-right">
-                <p className="text-[13px] font-semibold">N° {data.numero}</p>
-                <p className="mt-1 text-[11px] text-black/75">Fecha: {data.fecha}</p>
+                <div className="mt-[1mm] flex justify-between gap-2 text-[10px]">
+                  <span>
+                    {item.cantidad} x {formatCurrency(item.product.precio)}
+                  </span>
+                  <span className="text-right font-semibold">
+                    {formatCurrency(item.subtotal)}
+                  </span>
+                </div>
               </div>
-            </div>
+            ))
+          )}
+        </div>
+
+        <div className="border-t border-dashed border-black pt-[2mm]">
+          <div className="flex justify-between text-[10px]">
+            <span>Subtotal</span>
+            <span>{formatCurrency(total)}</span>
           </div>
 
-          <div className="border-b border-black px-4 py-3">
-            <div className="grid grid-cols-[88px_1fr] gap-x-3 gap-y-1 text-[11px] sm:grid-cols-[100px_1fr] sm:text-[12px]">
-              <span className="font-semibold">Comercio</span>
-              <span className="break-words">{comercio || "Sin especificar"}</span>
-
-              <span className="font-semibold">Productos</span>
-              <span>
-                {data.items.length} {data.items.length === 1 ? "ítem" : "ítems"} · {totalUnidades}{" "}
-                {totalUnidades === 1 ? "unidad" : "unidades"}
-              </span>
-            </div>
+          <div className="mt-[1mm] flex justify-between text-[12px] font-bold">
+            <span>TOTAL</span>
+            <span>{formatCurrency(total)}</span>
           </div>
+        </div>
 
-          <table className="w-full table-fixed text-[11px] sm:text-[12px]">
-            <thead>
-              <tr className="border-b border-black bg-black/[0.03]">
-                <th className="border-r border-black px-2 py-2 text-left font-semibold">
-                  Producto
-                </th>
-                <th className="w-12 border-r border-black px-2 py-2 text-center font-semibold sm:w-14">
-                  Cant.
-                </th>
-                <th className="w-20 border-r border-black px-2 py-2 text-right font-semibold sm:w-24">
-                  P. unit.
-                </th>
-                <th className="w-20 px-2 py-2 text-right font-semibold sm:w-24">Subtotal</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {data.items.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-3 py-5 text-center text-[11px] text-black/60">
-                    Sin productos
-                  </td>
-                </tr>
-              ) : (
-                data.items.map((item, idx) => (
-                  <tr
-                    key={`${item.product.descripcion}-${item.opcion ?? ""}-${idx}`}
-                    className="border-b border-black/20 last:border-b-0"
-                  >
-                    <td className="border-r border-black/20 px-2 py-2 align-top break-words">
-                      <div className="leading-snug">
-                        <span>{cleanDesc(item.product.descripcion)}</span>
-                        {item.opcion ? (
-                          <span className="text-black/65"> — {item.opcion}</span>
-                        ) : null}
-                      </div>
-                    </td>
-
-                    <td className="border-r border-black/20 px-2 py-2 text-center align-top">
-                      {item.cantidad}
-                    </td>
-
-                    <td className="border-r border-black/20 px-2 py-2 text-right align-top tabular-nums">
-                      {formatCurrency(item.product.precio)}
-                    </td>
-
-                    <td className="px-2 py-2 text-right align-top font-medium tabular-nums">
-                      {formatCurrency(item.subtotal)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-
-          <div className="border-t border-black px-4 py-3">
-            <div className="ml-auto w-full max-w-[240px] space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] sm:text-[12px]">
-                <span className="text-black/75">Subtotal</span>
-                <span className="tabular-nums">{formatCurrency(total)}</span>
-              </div>
-
-              <div className="flex items-center justify-between border-t border-black pt-2 text-[15px] font-bold sm:text-[16px]">
-                <span>Total</span>
-                <span className="tabular-nums">{formatCurrency(total)}</span>
-              </div>
-            </div>
-          </div>
+        <div className="pt-[3mm] text-center text-[9px]">
+          <p>Gracias</p>
         </div>
       </div>
     </div>

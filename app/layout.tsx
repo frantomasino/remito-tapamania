@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "App",
+  title: "APP",
   description: "App para cargar pedidos, generar remitos e imprimir comprobantes desde el celular.",
   manifest: "/manifest.webmanifest",
 }
 
 export const viewport: Viewport = {
-  themeColor: "#2f7a57",
+  themeColor: "#111214",
 }
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" className="dark">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         {children}
         <Analytics />

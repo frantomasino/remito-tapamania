@@ -15,7 +15,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="min-h-dvh bg-[#111214] text-white">
       <div className="mx-auto w-full max-w-md">
         <main className="min-h-dvh pb-[calc(88px+env(safe-area-inset-bottom))]">
           {children}

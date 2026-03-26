@@ -26,7 +26,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/45 backdrop-blur-[1px] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-black/70 backdrop-blur-[2px] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
         className
       )}
       {...props}
@@ -44,7 +44,7 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 grid w-full max-w-[calc(100%-1rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-3xl bg-card p-4 shadow-xl ring-1 ring-border duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg sm:p-5",
+          "fixed left-1/2 top-1/2 z-50 grid w-full max-w-[calc(100%-1rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-3xl border border-white/10 bg-[#1b1b1d] p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)] duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg sm:p-5",
           className
         )}
         {...props}
@@ -86,7 +86,7 @@ function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
-      className={cn("text-base font-semibold text-foreground", className)}
+      className={cn("text-base font-semibold tracking-tight text-white", className)}
       {...props}
     />
   )
@@ -99,7 +99,7 @@ function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-[#b0b0b6]", className)}
       {...props}
     />
   )
@@ -123,7 +123,11 @@ function AlertDialogCancel({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
   return (
     <AlertDialogPrimitive.Cancel
-      className={cn(buttonVariants({ variant: "outline", size: "default" }), "sm:min-w-28", className)}
+      className={cn(
+        buttonVariants({ variant: "outline", size: "default" }),
+        "sm:min-w-28",
+        className
+      )}
       {...props}
     />
   )

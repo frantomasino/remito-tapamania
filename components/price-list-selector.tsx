@@ -23,9 +23,11 @@ export function PriceListSelector({
 }: PriceListSelectorProps) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="app-field-label">Lista de precios</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#b0b0b6]">
+        Lista de precios
+      </p>
 
-      <div className="grid grid-cols-3 gap-1 rounded-2xl bg-muted p-1 ring-1 ring-border">
+      <div className="grid grid-cols-3 gap-1 rounded-2xl border border-white/10 bg-[#232326] p-1">
         {OPTIONS.map((option) => {
           const active = value === option.value
 
@@ -36,10 +38,10 @@ export function PriceListSelector({
               onClick={() => onChange(option.value)}
               disabled={loading}
               className={cn(
-                "flex h-11 items-center justify-center rounded-2xl px-3 text-sm font-medium transition-colors",
+                "flex h-11 items-center justify-center rounded-xl px-3 text-sm font-medium transition-colors",
                 active
-                  ? "bg-background text-foreground shadow-sm ring-1 ring-border"
-                  : "text-muted-foreground",
+                  ? "bg-[#1976d2] text-white shadow-[0_8px_24px_rgba(25,118,210,0.18)]"
+                  : "text-[#b0b0b6] hover:bg-white/5 hover:text-white",
                 loading && "cursor-not-allowed opacity-60"
               )}
               aria-pressed={active}

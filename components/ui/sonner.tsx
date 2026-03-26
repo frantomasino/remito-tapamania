@@ -1,35 +1,32 @@
 "use client"
 
 import * as React from "react"
-import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="dark"
       className="toaster group"
       toastOptions={{
         classNames: {
           toast:
-            "group toast rounded-2xl border border-border bg-card text-card-foreground shadow-lg",
-          title: "text-sm font-medium text-foreground",
-          description: "text-sm text-muted-foreground",
+            "group toast rounded-2xl border border-white/10 bg-[#1b1b1d] text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)]",
+          title: "text-sm font-medium text-white",
+          description: "text-sm text-[#b0b0b6]",
           actionButton:
-            "h-9 rounded-2xl bg-primary px-3 text-xs font-medium text-primary-foreground",
+            "h-9 rounded-xl border border-white/10 bg-[#1976d2] px-3 text-xs font-medium text-white hover:bg-[#1c82e4]",
           cancelButton:
-            "h-9 rounded-2xl bg-background px-3 text-xs font-medium text-foreground ring-1 ring-border",
+            "h-9 rounded-xl border border-white/10 bg-transparent px-3 text-xs font-medium text-white hover:bg-white/5",
           closeButton:
-            "rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground",
+            "rounded-xl text-[#b0b0b6] hover:bg-white/5 hover:text-white",
         },
       }}
       style={
         {
-          "--normal-bg": "var(--card)",
-          "--normal-text": "var(--card-foreground)",
-          "--normal-border": "var(--border)",
+          "--normal-bg": "#1b1b1d",
+          "--normal-text": "#ffffff",
+          "--normal-border": "rgba(255,255,255,0.1)",
         } as React.CSSProperties
       }
       {...props}

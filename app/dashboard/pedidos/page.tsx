@@ -107,41 +107,56 @@ export default async function PedidosPage() {
   const filename = `remitos-${safeDate}.csv`
 
   return (
-    <div className="px-4 pb-5 pt-4">
-      <div className="space-y-6">
+    <div className="px-4 pb-5 pt-4 text-white">
+      <div className="space-y-4">
         <header className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-              <ClipboardList className="size-5" />
-            </div>
+          <div className="rounded-[28px] border border-white/10 bg-[#2a2926] px-4 py-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#1976d2] text-white">
+                <ClipboardList className="size-5" />
+              </div>
 
-            <div className="min-w-0 flex-1">
-              <h1 className="app-page-title">Pedidos de hoy</h1>
-              <p className="app-subtitle mt-2">{todayLabel}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#b0b0b6]">
+                  Pedidos
+                </p>
+                <h1 className="mt-1 text-xl font-semibold leading-none text-white">
+                  Pedidos de hoy
+                </h1>
+                <p className="mt-2 text-sm text-[#9e9ea6]">{todayLabel}</p>
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="app-card">
-              <p className="app-meta font-medium">Cantidad</p>
-              <p className="mt-2 text-2xl font-semibold leading-none text-foreground tabular-nums">
+            <div className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#a9a9ae]">
+                Cantidad
+              </p>
+              <p className="mt-2 text-2xl font-semibold leading-none text-white tabular-nums">
                 {records.length}
               </p>
-              <p className="app-subtitle mt-2">
+              <p className="mt-2 text-sm text-[#9e9ea6]">
                 {records.length === 1 ? "pedido cargado" : "pedidos cargados"}
               </p>
             </div>
 
-            <div className="app-card">
-              <p className="app-meta font-medium">Total del día</p>
-              <p className="mt-2 truncate text-xl font-semibold leading-none text-foreground tabular-nums">
+            <div className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#a9a9ae]">
+                Total del día
+              </p>
+              <p className="mt-2 truncate text-xl font-semibold leading-none text-white tabular-nums">
                 {formatCurrency(totalHoy)}
               </p>
-              <p className="app-subtitle mt-2">Acumulado</p>
+              <p className="mt-2 text-sm text-[#9e9ea6]">Acumulado</p>
             </div>
           </div>
 
-          <Button asChild size="lg" className="w-full shadow-sm">
+          <Button
+            asChild
+            size="lg"
+            className="h-12 w-full rounded-2xl bg-[#1976d2] text-white hover:bg-[#1c82e4]"
+          >
             <Link href="/dashboard/nuevo">
               <PlusCircle className="size-4" />
               Nuevo pedido
@@ -151,8 +166,10 @@ export default async function PedidosPage() {
 
         <section>
           <div className="mb-3">
-            <h2 className="app-section-title">Cargados hoy</h2>
-            <p className="app-subtitle mt-1">
+            <h2 className="text-sm font-bold uppercase tracking-[0.06em] text-[#d6d6da]">
+              Cargados hoy
+            </h2>
+            <p className="mt-1 text-sm text-[#9e9ea6]">
               Revisá rápido lo que ya hiciste y seguí con el recorrido.
             </p>
           </div>
@@ -162,7 +179,12 @@ export default async function PedidosPage() {
 
         <section className="pt-1">
           <div className="grid grid-cols-2 gap-2">
-            <Button asChild variant="outline" disabled={records.length === 0}>
+            <Button
+              asChild
+              variant="outline"
+              disabled={records.length === 0}
+              className="border-white/12 bg-transparent text-white hover:bg-white/5"
+            >
               <a href={records.length === 0 ? undefined : csvHref} download={filename}>
                 <Download className="size-4" />
                 Descargar
@@ -170,7 +192,11 @@ export default async function PedidosPage() {
             </Button>
 
             <form action={clearTodayAction} className="contents">
-              <Button variant="outline" disabled={records.length === 0}>
+              <Button
+                variant="outline"
+                disabled={records.length === 0}
+                className="border-white/12 bg-transparent text-white hover:bg-white/5"
+              >
                 <Trash2 className="size-4" />
                 Limpiar
               </Button>

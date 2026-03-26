@@ -15,12 +15,15 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
+  Bluetooth,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ClientForm } from "@/components/client-form"
 import { ProductSelector } from "@/components/product-selector"
 import { RemitoPrint } from "@/components/remito-print"
+import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
+import { buildRemitoEscPos } from "@/lib/remito-ticket-escpos"
 import {
   type Product,
   type LineItem,
@@ -72,8 +75,8 @@ function k(base: string, userId: string) {
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
 
 const BOTTOM_NAV_PX = 72
-const ACTION_BAR_EXPANDED_PX = 98
-const ACTION_BAR_COLLAPSED_PX = 46
+const ACTION_BAR_EXPANDED_PX = 142
+const ACTION_BAR_COLLAPSED_PX = 64
 
 type ProductsCacheEntry = {
   loadedAt: number
@@ -100,12 +103,12 @@ function PriceListSelect({
   onChange: (value: PriceListId) => void
 }) {
   return (
-    <div className="relative min-w-[156px] max-w-[180px]">
+    <div className="relative min-w-[144px] max-w-[170px]">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as PriceListId)}
         aria-label="Lista de precios"
-        className="h-10 w-full appearance-none rounded-2xl border border-border bg-background px-3 pr-9 text-base font-medium text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40 md:text-sm"
+        className="h-10 w-full appearance-none rounded-xl border border-white/10 bg-[#1a1a1c] px-3 pr-9 text-sm font-medium text-white outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/20"
       >
         {PRICE_LISTS.map((list) => (
           <option key={list.id} value={list.id}>
@@ -114,7 +117,7 @@ function PriceListSelect({
         ))}
       </select>
 
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#9e9ea6]" />
     </div>
   )
 }
@@ -133,6 +136,7 @@ export default function RemitoPage() {
   const [mounted, setMounted] = useState(false)
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isPrintingBluetooth, setIsPrintingBluetooth] = useState(false)
   const [footerCollapsed, setFooterCollapsed] = useState(false)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
@@ -156,7 +160,7 @@ export default function RemitoPage() {
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => {
       setToast({ open: false, text: "" })
-    }, 1600)
+    }, 1900)
   }, [])
 
   useEffect(() => {
@@ -261,9 +265,7 @@ export default function RemitoPage() {
         if ((e as { name?: string })?.name === "AbortError") return
         console.error("No se pudieron cargar productos", e)
         if (!productsCacheRef.current[priceListId]?.products?.length) {
-          startTransition(() => {
-            setProducts([])
-          })
+          startTransition(() => setProducts([]))
         }
       } finally {
         setIsLoadingProducts(false)
@@ -407,36 +409,141 @@ export default function RemitoPage() {
 <html>
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Imprimir Remito</title>
 ${styles}
 <style>
-  body { margin: 0; background: #f5f5f5; }
-  .topbar{
-    position: sticky; top:0; z-index:10;
-    display:flex; gap:10px; justify-content:flex-end; align-items:center;
-    padding:12px; background:#fff; border-bottom:1px solid #ddd;
+  @page {
+    size: 58mm auto;
+    margin: 0;
   }
-  .btn{
-    font-size:16px; padding:10px 14px; border-radius:10px;
-    border:1px solid #ccc; background:#fff;
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 58mm;
+    background: #fff;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
-  .btn-primary{ background:#0f172a; color:#fff; border-color:#0f172a; }
-  .sheet{ padding:12px; }
-  #printable-remito{ display:block !important; background:#fff !important; }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px 8px;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .btn {
+    appearance: none;
+    -webkit-appearance: none;
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 12px;
+    border: 1px solid #d0d0d0;
+    background: #fff;
+    color: #111 !important;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .btn * {
+    color: inherit !important;
+  }
+
+  .btn-primary {
+    background: #111 !important;
+    color: #fff !important;
+    border-color: #111 !important;
+  }
+
+  .btn-primary * {
+    color: inherit !important;
+  }
+
+  .sheet {
+    width: 48mm;
+    min-width: 48mm;
+    max-width: 48mm;
+    padding: 0;
+    margin: 0 auto;
+    background: #fff;
+  }
+
+  #printable-remito {
+    display: block !important;
+    width: 48mm !important;
+    min-width: 48mm !important;
+    max-width: 48mm !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  @media print {
+    .topbar {
+      display: none !important;
+    }
+
+    html, body {
+      width: 58mm;
+      background: #fff !important;
+      color: #000 !important;
+    }
+
+    .sheet {
+      width: 48mm;
+      min-width: 48mm;
+      max-width: 48mm;
+      margin: 0;
+    }
+  }
 </style>
 </head>
 <body>
   <div class="topbar">
-    <button class="btn" id="btnClose">Cerrar</button>
-    <button class="btn btn-primary" id="btnPrint">Imprimir</button>
+    <button type="button" class="btn" id="btnClose">Cerrar</button>
+    <button type="button" class="btn btn-primary" id="btnPrint">Imprimir</button>
   </div>
+
   <div class="sheet">
     ${printable.outerHTML}
   </div>
+
   <script>
-    document.getElementById("btnPrint").addEventListener("click", () => window.print());
-    document.getElementById("btnClose").addEventListener("click", () => window.close());
+    const btnPrint = document.getElementById("btnPrint");
+    const btnClose = document.getElementById("btnClose");
+
+    if (btnPrint) {
+      btnPrint.addEventListener("click", () => window.print());
+    }
+
+    if (btnClose) {
+      btnClose.addEventListener("click", () => {
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.close();
+        }
+      });
+    }
   </script>
 </body>
 </html>`
@@ -458,7 +565,7 @@ ${styles}
   }, [buildPrintHtml])
 
   const handlePrint = useCallback(async () => {
-    if (!canPrint || isSaving) return
+    if (!canPrint || isSaving || isPrintingBluetooth) return
 
     const printWindow = isIOS() ? openPrintWindowImmediate() : null
 
@@ -475,10 +582,18 @@ ${styles}
     if (!ok) return
 
     advanceAndReset()
-  }, [canPrint, isSaving, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
+  }, [
+    canPrint,
+    isSaving,
+    isPrintingBluetooth,
+    openPrintWindowImmediate,
+    persistRemito,
+    advanceAndReset,
+    showToast,
+  ])
 
   const handlePreviewPrint = useCallback(async () => {
-    if (!canPrint || isSaving) return
+    if (!canPrint || isSaving || isPrintingBluetooth) return
 
     setShowPreview(false)
 
@@ -497,7 +612,78 @@ ${styles}
     if (!ok) return
 
     advanceAndReset()
-  }, [canPrint, isSaving, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
+  }, [
+    canPrint,
+    isSaving,
+    isPrintingBluetooth,
+    openPrintWindowImmediate,
+    persistRemito,
+    advanceAndReset,
+    showToast,
+  ])
+
+  const handleBluetoothPrint = useCallback(async () => {
+    if (!canPrint || isSaving || isPrintingBluetooth) return
+
+    try {
+      setIsPrintingBluetooth(true)
+      showToast("Buscando impresora térmica...")
+
+      const payload = buildRemitoEscPos(remitoData)
+      const { device, characteristic } = await connectBlePrinter()
+
+      showToast(`Conectado a ${device.name?.trim() || "impresora térmica"}. Enviando...`)
+
+      try {
+        await writeEscPos(characteristic, payload)
+      } finally {
+        await disconnectBlePrinter(device)
+      }
+
+      const ok = await persistRemito()
+      if (!ok) return
+
+      advanceAndReset()
+      showToast("Ticket enviado a la impresora")
+    } catch (error) {
+      console.error("Error imprimiendo por Bluetooth", error)
+
+      const message =
+        error instanceof Error ? error.message : "No se pudo imprimir por Bluetooth"
+
+      if (/bluetooth no disponible/i.test(message)) {
+        showToast("Este celular o navegador no admite BT")
+        return
+      }
+
+      if (/no se pudo abrir conexión bluetooth/i.test(message)) {
+        showToast("No se pudo conectar con la impresora")
+        return
+      }
+
+      if (/no parece compatible/i.test(message)) {
+        showToast("La impresora no es compatible")
+        return
+      }
+
+      if (/characteristic/i.test(message)) {
+        showToast("Se encontró la impresora, pero no respondió")
+        return
+      }
+
+      showToast("Falló la impresión por BT")
+    } finally {
+      setIsPrintingBluetooth(false)
+    }
+  }, [
+    canPrint,
+    isSaving,
+    isPrintingBluetooth,
+    remitoData,
+    persistRemito,
+    advanceAndReset,
+    showToast,
+  ])
 
   const confirmNewRemito = useCallback(() => {
     setClient(defaultClient)
@@ -516,12 +702,12 @@ ${styles}
 
   if (!mounted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="app-card flex items-center gap-3 px-4 py-3">
-          <div className="flex size-9 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+      <div className="flex min-h-screen items-center justify-center bg-[#111214] px-4">
+        <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-[#1b1b1d] px-4 py-3 shadow-sm">
+          <div className="flex size-9 items-center justify-center rounded-2xl bg-[#1976d2] text-white">
             <FileText className="size-4" />
           </div>
-          <p className="text-sm font-medium text-muted-foreground">Cargando remito...</p>
+          <p className="text-sm font-medium text-[#b0b0b6]">Cargando remito...</p>
         </div>
       </div>
     )
@@ -529,68 +715,67 @@ ${styles}
 
   return (
     <>
-      <div id="screen-ui" className="min-h-screen overflow-x-hidden bg-background">
-        <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-xl">
+      <div id="screen-ui" className="min-h-screen overflow-x-hidden bg-[#111214] text-white">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-[#111214]/95 backdrop-blur-xl">
           <div className="mx-auto w-full max-w-md px-4 pb-3 pt-3">
-            <div className="app-card p-3.5">
-              <div className="flex items-start justify-between gap-3">
+            <div className="rounded-[24px] border border-white/10 bg-[#2a2926] shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+              <div className="flex items-start justify-between gap-3 px-4 py-2.5">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-                      <FileText className="size-4" />
-                    </div>
-
-                    <div className="min-w-0">
-                      <h1 className="truncate text-[18px] font-semibold text-foreground">
-                        Nuevo remito
-                      </h1>
-                      <p className="mt-0.5 text-[13px] text-muted-foreground">
-                        <span className="font-semibold text-foreground">{remitoNumero}</span> ·{" "}
-                        {remitoDateRef.current}
-                      </p>
-                    </div>
-                  </div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#9f9fa6]">
+                    Pedido nuevo
+                  </p>
+                  <h1 className="mt-0.5 truncate text-[16px] font-semibold leading-none text-white">
+                    {client.nombre?.trim() || "Nuevo remito"}
+                  </h1>
+                  <p className="mt-1 text-[12px] leading-none text-[#a9a9ae]">
+                    <span className="font-semibold text-white">{remitoNumero}</span>
+                    <span className="mx-1 text-white/15">•</span>
+                    {remitoDateRef.current}
+                  </p>
                 </div>
 
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
                   onClick={() => setShowActions(true)}
                   aria-label="Más acciones"
-                  className="size-11 bg-background"
+                  className="size-9 rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
                 >
                   <MoreHorizontal className="size-4" />
                 </Button>
               </div>
 
-              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-muted/35 px-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground">Lista de precios</p>
-                </div>
+              <div className="border-t border-white/10 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <PriceListSelect value={priceListId} onChange={setPriceListId} />
 
-                <PriceListSelect value={priceListId} onChange={setPriceListId} />
+                  <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] px-3 py-2 text-right">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
+                      Total
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-white tabular-nums">
+                      {formatCurrency(total)}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </header>
 
         <main
-          className="mx-auto w-full max-w-md px-4 pb-4 pt-4"
+          className="mx-auto w-full max-w-md px-4 pb-4 pt-3"
           style={{
-            paddingBottom: `calc(${BOTTOM_NAV_PX + (footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX)}px + env(safe-area-inset-bottom) + 16px)`,
+            paddingBottom: `calc(${BOTTOM_NAV_PX + (footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX)}px + env(safe-area-inset-bottom) + 18px)`,
           }}
         >
           <div className="space-y-5">
-            <section>
-              <div className="mb-2.5">
-                <h2 className="app-section-title">Productos</h2>
-              </div>
-
+            <section className="pt-1">
               {isLoadingProducts && products.length === 0 ? (
                 <div className="space-y-3">
-                  <div className="h-11 animate-pulse rounded-2xl bg-muted" />
-                  <div className="h-20 animate-pulse rounded-3xl bg-muted" />
-                  <div className="h-20 animate-pulse rounded-3xl bg-muted" />
+                  <div className="h-11 animate-pulse rounded-xl bg-[#1a1a1c]" />
+                  <div className="h-20 animate-pulse rounded-2xl bg-[#1a1a1c]" />
+                  <div className="h-20 animate-pulse rounded-2xl bg-[#1a1a1c]" />
                 </div>
               ) : (
                 <ProductSelector
@@ -602,16 +787,22 @@ ${styles}
             </section>
 
             <section className="pt-1">
-              <div className="mb-3">
-                <div className="flex items-center gap-2">
-                  <h2 className="app-section-title">Cliente o comercio</h2>
-                  <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                    Opcional
-                  </span>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-[0.06em] text-[#d6d6da]">
+                    Datos del comercio
+                  </h2>
+                  <p className="mt-1 text-sm text-[#9e9ea6]">
+                    Opcional. Se imprimen en el remito si los completás.
+                  </p>
                 </div>
+
+                <span className="rounded-full border border-white/10 bg-[#1a1a1c] px-2.5 py-1 text-[11px] font-medium text-[#b0b0b6]">
+                  Opcional
+                </span>
               </div>
 
-              <div className="app-card-soft">
+              <div className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
                 <ClientForm
                   data={client}
                   onFieldChange={(field, value) =>
@@ -624,31 +815,39 @@ ${styles}
         </main>
 
         <div
-          className="fixed inset-x-0 z-50 border-t border-border bg-background/98 backdrop-blur-xl sm:hidden"
+          className="fixed inset-x-0 z-50 border-t border-white/10 bg-[#2a2926]/98 backdrop-blur-xl"
           style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
         >
-          <div className="mx-auto w-full max-w-md px-4 py-2">
-            <div className="app-card overflow-hidden p-0">
+          <div className="mx-auto w-full max-w-md px-4 py-3">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#2f2d29] shadow-lg">
               <button
                 type="button"
                 onClick={() => setFooterCollapsed((prev) => !prev)}
-                className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left"
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
                 aria-expanded={!footerCollapsed}
-                aria-label={footerCollapsed ? "Mostrar total e imprimir" : "Ocultar total e imprimir"}
+                aria-label={footerCollapsed ? "Mostrar acciones del remito" : "Ocultar acciones del remito"}
               >
                 <div className="min-w-0">
-                  <p className="app-meta font-medium">Total</p>
-                  <p className="mt-0.5 truncate text-[17px] font-semibold text-foreground tabular-nums">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
+                    Total del pedido
+                  </p>
+                  <p className="mt-1 truncate text-[18px] font-semibold tracking-tight text-white tabular-nums">
                     {formatCurrency(total)}
                   </p>
                 </div>
 
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-muted ring-1 ring-border">
-                  {footerCollapsed ? (
-                    <ChevronUp className="size-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  )}
+                <div className="flex items-center gap-2">
+                  <div className="rounded-full bg-black/15 px-2.5 py-1 text-[11px] font-medium text-[#d1d1d5]">
+                    {items.length} {items.length === 1 ? "item" : "items"}
+                  </div>
+
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-black/15 ring-1 ring-white/10">
+                    {footerCollapsed ? (
+                      <ChevronUp className="size-4 text-[#c4c4c8]" />
+                    ) : (
+                      <ChevronDown className="size-4 text-[#c4c4c8]" />
+                    )}
+                  </div>
                 </div>
               </button>
 
@@ -659,30 +858,45 @@ ${styles}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.18, ease: "easeOut" }}
-                    className="overflow-hidden border-t border-border"
+                    className="overflow-hidden border-t border-white/10"
                   >
-                    <div className="flex items-center gap-3 px-4 py-2.5">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          {items.length} {items.length === 1 ? "item" : "items"}
+                    <div className="px-4 py-3">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-[#b0b0b6]">
+                            {items.length} {items.length === 1 ? "producto" : "productos"} cargados
+                          </p>
+                        </div>
+                        <p className="text-sm font-semibold text-white tabular-nums">
+                          {formatCurrency(total)}
                         </p>
                       </div>
 
-                      <Button
-                        variant="default"
-                        size="default"
-                        disabled={!canPrint || isSaving}
-                        onClick={handlePrint}
-                        aria-label="Imprimir"
-                        className="shadow-sm"
-                      >
-                        {isSaving ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Printer className="size-4" />
-                        )}
-                        <span>{isSaving ? "Imprimiendo..." : "Imprimir"}</span>
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+  <Button
+    variant="default"
+    onClick={handleBluetoothPrint}
+    disabled={!canPrint || isSaving || isPrintingBluetooth}
+    className="h-11 rounded-xl bg-[#1976d2] text-white hover:bg-[#1c82e4]"
+  >
+    {isPrintingBluetooth ? (
+      <Loader2 className="size-4 animate-spin" />
+    ) : (
+      <Bluetooth className="size-4" />
+    )}
+    <span>{isPrintingBluetooth ? "Conectando..." : "Imprimir BT"}</span>
+  </Button>
+
+  <Button
+    variant="outline"
+    onClick={() => setShowPreview(true)}
+    disabled={!canPrint || isPrintingBluetooth}
+    className="h-11 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/5"
+  >
+    <Eye className="size-4" />
+    <span>Ver ticket</span>
+  </Button>
+</div>
                     </div>
                   </motion.div>
                 )}
@@ -698,17 +912,17 @@ ${styles}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.98 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 sm:hidden"
+              className="fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2"
               style={{
                 bottom: `calc(${BOTTOM_NAV_PX + (footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX)}px + env(safe-area-inset-bottom) + 12px)`,
               }}
               role="alert"
             >
-              <div className="flex items-center gap-3 rounded-2xl bg-background px-4 py-3 shadow-lg ring-1 ring-border">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1b1b1d] px-4 py-3 shadow-lg">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#1976d2] text-white">
                   <CheckCircle2 className="size-4" />
                 </div>
-                <p className="text-sm font-medium text-foreground">{toast.text}</p>
+                <p className="text-sm font-medium text-white">{toast.text}</p>
               </div>
             </motion.div>
           )}
@@ -721,37 +935,43 @@ ${styles}
             fixed left-1/2 top-1/2 z-50
             flex h-[100dvh] w-screen max-w-none
             -translate-x-1/2 -translate-y-1/2
-            flex-col overflow-hidden rounded-none border-0 p-0
-            sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-4xl sm:rounded-3xl sm:border sm:border-border
+            flex-col overflow-hidden rounded-none border-0 bg-[#111214] p-0 text-white
+            sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-4xl sm:rounded-3xl sm:border sm:border-white/10
           "
         >
-          <DialogHeader className="border-b border-border px-4 py-4">
-            <DialogTitle className="app-section-title">Vista previa del remito</DialogTitle>
+          <DialogHeader className="border-b border-white/10 px-4 py-4">
+            <DialogTitle className="text-base font-semibold tracking-tight text-white">
+              Ver ticket
+            </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto bg-accent/60 px-3 py-3 sm:px-4 sm:py-4">
-            <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/10">
+          <div className="flex-1 overflow-y-auto bg-[#161618] px-3 py-3 sm:px-4 sm:py-4">
+            <div className="mx-auto w-fit overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/10">
               <RemitoPrint data={remitoData} />
             </div>
           </div>
 
-          <div className="border-t border-border bg-background px-4 py-3">
+          <div className="border-t border-white/10 bg-[#111214] px-4 py-3">
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowPreview(false)} className="flex-1">
+              <Button
+                variant="outline"
+                onClick={() => setShowPreview(false)}
+                className="flex-1 border-white/15 bg-transparent text-white hover:bg-white/5"
+              >
                 Cerrar
               </Button>
               <Button
                 onClick={handlePreviewPrint}
-                disabled={isSaving}
+                disabled={isSaving || isPrintingBluetooth}
                 size="lg"
-                className="flex-1"
+                className="flex-1 bg-[#1976d2] text-white hover:bg-[#1c82e4]"
               >
                 {isSaving ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <Printer className="size-4" />
                 )}
-                <span>{isSaving ? "Imprimiendo..." : "Imprimir"}</span>
+                <span>{isSaving ? "Imprimiendo..." : "Imprimir normal"}</span>
               </Button>
             </div>
           </div>
@@ -759,9 +979,11 @@ ${styles}
       </Dialog>
 
       <Dialog open={showActions} onOpenChange={setShowActions}>
-        <DialogContent className="max-w-sm rounded-3xl border-border">
+        <DialogContent className="max-w-sm rounded-3xl border-white/10 bg-[#1b1b1d] text-white">
           <DialogHeader>
-            <DialogTitle className="app-section-title">Acciones del pedido</DialogTitle>
+            <DialogTitle className="text-base font-semibold tracking-tight text-white">
+              Acciones del pedido
+            </DialogTitle>
           </DialogHeader>
 
           <div className="flex flex-col gap-2">
@@ -775,7 +997,7 @@ ${styles}
                 }
                 setShowConfirmNew(true)
               }}
-              className="justify-start"
+              className="justify-start border-white/10 bg-transparent text-white hover:bg-white/5"
             >
               <RotateCcw className="size-4" />
               Nuevo remito
@@ -789,7 +1011,7 @@ ${styles}
                 setShowConfirmClear(true)
               }}
               disabled={items.length === 0}
-              className="justify-start"
+              className="justify-start border-white/10 bg-transparent text-white hover:bg-white/5"
             >
               <Trash2 className="size-4" />
               Vaciar productos
@@ -802,30 +1024,40 @@ ${styles}
                 setShowPreview(true)
               }}
               disabled={!canPrint}
-              className="justify-start"
+              className="justify-start border-white/10 bg-transparent text-white hover:bg-white/5"
             >
               <Eye className="size-4" />
-              Vista previa
+              Ver ticket
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showConfirmNew} onOpenChange={setShowConfirmNew}>
-        <DialogContent className="max-w-sm rounded-3xl border-border">
+        <DialogContent className="max-w-sm rounded-3xl border-white/10 bg-[#1b1b1d] text-white">
           <DialogHeader>
-            <DialogTitle className="app-section-title">Empezar un nuevo remito</DialogTitle>
+            <DialogTitle className="text-base font-semibold tracking-tight text-white">
+              Empezar un nuevo remito
+            </DialogTitle>
           </DialogHeader>
 
-          <p className="app-subtitle">
+          <p className="text-sm text-[#b0b0b6]">
             Se va a limpiar el pedido actual y vas a empezar uno nuevo.
           </p>
 
           <div className="mt-2 flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setShowConfirmNew(false)}>
+            <Button
+              variant="outline"
+              className="flex-1 border-white/10 bg-transparent text-white hover:bg-white/5"
+              onClick={() => setShowConfirmNew(false)}
+            >
               Cancelar
             </Button>
-            <Button size="lg" className="flex-1" onClick={confirmNewRemito}>
+            <Button
+              size="lg"
+              className="flex-1 bg-[#1976d2] text-white hover:bg-[#1c82e4]"
+              onClick={confirmNewRemito}
+            >
               Continuar
             </Button>
           </div>
@@ -833,20 +1065,21 @@ ${styles}
       </Dialog>
 
       <Dialog open={showConfirmClear} onOpenChange={setShowConfirmClear}>
-        <DialogContent className="max-w-sm rounded-3xl border-border">
+        <DialogContent className="max-w-sm rounded-3xl border-white/10 bg-[#1b1b1d] text-white">
           <DialogHeader>
-            <DialogTitle className="app-section-title">Vaciar productos</DialogTitle>
+            <DialogTitle className="text-base font-semibold tracking-tight text-white">
+              Vaciar productos
+            </DialogTitle>
           </DialogHeader>
 
-          <p className="app-subtitle">
-            Se van a eliminar {items.length} {items.length === 1 ? "producto" : "productos"} del
-            pedido actual.
+          <p className="text-sm text-[#b0b0b6]">
+            Se van a eliminar {items.length} {items.length === 1 ? "producto" : "productos"} del pedido actual.
           </p>
 
           <div className="mt-2 flex gap-2">
             <Button
               variant="outline"
-              className="flex-1"
+              className="flex-1 border-white/10 bg-transparent text-white hover:bg-white/5"
               onClick={() => setShowConfirmClear(false)}
             >
               Cancelar

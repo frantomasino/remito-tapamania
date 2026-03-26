@@ -4,95 +4,95 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.985 0.002 85);
-  --foreground: oklch(0.2 0.01 50);
+  --background: #111214;
+  --foreground: #ffffff;
 
-  --card: oklch(0.996 0.001 85);
-  --card-foreground: oklch(0.2 0.01 50);
+  --card: #1b1b1d;
+  --card-foreground: #ffffff;
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.01 50);
+  --popover: #1b1b1d;
+  --popover-foreground: #ffffff;
 
-  --primary: oklch(0.39 0.1 158);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: #1976d2;
+  --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.968 0.004 85);
-  --secondary-foreground: oklch(0.28 0.01 50);
+  --secondary: #232326;
+  --secondary-foreground: #ffffff;
 
-  --muted: oklch(0.945 0.005 85);
-  --muted-foreground: oklch(0.5 0.01 50);
+  --muted: #232326;
+  --muted-foreground: #9e9ea6;
 
-  --accent: oklch(0.935 0.008 85);
-  --accent-foreground: oklch(0.24 0.01 50);
+  --accent: #2a2a2d;
+  --accent-foreground: #ffffff;
 
-  --destructive: oklch(0.58 0.22 27);
-  --destructive-foreground: oklch(0.985 0 0);
+  --destructive: #ff5a5f;
+  --destructive-foreground: #ffffff;
 
-  --border: oklch(0.88 0.007 85);
-  --input: oklch(0.975 0.003 85);
-  --ring: oklch(0.39 0.1 158);
+  --border: rgba(255, 255, 255, 0.1);
+  --input: #1a1a1c;
+  --ring: rgba(255, 255, 255, 0.15);
 
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --chart-1: #1976d2;
+  --chart-2: #5aa9ff;
+  --chart-3: #ff5a5f;
+  --chart-4: #7c8594;
+  --chart-5: #c5c8ce;
 
-  --radius: 1.15rem;
+  --radius: 1rem;
 
-  --sidebar: oklch(0.985 0.002 85);
-  --sidebar-foreground: oklch(0.2 0.01 50);
-  --sidebar-primary: oklch(0.24 0.01 50);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.95 0.004 85);
-  --sidebar-accent-foreground: oklch(0.24 0.01 50);
-  --sidebar-border: oklch(0.88 0.008 85);
-  --sidebar-ring: oklch(0.39 0.1 158);
+  --sidebar: #1b1b1d;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #1976d2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #232326;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgba(255, 255, 255, 0.15);
 }
 
 .dark {
-  --background: oklch(0.17 0.004 85);
-  --foreground: oklch(0.96 0.002 85);
+  --background: #111214;
+  --foreground: #ffffff;
 
-  --card: oklch(0.205 0.004 85);
-  --card-foreground: oklch(0.96 0.002 85);
+  --card: #1b1b1d;
+  --card-foreground: #ffffff;
 
-  --popover: oklch(0.19 0.004 85);
-  --popover-foreground: oklch(0.96 0.002 85);
+  --popover: #1b1b1d;
+  --popover-foreground: #ffffff;
 
-  --primary: oklch(0.76 0.12 158);
-  --primary-foreground: oklch(0.16 0.004 85);
+  --primary: #1976d2;
+  --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.24 0.004 85);
-  --secondary-foreground: oklch(0.96 0.002 85);
+  --secondary: #232326;
+  --secondary-foreground: #ffffff;
 
-  --muted: oklch(0.235 0.004 85);
-  --muted-foreground: oklch(0.74 0.003 85);
+  --muted: #232326;
+  --muted-foreground: #9e9ea6;
 
-  --accent: oklch(0.27 0.004 85);
-  --accent-foreground: oklch(0.96 0.002 85);
+  --accent: #2a2a2d;
+  --accent-foreground: #ffffff;
 
-  --destructive: oklch(0.45 0.17 27);
-  --destructive-foreground: oklch(0.96 0.002 85);
+  --destructive: #ff5a5f;
+  --destructive-foreground: #ffffff;
 
-  --border: oklch(0.3 0.004 85);
-  --input: oklch(0.235 0.004 85);
-  --ring: oklch(0.76 0.12 158);
+  --border: rgba(255, 255, 255, 0.1);
+  --input: #1a1a1c;
+  --ring: rgba(255, 255, 255, 0.15);
 
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  --chart-1: #1976d2;
+  --chart-2: #5aa9ff;
+  --chart-3: #ff5a5f;
+  --chart-4: #7c8594;
+  --chart-5: #c5c8ce;
 
-  --sidebar: oklch(0.2 0.004 85);
-  --sidebar-foreground: oklch(0.96 0.002 85);
-  --sidebar-primary: oklch(0.76 0.12 158);
-  --sidebar-primary-foreground: oklch(0.16 0.004 85);
-  --sidebar-accent: oklch(0.25 0.004 85);
-  --sidebar-accent-foreground: oklch(0.96 0.002 85);
-  --sidebar-border: oklch(0.29 0.004 85);
-  --sidebar-ring: oklch(0.76 0.12 158);
+  --sidebar: #1b1b1d;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #1976d2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #232326;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgba(255, 255, 255, 0.15);
 }
 
 @theme inline {
@@ -155,7 +155,7 @@
   }
 
   html {
-    color-scheme: light;
+    color-scheme: dark;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-text-size-adjust: 100%;
@@ -169,8 +169,8 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--primary) 22%, white);
-    color: var(--foreground);
+    background: rgba(25, 118, 210, 0.32);
+    color: #ffffff;
   }
 
   h1,
@@ -227,13 +227,13 @@
   select:focus-visible,
   a:focus-visible {
     box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--ring) 38%, white),
-      0 0 0 4px color-mix(in oklab, var(--ring) 14%, white);
+      0 0 0 1px rgba(255, 255, 255, 0.12),
+      0 0 0 4px rgba(255, 255, 255, 0.08);
   }
 
   input::placeholder,
   textarea::placeholder {
-    color: color-mix(in oklab, var(--muted-foreground) 78%, white);
+    color: #8f8f95;
     opacity: 1;
   }
 
@@ -257,43 +257,52 @@
 
 @layer utilities {
   .app-page-title {
-    @apply text-xl font-semibold text-foreground;
+    @apply text-xl font-semibold text-white;
   }
 
   .app-section-title {
-    @apply text-base font-semibold text-foreground;
+    @apply text-base font-semibold text-white;
   }
 
   .app-subtitle {
-    @apply text-sm text-muted-foreground;
+    color: #9e9ea6;
   }
 
   .app-field-label {
-    @apply text-sm font-medium text-foreground;
+    @apply text-sm font-medium text-white;
   }
 
   .app-meta {
-    @apply text-xs text-muted-foreground;
+    color: #a9a9ae;
   }
 
   .app-card {
-    @apply rounded-3xl bg-card p-4 ring-1 ring-border shadow-sm;
+    @apply rounded-3xl border p-4 shadow-sm;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #1b1b1d;
   }
 
   .app-card-soft {
-    @apply rounded-3xl bg-background p-4 ring-1 ring-border;
+    @apply rounded-3xl border p-4;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #1a1a1c;
   }
 
   .app-card-accent {
-    @apply rounded-3xl border border-primary/20 bg-primary/[0.05] p-4 shadow-sm;
+    @apply rounded-3xl border p-4 shadow-sm;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #242426;
   }
 
   .app-button-primary {
-    @apply h-12 rounded-2xl text-sm font-semibold;
+    @apply h-12 rounded-2xl text-sm font-semibold text-white;
+    background: #1976d2;
   }
 
   .app-button-secondary {
-    @apply h-11 rounded-2xl text-sm;
+    @apply h-11 rounded-2xl border text-sm text-white;
+    border-color: rgba(255, 255, 255, 0.12);
+    background: transparent;
   }
 
   .app-button-icon {
@@ -301,23 +310,33 @@
   }
 
   .app-input {
-    @apply h-11 rounded-2xl;
+    @apply h-11 rounded-xl border text-white;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #1a1a1c;
   }
 
   .app-textarea {
-    @apply min-h-24 resize-none rounded-2xl;
+    @apply min-h-24 resize-none rounded-2xl border text-white;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #1a1a1c;
   }
 
   .app-empty {
-    @apply rounded-3xl border bg-background px-4 py-8 text-center;
+    @apply rounded-3xl border px-4 py-8 text-center;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #1a1a1c;
   }
 
   .app-feedback-error {
-    @apply rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive;
+    @apply rounded-2xl border px-3 py-2.5 text-sm text-white;
+    border-color: rgba(255, 90, 95, 0.18);
+    background: rgba(255, 90, 95, 0.12);
   }
 
   .app-feedback-success {
-    @apply rounded-2xl border border-primary/15 bg-primary/10 px-3 py-2.5 text-sm text-foreground;
+    @apply rounded-2xl border px-3 py-2.5 text-sm text-white;
+    border-color: rgba(25, 118, 210, 0.18);
+    background: rgba(25, 118, 210, 0.14);
   }
 }
 
@@ -342,11 +361,21 @@ body {
   display: none;
 }
 
-/* --- Print rules: imprime SOLO el remito --- */
+/* --- Ticket térmico 58 mm --- */
 @media print {
   @page {
-    margin: 10mm;
-    size: A4;
+    size: 58mm auto;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 58mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   body * {
@@ -360,51 +389,27 @@ body {
 
   #printable-remito {
     display: block !important;
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100% !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 48mm !important;
+    min-width: 48mm !important;
+    max-width: 48mm !important;
     background: white !important;
+    color: black !important;
     z-index: 999999 !important;
   }
 
   [role="dialog"],
-  [data-radix-portal] {
+  [data-radix-portal],
+  #screen-ui {
     display: none !important;
   }
 
-  html,
-  body {
-    background: white !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  .remito-print {
-    background: white !important;
+  .remito-ticket,
+  .remito-ticket * {
     color: black !important;
-    font-size: 12px;
-  }
-
-  .remito-print * {
-    color: black !important;
-    border-color: black !important;
+    background: white !important;
     box-shadow: none !important;
-  }
-
-  .remito-print .text-muted-foreground {
-    color: #555 !important;
-  }
-
-  .remito-print table {
-    border-collapse: collapse;
-    width: 100%;
-  }
-
-  .remito-print td,
-  .remito-print th {
-    border: 1px solid #000 !important;
-    padding: 4px 8px;
   }
 }

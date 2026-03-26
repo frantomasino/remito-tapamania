@@ -166,23 +166,23 @@ export default function EditarRemitoPage() {
     return (
       <div className="flex flex-col gap-4 px-4 pb-5 pt-4">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-2xl" />
-          <Skeleton className="h-6 w-40 rounded-2xl" />
+          <Skeleton className="h-10 w-10 rounded-2xl bg-[#232326]" />
+          <Skeleton className="h-6 w-40 rounded-2xl bg-[#232326]" />
         </div>
-        <Skeleton className="h-36 rounded-3xl" />
-        <Skeleton className="h-64 rounded-3xl" />
-        <Skeleton className="h-28 rounded-3xl" />
+        <Skeleton className="h-36 rounded-3xl bg-[#232326]" />
+        <Skeleton className="h-64 rounded-3xl bg-[#232326]" />
+        <Skeleton className="h-28 rounded-3xl bg-[#232326]" />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 pb-5 pt-4">
-      <header className="app-card">
+    <div className="flex flex-col gap-4 px-4 pb-5 pt-4 text-white">
+      <header className="rounded-[28px] border border-white/10 bg-[#2a2926] px-4 py-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
         <div className="flex items-start gap-3">
           <Link
             href={`/dashboard/${remitoId}`}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white"
             aria-label="Volver al detalle"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -190,12 +190,16 @@ export default function EditarRemitoPage() {
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#1976d2] text-white">
                 <ReceiptText className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <h1 className="app-section-title">Editar pedido</h1>
-                <p className="app-subtitle mt-1">Pedido {form.numero_remito || "sin número"}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#b0b0b6]">
+                  Editar pedido
+                </p>
+                <h1 className="mt-1 text-base font-semibold tracking-tight text-white">
+                  {form.numero_remito || "Sin número"}
+                </h1>
               </div>
             </div>
           </div>
@@ -203,50 +207,54 @@ export default function EditarRemitoPage() {
       </header>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <section className="app-card">
+        <section className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
           <div className="mb-4 flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border">
-              <FileText className="h-4 w-4 text-muted-foreground" />
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#232326] ring-1 ring-white/10">
+              <FileText className="h-4 w-4 text-[#9e9ea6]" />
             </div>
             <div>
-              <h2 className="app-section-title">Datos del pedido</h2>
-              <p className="app-subtitle mt-1">Número, fecha y estado actual.</p>
+              <h2 className="text-base font-semibold tracking-tight text-white">
+                Datos del pedido
+              </h2>
+              <p className="mt-1 text-sm text-[#9e9ea6]">
+                Número, fecha y estado actual.
+              </p>
             </div>
           </div>
 
           <div className="flex flex-col gap-3">
             <div className="space-y-1.5">
-              <p className="app-field-label">Número</p>
+              <p className="text-sm font-medium text-white">Número</p>
               <Input
                 id="numero"
                 value={form.numero_remito}
                 onChange={(e) => setForm({ ...form, numero_remito: e.target.value })}
                 required
-                className="app-input"
+                className="h-11 rounded-xl"
               />
             </div>
 
             <div className="space-y-1.5">
-              <p className="app-field-label">Fecha</p>
+              <p className="text-sm font-medium text-white">Fecha</p>
               <Input
                 id="fecha"
                 type="date"
                 value={form.fecha}
                 onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-                className="app-input"
+                className="h-11 rounded-xl"
               />
             </div>
 
             <div className="space-y-1.5">
-              <p className="app-field-label">Estado</p>
+              <p className="text-sm font-medium text-white">Estado</p>
               <Select
                 value={form.estado}
                 onValueChange={(v) => setForm({ ...form, estado: v as typeof form.estado })}
               >
-                <SelectTrigger id="estado">
+                <SelectTrigger className="border-white/10 bg-[#1a1a1c] text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-white/10 bg-[#1b1b1d] text-white">
                   <SelectItem value="pendiente">Pendiente</SelectItem>
                   <SelectItem value="entregado">Entregado</SelectItem>
                   <SelectItem value="cancelado">Cancelado</SelectItem>
@@ -256,21 +264,27 @@ export default function EditarRemitoPage() {
           </div>
         </section>
 
-        <section className="app-card">
+        <section className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border">
-                <Package2 className="h-4 w-4 text-muted-foreground" />
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#232326] ring-1 ring-white/10">
+                <Package2 className="h-4 w-4 text-[#9e9ea6]" />
               </div>
               <div>
-                <h2 className="app-section-title">Productos</h2>
-                <p className="app-subtitle mt-1">
+                <h2 className="text-base font-semibold tracking-tight text-white">Productos</h2>
+                <p className="mt-1 text-sm text-[#9e9ea6]">
                   {items.length} {items.length === 1 ? "producto" : "productos"}
                 </p>
               </div>
             </div>
 
-            <Button type="button" variant="outline" size="default" onClick={addItem}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addItem}
+              className="border-white/10 bg-transparent text-white hover:bg-white/5"
+            >
               <Plus className="h-4 w-4" />
               Agregar
             </Button>
@@ -278,15 +292,18 @@ export default function EditarRemitoPage() {
 
           <div className="flex flex-col gap-3">
             {items.map((item, index) => (
-              <div key={index} className="app-card-soft px-3 py-3">
+              <div
+                key={index}
+                className="rounded-2xl border border-white/10 bg-[#232326] px-3 py-3"
+              >
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-foreground">Producto {index + 1}</p>
+                  <p className="text-sm font-medium text-white">Producto {index + 1}</p>
 
                   {items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl text-muted-foreground transition-colors active:bg-accent active:text-destructive"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl text-[#b0b0b6] transition-colors hover:bg-white/5 hover:text-[#ff6b6b]"
                       aria-label="Eliminar producto"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -296,18 +313,18 @@ export default function EditarRemitoPage() {
 
                 <div className="space-y-2.5">
                   <div className="space-y-1.5">
-                    <p className="app-field-label">Descripción</p>
+                    <p className="text-sm font-medium text-white">Descripción</p>
                     <Input
                       placeholder="Descripción del producto"
                       value={item.descripcion}
                       onChange={(e) => updateItem(index, "descripcion", e.target.value)}
-                      className="app-input"
+                      className="h-11 rounded-xl"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1.5">
-                      <p className="app-field-label">Cantidad</p>
+                      <p className="text-sm font-medium text-white">Cantidad</p>
                       <Input
                         type="number"
                         step="0.01"
@@ -315,20 +332,20 @@ export default function EditarRemitoPage() {
                         placeholder="Cantidad"
                         value={item.cantidad}
                         onChange={(e) => updateItem(index, "cantidad", e.target.value)}
-                        className="app-input"
+                        className="h-11 rounded-xl"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <p className="app-field-label">Unidad</p>
+                      <p className="text-sm font-medium text-white">Unidad</p>
                       <Select
                         value={item.unidad}
                         onValueChange={(v) => updateItem(index, "unidad", v)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="border-white/10 bg-[#1a1a1c] text-white">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="border-white/10 bg-[#1b1b1d] text-white">
                           <SelectItem value="unidad">Unidad</SelectItem>
                           <SelectItem value="kg">Kg</SelectItem>
                           <SelectItem value="litro">Litro</SelectItem>
@@ -346,37 +363,43 @@ export default function EditarRemitoPage() {
           </div>
         </section>
 
-        <section className="app-card">
+        <section className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
           <div className="mb-4 flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border">
-              <Store className="h-4 w-4 text-muted-foreground" />
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#232326] ring-1 ring-white/10">
+              <Store className="h-4 w-4 text-[#9e9ea6]" />
             </div>
             <div>
-              <h2 className="app-section-title">Cliente o comercio</h2>
-              <p className="app-subtitle mt-1">Opcional. Solo si querés dejarlo cargado.</p>
+              <h2 className="text-base font-semibold tracking-tight text-white">
+                Cliente o comercio
+              </h2>
+              <p className="mt-1 text-sm text-[#9e9ea6]">
+                Opcional. Solo si querés dejarlo cargado.
+              </p>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <p className="app-field-label">Nombre</p>
+            <p className="text-sm font-medium text-white">Nombre</p>
             <Input
               id="cliente"
               value={form.cliente_nombre}
               onChange={(e) => setForm({ ...form, cliente_nombre: e.target.value })}
-              className="app-input"
+              className="h-11 rounded-xl"
               placeholder="Ej: Kiosco Juan"
             />
           </div>
         </section>
 
-        <section className="app-card">
+        <section className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
           <div className="mb-4 flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border">
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#232326] ring-1 ring-white/10">
+              <MessageSquare className="h-4 w-4 text-[#9e9ea6]" />
             </div>
             <div>
-              <h2 className="app-section-title">Observaciones</h2>
-              <p className="app-subtitle mt-1">Notas adicionales del pedido.</p>
+              <h2 className="text-base font-semibold tracking-tight text-white">
+                Observaciones
+              </h2>
+              <p className="mt-1 text-sm text-[#9e9ea6]">Notas adicionales del pedido.</p>
             </div>
           </div>
 
@@ -384,19 +407,25 @@ export default function EditarRemitoPage() {
             placeholder="Notas adicionales..."
             value={form.observaciones}
             onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
-            className="app-textarea"
+            className="min-h-24 rounded-2xl border-white/10 bg-[#1a1a1c] text-white placeholder:text-[#8f8f95]"
           />
         </section>
 
         {error && (
-          <div className="app-feedback-error">
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
+          <div
+            className="rounded-2xl border border-[#ff5a5f]/20 bg-[#ff5a5f]/10 px-3 py-2.5 text-sm text-white"
+            role="alert"
+          >
+            {error}
           </div>
         )}
 
-        <Button type="submit" disabled={saving} size="lg">
+        <Button
+          type="submit"
+          disabled={saving}
+          size="lg"
+          className="h-12 rounded-2xl bg-[#1976d2] text-white hover:bg-[#1c82e4]"
+        >
           {saving ? "Guardando..." : "Guardar cambios"}
         </Button>
       </form>
