@@ -46,6 +46,19 @@ function getPriceListLabel(value: PriceListId) {
   return PRICE_LISTS.find((list) => list.id === value)?.label ?? "Minorista"
 }
 
+function getPriceListBadgeClass(value: PriceListId) {
+  switch (value) {
+    case "minorista":
+      return "border-sky-400/20 bg-sky-500/10 text-sky-200"
+    case "mayorista":
+      return "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+    case "oferta":
+      return "border-amber-400/20 bg-amber-500/10 text-amber-200"
+    default:
+      return "border-white/10 bg-white/5 text-[#d7d7db]"
+  }
+}
+
 const defaultClient: ClientData = {
   nombre: "",
   direccion: "",
@@ -762,7 +775,9 @@ ${styles}
                     <span className="text-white/15">•</span>
                     <span>{remitoDateRef.current}</span>
                     <span className="text-white/15">•</span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-[#d7d7db]">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getPriceListBadgeClass(priceListId)}`}
+                    >
                       {getPriceListLabel(priceListId)}
                     </span>
                   </div>
