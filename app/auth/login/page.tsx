@@ -67,7 +67,7 @@ export default function LoginPage() {
 
           <div className="mt-5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
-              Tapamanía
+              App
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-white">
               Ingresar

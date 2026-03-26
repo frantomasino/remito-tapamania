@@ -42,6 +42,10 @@ const PRICE_LISTS: { id: PriceListId; label: string }[] = [
   { id: "oferta", label: "Oferta" },
 ]
 
+function getPriceListLabel(value: PriceListId) {
+  return PRICE_LISTS.find((list) => list.id === value)?.label ?? "Minorista"
+}
+
 const defaultClient: ClientData = {
   nombre: "",
   direccion: "",
@@ -63,8 +67,6 @@ function getTodayISODate(): string {
 }
 
 const LS_BASE_KEYS = {
-  priceListId: "priceListId",
-  nextNumber: "nextNumber",
   productsCache: "productsCache",
 } as const
 
@@ -137,7 +139,8 @@ export default function RemitoPage() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isPrintingBluetooth, setIsPrintingBluetooth] = useState(false)
-  const [footerCollapsed, setFooterCollapsed] = useState(false)
+  const [footerCollapsed, setFooterCollapsed] = useState(true)
+  const [headerCollapsed, setHeaderCollapsed] = useState(true)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
   const toastTimer = useRef<number | null>(null)
@@ -171,45 +174,56 @@ export default function RemitoPage() {
   useEffect(() => {
     if (!userId) return
 
-    try {
-      const nextKey = k(LS_BASE_KEYS.nextNumber, userId)
-      const listKey = k(LS_BASE_KEYS.priceListId, userId)
-      const productsCacheKey = k(LS_BASE_KEYS.productsCache, userId)
+    const loadUserPreferences = async () => {
+      try {
+        const supabase = createClient()
 
-      const savedList = localStorage.getItem(listKey) as PriceListId | null
-      if (savedList === "minorista" || savedList === "mayorista" || savedList === "oferta") {
-        setPriceListId(savedList)
-      }
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("next_remito_number, selected_price_list")
+          .eq("id", userId)
+          .single()
 
-      const savedNext = localStorage.getItem(nextKey)
-      if (savedNext) {
-        const n = Number(savedNext)
-        if (Number.isFinite(n) && n > 0) setNextNumber(n)
-      }
-
-      const rawProductsCache = localStorage.getItem(productsCacheKey)
-      if (rawProductsCache) {
-        const parsed = JSON.parse(rawProductsCache) as Record<PriceListId, ProductsCacheEntry>
-        if (parsed?.minorista && parsed?.mayorista && parsed?.oferta) {
-          productsCacheRef.current = parsed
+        if (profile?.next_remito_number && Number(profile.next_remito_number) > 0) {
+          setNextNumber(Number(profile.next_remito_number))
         }
-      }
-    } catch {}
+
+        const selected = profile?.selected_price_list
+        if (selected === "minorista" || selected === "mayorista" || selected === "oferta") {
+          setPriceListId(selected)
+        }
+
+        const productsCacheKey = k(LS_BASE_KEYS.productsCache, userId)
+        const rawProductsCache = localStorage.getItem(productsCacheKey)
+
+        if (rawProductsCache) {
+          const parsed = JSON.parse(rawProductsCache) as Record<PriceListId, ProductsCacheEntry>
+          if (parsed?.minorista && parsed?.mayorista && parsed?.oferta) {
+            productsCacheRef.current = parsed
+          }
+        }
+      } catch {}
+    }
+
+    loadUserPreferences()
   }, [userId])
 
   useEffect(() => {
     if (!userId) return
-    try {
-      localStorage.setItem(k(LS_BASE_KEYS.priceListId, userId), priceListId)
-    } catch {}
-  }, [priceListId, userId])
 
-  useEffect(() => {
-    if (!userId) return
-    try {
-      localStorage.setItem(k(LS_BASE_KEYS.nextNumber, userId), String(nextNumber))
-    } catch {}
-  }, [nextNumber, userId])
+    const savePriceList = async () => {
+      try {
+        const supabase = createClient()
+
+        await supabase
+          .from("profiles")
+          .update({ selected_price_list: priceListId })
+          .eq("id", userId)
+      } catch {}
+    }
+
+    savePriceList()
+  }, [priceListId, userId])
 
   const saveProductsCache = useCallback(
     (cache: Record<PriceListId, ProductsCacheEntry>) => {
@@ -319,29 +333,24 @@ export default function RemitoPage() {
     [showToast]
   )
 
-  const advanceAndReset = useCallback(() => {
-    setNextNumber((n) => {
-      const next = n + 1
-      try {
-        if (userId) localStorage.setItem(k(LS_BASE_KEYS.nextNumber, userId), String(next))
-      } catch {}
-      return next
-    })
-
+  const advanceAndReset = useCallback((nextVisibleNumber: number) => {
+    setNextNumber(nextVisibleNumber)
     setClient(defaultClient)
     setItems([])
     remitoDateRef.current = getTodayDateSafe()
-  }, [userId])
+    setFooterCollapsed(true)
+    setHeaderCollapsed(true)
+  }, [])
 
-  const persistRemito = useCallback(async () => {
+  const persistRemito = useCallback(async (): Promise<number | null> => {
     if (!userId) {
       showToast("Falta sesión")
-      return false
+      return null
     }
 
     if (items.length === 0) {
       showToast("No hay productos")
-      return false
+      return null
     }
 
     try {
@@ -349,11 +358,23 @@ export default function RemitoPage() {
 
       const supabase = createClient()
 
+      const { data: consumedNumber, error: consumeError } = await supabase.rpc(
+        "consume_next_remito_number"
+      )
+
+      if (consumeError || typeof consumedNumber !== "number") {
+        console.error("Error consumiendo numeración", consumeError)
+        showToast("Error al generar número")
+        return null
+      }
+
+      const numeroRemitoFinal = formatRemitoNumber(consumedNumber)
+
       const { data: remitoInserted, error: remitoError } = await supabase
         .from("remitos")
         .insert({
           user_id: userId,
-          numero_remito: remitoNumero,
+          numero_remito: numeroRemitoFinal,
           fecha: getTodayISODate(),
           cliente_nombre: client.nombre?.trim() || null,
           estado: "pendiente",
@@ -367,7 +388,7 @@ export default function RemitoPage() {
       if (remitoError || !remitoInserted) {
         console.error("Error guardando remito", remitoError)
         showToast("Error al guardar")
-        return false
+        return null
       }
 
       const remitoItems = items.map((item) => ({
@@ -384,18 +405,18 @@ export default function RemitoPage() {
       if (itemsError) {
         console.error("Error guardando items", itemsError)
         showToast("Error al guardar items")
-        return false
+        return null
       }
 
-      return true
+      return consumedNumber + 1
     } catch (error) {
       console.error("Error inesperado guardando remito", error)
       showToast("Error al guardar")
-      return false
+      return null
     } finally {
       setIsSaving(false)
     }
-  }, [userId, items, remitoNumero, client.nombre, priceListId, total, showToast])
+  }, [userId, items, client.nombre, priceListId, total, showToast])
 
   const buildPrintHtml = useCallback(() => {
     const printable = document.getElementById("printable-remito")
@@ -578,10 +599,10 @@ ${styles}
       window.print()
     }
 
-    const ok = await persistRemito()
-    if (!ok) return
+    const nextVisibleNumber = await persistRemito()
+    if (!nextVisibleNumber) return
 
-    advanceAndReset()
+    advanceAndReset(nextVisibleNumber)
   }, [
     canPrint,
     isSaving,
@@ -608,10 +629,10 @@ ${styles}
       window.print()
     }
 
-    const ok = await persistRemito()
-    if (!ok) return
+    const nextVisibleNumber = await persistRemito()
+    if (!nextVisibleNumber) return
 
-    advanceAndReset()
+    advanceAndReset(nextVisibleNumber)
   }, [
     canPrint,
     isSaving,
@@ -640,10 +661,10 @@ ${styles}
         await disconnectBlePrinter(device)
       }
 
-      const ok = await persistRemito()
-      if (!ok) return
+      const nextVisibleNumber = await persistRemito()
+      if (!nextVisibleNumber) return
 
-      advanceAndReset()
+      advanceAndReset(nextVisibleNumber)
       showToast("Ticket enviado a la impresora")
     } catch (error) {
       console.error("Error imprimiendo por Bluetooth", error)
@@ -690,6 +711,8 @@ ${styles}
     setItems([])
     setShowActions(false)
     setShowConfirmNew(false)
+    setFooterCollapsed(true)
+    setHeaderCollapsed(true)
     showToast("Nuevo remito listo")
   }, [showToast])
 
@@ -697,6 +720,7 @@ ${styles}
     setItems([])
     setShowActions(false)
     setShowConfirmClear(false)
+    setFooterCollapsed(true)
     showToast("Productos vaciados")
   }, [showToast])
 
@@ -718,8 +742,14 @@ ${styles}
       <div id="screen-ui" className="min-h-screen overflow-x-hidden bg-[#111214] text-white">
         <header className="sticky top-0 z-40 border-b border-white/10 bg-[#111214]/95 backdrop-blur-xl">
           <div className="mx-auto w-full max-w-md px-4 pb-3 pt-3">
-            <div className="rounded-[24px] border border-white/10 bg-[#2a2926] shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-              <div className="flex items-start justify-between gap-3 px-4 py-2.5">
+            <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#2a2926] shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+              <button
+                type="button"
+                onClick={() => setHeaderCollapsed((prev) => !prev)}
+                className="flex w-full items-start justify-between gap-3 px-4 py-2.5 text-left"
+                aria-expanded={!headerCollapsed}
+                aria-label={headerCollapsed ? "Mostrar datos del pedido" : "Ocultar datos del pedido"}
+              >
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#9f9fa6]">
                     Pedido nuevo
@@ -727,38 +757,68 @@ ${styles}
                   <h1 className="mt-0.5 truncate text-[16px] font-semibold leading-none text-white">
                     {client.nombre?.trim() || "Nuevo remito"}
                   </h1>
-                  <p className="mt-1 text-[12px] leading-none text-[#a9a9ae]">
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] leading-none text-[#a9a9ae]">
                     <span className="font-semibold text-white">{remitoNumero}</span>
-                    <span className="mx-1 text-white/15">•</span>
-                    {remitoDateRef.current}
-                  </p>
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowActions(true)}
-                  aria-label="Más acciones"
-                  className="size-9 rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
-                >
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </div>
-
-              <div className="border-t border-white/10 px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <PriceListSelect value={priceListId} onChange={setPriceListId} />
-
-                  <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] px-3 py-2 text-right">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
-                      Total
-                    </p>
-                    <p className="mt-0.5 text-sm font-semibold text-white tabular-nums">
-                      {formatCurrency(total)}
-                    </p>
+                    <span className="text-white/15">•</span>
+                    <span>{remitoDateRef.current}</span>
+                    <span className="text-white/15">•</span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-[#d7d7db]">
+                      {getPriceListLabel(priceListId)}
+                    </span>
                   </div>
                 </div>
-              </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowActions(true)
+                    }}
+                    aria-label="Más acciones"
+                    className="size-9 rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-black/15 ring-1 ring-white/10">
+                    {headerCollapsed ? (
+                      <ChevronDown className="size-4 text-[#c4c4c8]" />
+                    ) : (
+                      <ChevronUp className="size-4 text-[#c4c4c8]" />
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {!headerCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="overflow-hidden border-t border-white/10"
+                  >
+                    <div className="px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <PriceListSelect value={priceListId} onChange={setPriceListId} />
+
+                        <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] px-3 py-2 text-right">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
+                            Total
+                          </p>
+                          <p className="mt-0.5 text-sm font-semibold text-white tabular-nums">
+                            {formatCurrency(total)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </header>
@@ -829,7 +889,7 @@ ${styles}
               >
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
-                    Total del pedido
+                    Total del remito
                   </p>
                   <p className="mt-1 truncate text-[18px] font-semibold tracking-tight text-white tabular-nums">
                     {formatCurrency(total)}
@@ -873,30 +933,30 @@ ${styles}
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
-  <Button
-    variant="default"
-    onClick={handleBluetoothPrint}
-    disabled={!canPrint || isSaving || isPrintingBluetooth}
-    className="h-11 rounded-xl bg-[#1976d2] text-white hover:bg-[#1c82e4]"
-  >
-    {isPrintingBluetooth ? (
-      <Loader2 className="size-4 animate-spin" />
-    ) : (
-      <Bluetooth className="size-4" />
-    )}
-    <span>{isPrintingBluetooth ? "Conectando..." : "Imprimir BT"}</span>
-  </Button>
+                        <Button
+                          variant="default"
+                          onClick={handleBluetoothPrint}
+                          disabled={!canPrint || isSaving || isPrintingBluetooth}
+                          className="h-11 rounded-xl bg-[#1976d2] text-white hover:bg-[#1c82e4]"
+                        >
+                          {isPrintingBluetooth ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Bluetooth className="size-4" />
+                          )}
+                          <span>{isPrintingBluetooth ? "Conectando..." : "Imprimir BT"}</span>
+                        </Button>
 
-  <Button
-    variant="outline"
-    onClick={() => setShowPreview(true)}
-    disabled={!canPrint || isPrintingBluetooth}
-    className="h-11 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/5"
-  >
-    <Eye className="size-4" />
-    <span>Ver ticket</span>
-  </Button>
-</div>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowPreview(true)}
+                          disabled={!canPrint || isPrintingBluetooth}
+                          className="h-11 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/5"
+                        >
+                          <Eye className="size-4" />
+                          <span>Ver ticket</span>
+                        </Button>
+                      </div>
                     </div>
                   </motion.div>
                 )}
