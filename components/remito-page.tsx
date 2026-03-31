@@ -153,7 +153,7 @@ export default function RemitoPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isPrintingBluetooth, setIsPrintingBluetooth] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
-  const [footerCollapsed, setFooterCollapsed] = useState(true)
+ const [footerCollapsed, setFooterCollapsed] = useState(false)
   const [headerCollapsed, setHeaderCollapsed] = useState(true)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
@@ -872,14 +872,7 @@ ${styles}
                       <div className="flex items-center justify-between gap-3">
                         <PriceListSelect value={priceListId} onChange={setPriceListId} />
 
-                        <div className="rounded-2xl border border-white/10 bg-[#1a1a1c] px-3 py-2 text-right">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
-                            Total
-                          </p>
-                          <p className="mt-0.5 text-sm font-semibold text-white tabular-nums">
-                            {formatCurrency(total)}
-                          </p>
-                        </div>
+                       
                       </div>
                     </div>
                   </motion.div>
@@ -1026,7 +1019,7 @@ ${styles}
                             variant="default"
                             onClick={handleBluetoothPrint}
                             disabled={!canPrint || !isOnline || isSaving || isPrintingBluetooth}
-                            className="h-11 rounded-xl bg-[#1976d2] text-white hover:bg-[#1c82e4]"
+                            className="h-12 rounded-2xl bg-[#1976d2] text-base font-semibold text-white hover:bg-[#1c82e4] active:scale-[0.98]"
                           >
                             {isPrintingBluetooth ? (
                               <Loader2 className="size-4 animate-spin" />
