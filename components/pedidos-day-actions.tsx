@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { Loader2, Printer, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
 import {
   buildDailySummaryEscPos,
@@ -31,31 +30,14 @@ export function PedidosDayActions({
 
   async function handlePrintDay() {
     if (isPrinting || cantidadPedidos === 0) return
-
     try {
       setIsPrinting(true)
-
-      const payload = buildDailySummaryEscPos({
-        fecha,
-        cantidadPedidos,
-        totalDia,
-        pedidos,
-      })
-
+      const payload = buildDailySummaryEscPos({ fecha, cantidadPedidos, totalDia, pedidos })
       const { device, characteristic } = await connectBlePrinter()
-
-      try {
-        await writeEscPos(characteristic, payload)
-      } finally {
-        await disconnectBlePrinter(device)
-      }
+      try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
     } catch (error) {
       console.error("Error imprimiendo resumen del día", error)
-      alert(
-        error instanceof Error
-          ? error.message
-          : "No se pudo imprimir el resumen del día"
-      )
+      alert(error instanceof Error ? error.message : "No se pudo imprimir el resumen del día")
     } finally {
       setIsPrinting(false)
     }
@@ -63,7 +45,6 @@ export function PedidosDayActions({
 
   async function handleClear() {
     if (isClearing || disabledClear) return
-
     try {
       setIsClearing(true)
       await onClearAction()
@@ -74,27 +55,25 @@ export function PedidosDayActions({
 
   return (
     <div className="grid grid-cols-2 gap-2">
-      <Button
+      <button
         type="button"
-        variant="outline"
         onClick={handlePrintDay}
         disabled={cantidadPedidos === 0 || isPrinting}
-        className="border-white/12 bg-transparent text-white hover:bg-white/5"
+        className="flex h-9 items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-[#161616] text-[13px] font-medium text-[#888] active:opacity-60 disabled:opacity-30"
       >
-        {isPrinting ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
+        {isPrinting ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
         {isPrinting ? "Imprimiendo..." : "Imprimir día"}
-      </Button>
+      </button>
 
-      <Button
+      <button
         type="button"
-        variant="outline"
         onClick={handleClear}
         disabled={disabledClear || isClearing}
-        className="border-white/12 bg-transparent text-white hover:bg-white/5"
+        className="flex h-9 items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-[#161616] text-[13px] font-medium text-[#ff5555] active:opacity-60 disabled:opacity-30"
       >
-        {isClearing ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+        {isClearing ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
         {isClearing ? "Limpiando..." : "Limpiar día"}
-      </Button>
+      </button>
     </div>
   )
 }

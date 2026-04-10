@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "App",
-  description: "App para cargar pedidos, generar remitos e imprimir comprobantes desde el celular.",
+  title: "APP Remitos",
+  description: "Cargá pedidos, generá remitos e imprimí comprobantes desde el celular.",
   manifest: "/manifest.webmanifest",
 }
 

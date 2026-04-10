@@ -8,16 +8,14 @@ import {
   Printer,
   FileText,
   RotateCcw,
-  Trash2,
   CheckCircle2,
   Loader2,
-  MoreHorizontal,
   Eye,
+  Bluetooth,
   ChevronDown,
   ChevronUp,
-  Bluetooth,
+  Plus,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ClientForm } from "@/components/client-form"
 import { ProductSelector } from "@/components/product-selector"
@@ -42,23 +40,6 @@ const PRICE_LISTS: { id: PriceListId; label: string }[] = [
   { id: "oferta", label: "Oferta" },
 ]
 
-function getPriceListLabel(value: PriceListId) {
-  return PRICE_LISTS.find((list) => list.id === value)?.label ?? "Minorista"
-}
-
-function getPriceListBadgeClass(value: PriceListId) {
-  switch (value) {
-    case "minorista":
-      return "border-sky-400/20 bg-sky-500/10 text-sky-200"
-    case "mayorista":
-      return "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
-    case "oferta":
-      return "border-amber-400/20 bg-amber-500/10 text-amber-200"
-    default:
-      return "border-white/10 bg-white/5 text-[#d7d7db]"
-  }
-}
-
 const defaultClient: ClientData = {
   nombre: "",
   direccion: "",
@@ -81,6 +62,7 @@ function getTodayISODate(): string {
 
 const LS_BASE_KEYS = {
   productsCache: "productsCache",
+  draft: "remitoDraft",
 } as const
 
 function k(base: string, userId: string) {
@@ -90,13 +72,25 @@ function k(base: string, userId: string) {
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
 
 const BOTTOM_NAV_PX = 72
-const ACTION_BAR_EXPANDED_PX = 142
-const ACTION_BAR_COLLAPSED_PX = 64
+const ACTION_BAR_EXPANDED_PX = 53
+const ACTION_BAR_COLLAPSED_PX = 28
 
-type ProductsCacheEntry = {
-  loadedAt: number
-  products: Product[]
+type ProductsCacheEntry = { loadedAt: number; products: Product[] }
+
+type DraftData = {
+  items: LineItem[]
+  clientNombre: string
+  priceListId: PriceListId
+  savedAt: number
 }
+
+// Estado de éxito después de imprimir
+type SuccessState = {
+  numero: string
+  cliente: string
+  total: number
+  unidades: number
+} | null
 
 function buildAddedToast(product: Product, opcion?: string) {
   const base = product.descripcion
@@ -105,36 +99,8 @@ function buildAddedToast(product: Product, opcion?: string) {
     .replace(/\bTapas\s+para\s+/gi, "Tapas ")
     .replace(/\s{2,}/g, " ")
     .trim()
-
-  const short = base.length > 32 ? `${base.slice(0, 32).trim()}…` : base
+  const short = base.length > 28 ? `${base.slice(0, 28).trim()}…` : base
   return opcion ? `${short} · ${opcion}` : short
-}
-
-function PriceListSelect({
-  value,
-  onChange,
-}: {
-  value: PriceListId
-  onChange: (value: PriceListId) => void
-}) {
-  return (
-    <div className="relative min-w-[144px] max-w-[170px]">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as PriceListId)}
-        aria-label="Lista de precios"
-        className="h-10 w-full appearance-none rounded-xl border border-white/10 bg-[#1a1a1c] px-3 pr-9 text-sm font-medium text-white outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/20"
-      >
-        {PRICE_LISTS.map((list) => (
-          <option key={list.id} value={list.id}>
-            {list.label}
-          </option>
-        ))}
-      </select>
-
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#9e9ea6]" />
-    </div>
-  )
 }
 
 export default function RemitoPage() {
@@ -144,25 +110,23 @@ export default function RemitoPage() {
   const [client, setClient] = useState<ClientData>(defaultClient)
   const [nextNumber, setNextNumber] = useState(1)
   const [showPreview, setShowPreview] = useState(false)
-  const [showActions, setShowActions] = useState(false)
   const [showConfirmNew, setShowConfirmNew] = useState(false)
-  const [showConfirmClear, setShowConfirmClear] = useState(false)
+  const [showClientSheet, setShowClientSheet] = useState(false)
+  const [showDraftBanner, setShowDraftBanner] = useState(false)
+  const [successState, setSuccessState] = useState<SuccessState>(null)
   const [priceListId, setPriceListId] = useState<PriceListId>("minorista")
   const [mounted, setMounted] = useState(false)
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isPrintingBluetooth, setIsPrintingBluetooth] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
- const [footerCollapsed, setFooterCollapsed] = useState(false)
-  const [headerCollapsed, setHeaderCollapsed] = useState(true)
+  const [actionBarCollapsed, setActionBarCollapsed] = useState(false)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
   const toastTimer = useRef<number | null>(null)
-
-  const [toast, setToast] = useState<{ open: boolean; text: string }>({
-    open: false,
-    text: "",
-  })
+  const draftSaveTimer = useRef<number | null>(null)
+  const draftRestoredRef = useRef(false)
+  const [toast, setToast] = useState<{ open: boolean; text: string }>({ open: false, text: "" })
 
   const productsCacheRef = useRef<Record<PriceListId, ProductsCacheEntry>>({
     minorista: { loadedAt: 0, products: [] },
@@ -174,29 +138,59 @@ export default function RemitoPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return
-
-    const syncOnlineStatus = () => {
-      setIsOnline(window.navigator.onLine)
-    }
-
-    syncOnlineStatus()
-
-    window.addEventListener("online", syncOnlineStatus)
-    window.addEventListener("offline", syncOnlineStatus)
-
+    const sync = () => setIsOnline(window.navigator.onLine)
+    sync()
+    window.addEventListener("online", sync)
+    window.addEventListener("offline", sync)
     return () => {
-      window.removeEventListener("online", syncOnlineStatus)
-      window.removeEventListener("offline", syncOnlineStatus)
+      window.removeEventListener("online", sync)
+      window.removeEventListener("offline", sync)
     }
   }, [])
 
   const showToast = useCallback((text: string) => {
     setToast({ open: true, text })
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
-    toastTimer.current = window.setTimeout(() => {
-      setToast({ open: false, text: "" })
-    }, 1900)
+    toastTimer.current = window.setTimeout(() => setToast({ open: false, text: "" }), 1900)
   }, [])
+
+  const saveDraft = useCallback((
+    currentItems: LineItem[],
+    currentClient: ClientData,
+    currentPriceList: PriceListId,
+    uid: string
+  ) => {
+    if (!uid) return
+    try {
+      if (currentItems.length === 0 && !currentClient.nombre.trim()) {
+        localStorage.removeItem(k(LS_BASE_KEYS.draft, uid))
+        return
+      }
+      const draft: DraftData = {
+        items: currentItems,
+        clientNombre: currentClient.nombre,
+        priceListId: currentPriceList,
+        savedAt: Date.now(),
+      }
+      localStorage.setItem(k(LS_BASE_KEYS.draft, uid), JSON.stringify(draft))
+    } catch {}
+  }, [])
+
+  const clearDraft = useCallback((uid: string) => {
+    try { localStorage.removeItem(k(LS_BASE_KEYS.draft, uid)) } catch {}
+  }, [])
+
+  const scheduleDraftSave = useCallback((
+    currentItems: LineItem[],
+    currentClient: ClientData,
+    currentPriceList: PriceListId,
+    uid: string
+  ) => {
+    if (draftSaveTimer.current) window.clearTimeout(draftSaveTimer.current)
+    draftSaveTimer.current = window.setTimeout(() => {
+      saveDraft(currentItems, currentClient, currentPriceList, uid)
+    }, 800)
+  }, [saveDraft])
 
   useEffect(() => {
     const supabase = createClient()
@@ -205,56 +199,62 @@ export default function RemitoPage() {
 
   useEffect(() => {
     if (!userId) return
-
-    const loadUserPreferences = async () => {
+    const load = async () => {
       try {
         const supabase = createClient()
-
         const { data: profile } = await supabase
           .from("profiles")
           .select("next_remito_number, selected_price_list")
           .eq("id", userId)
           .single()
-
-        if (profile?.next_remito_number && Number(profile.next_remito_number) > 0) {
+        if (profile?.next_remito_number && Number(profile.next_remito_number) > 0)
           setNextNumber(Number(profile.next_remito_number))
-        }
-
-        const selected = profile?.selected_price_list
-        if (selected === "minorista" || selected === "mayorista" || selected === "oferta") {
-          setPriceListId(selected)
-        }
-
-        const productsCacheKey = k(LS_BASE_KEYS.productsCache, userId)
-        const rawProductsCache = localStorage.getItem(productsCacheKey)
-
-        if (rawProductsCache) {
-          const parsed = JSON.parse(rawProductsCache) as Record<PriceListId, ProductsCacheEntry>
-          if (parsed?.minorista && parsed?.mayorista && parsed?.oferta) {
+        const sel = profile?.selected_price_list
+        if (sel === "minorista" || sel === "mayorista" || sel === "oferta") setPriceListId(sel)
+        const raw = localStorage.getItem(k(LS_BASE_KEYS.productsCache, userId))
+        if (raw) {
+          const parsed = JSON.parse(raw) as Record<PriceListId, ProductsCacheEntry>
+          if (parsed?.minorista && parsed?.mayorista && parsed?.oferta)
             productsCacheRef.current = parsed
+        }
+        if (!draftRestoredRef.current) {
+          draftRestoredRef.current = true
+          const rawDraft = localStorage.getItem(k(LS_BASE_KEYS.draft, userId))
+          if (rawDraft) {
+            const draft = JSON.parse(rawDraft) as DraftData
+            const draftDate = new Date(draft.savedAt).toISOString().slice(0, 10)
+            const today = getTodayISODate()
+            if (draft.items?.length > 0 && draftDate === today) {
+              setItems(draft.items)
+              setClient((prev) => ({ ...prev, nombre: draft.clientNombre || "" }))
+              if (draft.priceListId) setPriceListId(draft.priceListId)
+              setShowDraftBanner(true)
+            } else {
+              localStorage.removeItem(k(LS_BASE_KEYS.draft, userId))
+            }
           }
         }
       } catch {}
     }
-
-    loadUserPreferences()
+    load()
   }, [userId])
 
   useEffect(() => {
+    if (!userId || !draftRestoredRef.current) return
+    scheduleDraftSave(items, client, priceListId, userId)
+  }, [items, client, priceListId, userId, scheduleDraftSave])
+
+  useEffect(() => {
     if (!userId) return
-
-    const savePriceList = async () => {
+    const save = async () => {
       try {
-        const supabase = createClient()
-
-        await supabase
+        await createClient()
           .from("profiles")
           .update({ selected_price_list: priceListId })
           .eq("id", userId)
       } catch {}
     }
-
-    savePriceList()
+    save()
   }, [priceListId, userId])
 
   const saveProductsCache = useCallback(
@@ -269,144 +269,97 @@ export default function RemitoPage() {
 
   useEffect(() => {
     const controller = new AbortController()
-
     const loadProducts = async () => {
       const cached = productsCacheRef.current[priceListId]
-
-      if (cached?.products?.length > 0) {
-        setProducts(cached.products)
-        return
-      }
-
+      if (cached?.products?.length > 0) { setProducts(cached.products); return }
       try {
         setIsLoadingProducts(true)
-
         const res = await fetch(`/api/products-csv?list=${priceListId}`, {
           cache: "force-cache",
           signal: controller.signal,
         })
-
-        if (!res.ok) {
-          throw new Error("No se pudo traer la lista de precios")
-        }
-
+        if (!res.ok) throw new Error()
         const text = await res.text()
         const parsed = parseCSV(text)
-
         const nextCache = {
           ...productsCacheRef.current,
-          [priceListId]: {
-            loadedAt: Date.now(),
-            products: parsed,
-          },
+          [priceListId]: { loadedAt: Date.now(), products: parsed },
         }
-
         productsCacheRef.current = nextCache
         saveProductsCache(nextCache)
-
-        startTransition(() => {
-          setProducts(parsed)
-        })
+        startTransition(() => setProducts(parsed))
       } catch (e) {
         if ((e as { name?: string })?.name === "AbortError") return
-        console.error("No se pudieron cargar productos", e)
-        if (!productsCacheRef.current[priceListId]?.products?.length) {
+        if (!productsCacheRef.current[priceListId]?.products?.length)
           startTransition(() => setProducts([]))
-        }
       } finally {
         setIsLoadingProducts(false)
       }
     }
-
     loadProducts()
     return () => controller.abort()
   }, [priceListId, saveProductsCache])
 
   const remitoNumero = useMemo(() => formatRemitoNumber(nextNumber), [nextNumber])
   const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
+  const totalUnits = useMemo(() => items.reduce((s, i) => s + i.cantidad, 0), [items])
 
   const remitoData: RemitoData = useMemo(
-    () => ({
-      numero: remitoNumero,
-      fecha: remitoDateRef.current,
-      client,
-      items,
-      subtotal: total,
-      total,
-    }),
+    () => ({ numero: remitoNumero, fecha: remitoDateRef.current, client, items, subtotal: total, total }),
     [remitoNumero, client, items, total]
   )
 
   const canPrint = items.length > 0
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
+  const actionBarPx = canPrint
+    ? actionBarCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX
+    : 0
 
   const handleItemsChange = useCallback<React.Dispatch<React.SetStateAction<LineItem[]>>>(
     (updater) => {
       setItems((prev) => {
         const next = typeof updater === "function" ? updater(prev) : updater
-
         const prevMap = new Map(
           prev.map((item) => [`${item.product.descripcion}||${item.opcion ?? ""}`, item.cantidad])
         )
-
         for (const item of next) {
           const key = `${item.product.descripcion}||${item.opcion ?? ""}`
-          const prevQty = prevMap.get(key) ?? 0
-
-          if (item.cantidad > prevQty) {
+          if (item.cantidad > (prevMap.get(key) ?? 0)) {
             showToast(buildAddedToast(item.product, item.opcion))
             break
           }
         }
-
         return next
       })
     },
     [showToast]
   )
 
-  const advanceAndReset = useCallback((nextVisibleNumber: number) => {
+  const advanceAndReset = useCallback((
+    nextVisibleNumber: number,
+    successData: SuccessState
+  ) => {
+    // Mostrar pantalla de éxito ANTES de limpiar
+    setSuccessState(successData)
     setNextNumber(nextVisibleNumber)
     setClient(defaultClient)
     setItems([])
+    setActionBarCollapsed(false)
+    setShowDraftBanner(false)
+    clearDraft(userId)
     remitoDateRef.current = getTodayDateSafe()
-    setFooterCollapsed(true)
-    setHeaderCollapsed(true)
-  }, [])
+  }, [userId, clearDraft])
 
   const persistRemito = useCallback(async (): Promise<number | null> => {
-    if (!isOnline) {
-      showToast("Sin internet. No se puede guardar el pedido")
-      return null
-    }
-
-    if (!userId) {
-      showToast("Falta sesión")
-      return null
-    }
-
-    if (items.length === 0) {
-      showToast("No hay productos")
-      return null
-    }
-
+    if (!isOnline) { showToast("Sin internet"); return null }
+    if (!userId) { showToast("Falta sesión"); return null }
+    if (items.length === 0) { showToast("No hay productos"); return null }
     try {
       setIsSaving(true)
-
       const supabase = createClient()
-
-      const { data: consumedNumber, error: consumeError } = await supabase.rpc(
-        "consume_next_remito_number"
-      )
-
-      if (consumeError || typeof consumedNumber !== "number") {
-        console.error("Error consumiendo numeración", consumeError)
-        showToast("Error al generar número")
-        return null
-      }
-
+      const { data: consumedNumber, error: consumeError } = await supabase.rpc("consume_next_remito_number")
+      if (consumeError || typeof consumedNumber !== "number") { showToast("Error al generar número"); return null }
       const numeroRemitoFinal = formatRemitoNumber(consumedNumber)
-
       const { data: remitoInserted, error: remitoError } = await supabase
         .from("remitos")
         .insert({
@@ -421,33 +374,20 @@ export default function RemitoPage() {
         })
         .select("id")
         .single()
-
-      if (remitoError || !remitoInserted) {
-        console.error("Error guardando remito", remitoError)
-        showToast("Error al guardar")
-        return null
-      }
-
-      const remitoItems = items.map((item) => ({
-        remito_id: remitoInserted.id,
-        descripcion: item.product.descripcion,
-        cantidad: item.cantidad,
-        precio_unitario: item.product.precio,
-        subtotal: item.subtotal,
-        opcion: item.opcion || null,
-      }))
-
-      const { error: itemsError } = await supabase.from("remito_items").insert(remitoItems)
-
-      if (itemsError) {
-        console.error("Error guardando items", itemsError)
-        showToast("Error al guardar items")
-        return null
-      }
-
+      if (remitoError || !remitoInserted) { showToast("Error al guardar"); return null }
+      const { error: itemsError } = await supabase.from("remito_items").insert(
+        items.map((item) => ({
+          remito_id: remitoInserted.id,
+          descripcion: item.product.descripcion,
+          cantidad: item.cantidad,
+          precio_unitario: item.product.precio,
+          subtotal: item.subtotal,
+          opcion: item.opcion || null,
+        }))
+      )
+      if (itemsError) { showToast("Error al guardar items"); return null }
       return consumedNumber + 1
-    } catch (error) {
-      console.error("Error inesperado guardando remito", error)
+    } catch {
       showToast("Error al guardar")
       return null
     } finally {
@@ -458,787 +398,406 @@ export default function RemitoPage() {
   const buildPrintHtml = useCallback(() => {
     const printable = document.getElementById("printable-remito")
     if (!printable) return null
-
     const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
       .map((el) => el.outerHTML)
       .join("\n")
-
-    return `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Imprimir Remito</title>
-${styles}
-<style>
-  @page {
-    size: 58mm auto;
-    margin: 0;
-  }
-
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 58mm;
-    background: #fff;
-    color: #000;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 9999;
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    align-items: center;
-    padding: 10px 8px;
-    background: #fff;
-    border-bottom: 1px solid #ddd;
-  }
-
-  .btn {
-    appearance: none;
-    -webkit-appearance: none;
-    min-height: 44px;
-    padding: 0 14px;
-    border-radius: 12px;
-    border: 1px solid #d0d0d0;
-    background: #fff;
-    color: #111 !important;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    white-space: nowrap;
-  }
-
-  .btn * {
-    color: inherit !important;
-  }
-
-  .btn-primary {
-    background: #111 !important;
-    color: #fff !important;
-    border-color: #111 !important;
-  }
-
-  .btn-primary * {
-    color: inherit !important;
-  }
-
-  .sheet {
-    width: 48mm;
-    min-width: 48mm;
-    max-width: 48mm;
-    padding: 0;
-    margin: 0 auto;
-    background: #fff;
-  }
-
-  #printable-remito {
-    display: block !important;
-    width: 48mm !important;
-    min-width: 48mm !important;
-    max-width: 48mm !important;
-    background: #fff !important;
-    color: #000 !important;
-  }
-
-  @media print {
-    .topbar {
-      display: none !important;
-    }
-
-    html, body {
-      width: 58mm;
-      background: #fff !important;
-      color: #000 !important;
-    }
-
-    .sheet {
-      width: 48mm;
-      min-width: 48mm;
-      max-width: 48mm;
-      margin: 0;
-    }
-  }
-</style>
-</head>
-<body>
-  <div class="topbar">
-    <button type="button" class="btn" id="btnClose">Cerrar</button>
-    <button type="button" class="btn btn-primary" id="btnPrint">Imprimir</button>
-  </div>
-
-  <div class="sheet">
-    ${printable.outerHTML}
-  </div>
-
-  <script>
-    const btnPrint = document.getElementById("btnPrint");
-    const btnClose = document.getElementById("btnClose");
-
-    if (btnPrint) {
-      btnPrint.addEventListener("click", () => window.print());
-    }
-
-    if (btnClose) {
-      btnClose.addEventListener("click", () => {
-        if (window.history.length > 1) {
-          window.history.back();
-        } else {
-          window.close();
-        }
-      });
-    }
-  </script>
-</body>
-</html>`
+    return `<!doctype html><html><head><meta charset="utf-8"/><title>Remito</title>${styles}<style>@page{size:58mm auto;margin:0}html,body{margin:0;padding:0;width:58mm;background:#fff;color:#000;font-family:monospace}.topbar{display:flex;gap:8px;justify-content:flex-end;padding:10px 8px;background:#fff;border-bottom:1px solid #ddd}.btn{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid #d0d0d0;background:#fff;color:#111;font-size:14px;font-weight:600;display:inline-flex;align-items:center}.btn-primary{background:#111;color:#fff;border-color:#111}.sheet{width:48mm;margin:0 auto}@media print{.topbar{display:none!important}}</style></head><body><div class="topbar"><button class="btn" id="btnClose">Cerrar</button><button class="btn btn-primary" id="btnPrint">Imprimir</button></div><div class="sheet">${printable.outerHTML}</div><script>document.getElementById("btnPrint").onclick=()=>window.print();document.getElementById("btnClose").onclick=()=>window.history.length>1?window.history.back():window.close()<\/script></body></html>`
   }, [])
 
   const openPrintWindowImmediate = useCallback(() => {
     const html = buildPrintHtml()
     if (!html) return null
-
     const win = window.open("", "_blank")
     if (!win) return null
-
-    win.document.open()
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-
+    win.document.open(); win.document.write(html); win.document.close(); win.focus()
     return win
   }, [buildPrintHtml])
 
-  const handlePrint = useCallback(async () => {
-    if (!isOnline) {
-      showToast("Sin internet. No se puede registrar el pedido")
-      return
-    }
-
-    if (!canPrint || isSaving || isPrintingBluetooth) return
-
-    const printWindow = isIOS() ? openPrintWindowImmediate() : null
-
-    if (isIOS() && !printWindow) {
-      showToast("No se pudo abrir impresión")
-      return
-    }
-
-    if (!isIOS()) {
-      window.print()
-    }
-
-    const nextVisibleNumber = await persistRemito()
-    if (!nextVisibleNumber) return
-
-    advanceAndReset(nextVisibleNumber)
-  }, [
-    isOnline,
-    canPrint,
-    isSaving,
-    isPrintingBluetooth,
-    openPrintWindowImmediate,
-    persistRemito,
-    advanceAndReset,
-    showToast,
-  ])
-
   const handlePreviewPrint = useCallback(async () => {
-    if (!isOnline) {
-      showToast("Sin internet. No se puede registrar el pedido")
-      return
+    if (!isOnline || !canPrint || isSaving || isPrintingBluetooth) return
+    // Capturar datos antes de resetear
+    const successData: SuccessState = {
+      numero: remitoNumero,
+      cliente: client.nombre?.trim() || "Sin cliente",
+      total,
+      unidades: totalUnits,
     }
-
-    if (!canPrint || isSaving || isPrintingBluetooth) return
-
     setShowPreview(false)
-
     const printWindow = isIOS() ? openPrintWindowImmediate() : null
-
-    if (isIOS() && !printWindow) {
-      showToast("No se pudo abrir impresión")
-      return
-    }
-
-    if (!isIOS()) {
-      window.print()
-    }
-
+    if (isIOS() && !printWindow) { showToast("No se pudo abrir impresión"); return }
+    if (!isIOS()) window.print()
     const nextVisibleNumber = await persistRemito()
     if (!nextVisibleNumber) return
-
-    advanceAndReset(nextVisibleNumber)
-  }, [
-    isOnline,
-    canPrint,
-    isSaving,
-    isPrintingBluetooth,
-    openPrintWindowImmediate,
-    persistRemito,
-    advanceAndReset,
-    showToast,
-  ])
+    advanceAndReset(nextVisibleNumber, successData)
+  }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, client.nombre, total, totalUnits, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
 
   const handleBluetoothPrint = useCallback(async () => {
-    if (!isOnline) {
-      showToast("Sin internet. No se puede registrar el pedido")
-      return
+    if (!isOnline || !canPrint || isSaving || isPrintingBluetooth) return
+    // Capturar datos antes de resetear
+    const successData: SuccessState = {
+      numero: remitoNumero,
+      cliente: client.nombre?.trim() || "Sin cliente",
+      total,
+      unidades: totalUnits,
     }
-
-    if (!canPrint || isSaving || isPrintingBluetooth) return
-
     try {
       setIsPrintingBluetooth(true)
-      showToast("Buscando impresora térmica...")
-
+      showToast("Buscando impresora...")
       const payload = buildRemitoEscPos(remitoData)
       const { device, characteristic } = await connectBlePrinter()
-
-      showToast(`Conectado a ${device.name?.trim() || "impresora térmica"}. Enviando...`)
-
-      try {
-        await writeEscPos(characteristic, payload)
-      } finally {
-        await disconnectBlePrinter(device)
-      }
-
+      showToast(`Conectado a ${device.name?.trim() || "impresora"}. Enviando...`)
+      try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
       const nextVisibleNumber = await persistRemito()
       if (!nextVisibleNumber) return
-
-      advanceAndReset(nextVisibleNumber)
-      showToast("Ticket enviado a la impresora")
+      advanceAndReset(nextVisibleNumber, successData)
     } catch (error) {
-      console.error("Error imprimiendo por Bluetooth", error)
-
-      const message =
-        error instanceof Error ? error.message : "No se pudo imprimir por Bluetooth"
-
-      if (/bluetooth no disponible/i.test(message)) {
-        showToast("Este celular o navegador no admite BT")
-        return
-      }
-
-      if (/no se pudo abrir conexión bluetooth/i.test(message)) {
-        showToast("No se pudo conectar con la impresora")
-        return
-      }
-
-      if (/no parece compatible/i.test(message)) {
-        showToast("La impresora no es compatible")
-        return
-      }
-
-      if (/characteristic/i.test(message)) {
-        showToast("Se encontró la impresora, pero no respondió")
-        return
-      }
-
-      showToast("Falló la impresión por BT")
+      const msg = error instanceof Error ? error.message : ""
+      if (/bluetooth no disponible/i.test(msg)) { showToast("BT no disponible en este celu"); return }
+      if (/no se pudo abrir/i.test(msg)) { showToast("¿La impresora está encendida y cerca?"); return }
+      if (/no parece compatible/i.test(msg)) { showToast("La impresora no es compatible"); return }
+      showToast("No se pudo conectar con la impresora")
     } finally {
       setIsPrintingBluetooth(false)
     }
-  }, [
-    isOnline,
-    canPrint,
-    isSaving,
-    isPrintingBluetooth,
-    remitoData,
-    persistRemito,
-    advanceAndReset,
-    showToast,
-  ])
+  }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, client.nombre, total, totalUnits, remitoData, persistRemito, advanceAndReset, showToast])
 
   const confirmNewRemito = useCallback(() => {
     setClient(defaultClient)
     setItems([])
-    setShowActions(false)
     setShowConfirmNew(false)
-    setFooterCollapsed(true)
-    setHeaderCollapsed(true)
+    setShowDraftBanner(false)
+    setActionBarCollapsed(false)
+    clearDraft(userId)
     showToast("Nuevo remito listo")
-  }, [showToast])
-
-  const confirmClearItems = useCallback(() => {
-    setItems([])
-    setShowActions(false)
-    setShowConfirmClear(false)
-    setFooterCollapsed(true)
-    showToast("Productos vaciados")
-  }, [showToast])
+  }, [showToast, userId, clearDraft])
 
   if (!mounted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#111214] px-4">
-        <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-[#1b1b1d] px-4 py-3 shadow-sm">
+      <div className="flex min-h-screen items-center justify-center bg-[#111214]">
+        <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-[#1b1b1d] px-4 py-3">
           <div className="flex size-9 items-center justify-center rounded-2xl bg-[#1976d2] text-white">
             <FileText className="size-4" />
           </div>
-          <p className="text-sm font-medium text-[#b0b0b6]">Cargando remito...</p>
+          <p className="text-sm font-medium text-[#b0b0b6]">Cargando...</p>
         </div>
+      </div>
+    )
+  }
+
+  // ── PANTALLA DE ÉXITO ────────────────────────────────────────────────────
+  if (successState) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#111214] px-6 text-white">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="w-full max-w-sm text-center"
+        >
+          {/* Ícono de éxito */}
+          <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-emerald-500/15">
+            <CheckCircle2 className="size-8 text-emerald-400" />
+          </div>
+
+          <h1 className="text-[22px] font-semibold text-white">Ticket enviado</h1>
+          <p className="mt-1 text-[13px] text-[#555]">{successState.numero}</p>
+
+          {/* Resumen */}
+          <div className="mt-5 rounded-xl border border-white/8 bg-[#161616] px-4 py-4 text-left">
+            <div className="flex justify-between py-1.5 border-b border-white/8">
+              <span className="text-[12px] text-[#555]">Cliente</span>
+              <span className="text-[13px] font-medium text-white">{successState.cliente}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-white/8">
+              <span className="text-[12px] text-[#555]">Unidades</span>
+              <span className="text-[13px] font-medium text-white">{successState.unidades}</span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="text-[12px] text-[#555]">Total</span>
+              <span className="text-[15px] font-semibold text-white tabular-nums">{formatCurrency(successState.total)}</span>
+            </div>
+          </div>
+
+          {/* Botón nuevo pedido */}
+          <button
+            type="button"
+            onClick={() => setSuccessState(null)}
+            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1976d2] text-[14px] font-semibold text-white active:opacity-80"
+          >
+            <Plus className="size-4" />
+            Nuevo pedido
+          </button>
+        </motion.div>
       </div>
     )
   }
 
   return (
     <>
-      <div id="screen-ui" className="min-h-screen overflow-x-hidden bg-[#111214] text-white">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-[#111214]/95 backdrop-blur-xl">
-          <div className="mx-auto w-full max-w-md px-4 pb-3 pt-3">
-            <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#2a2926] shadow-[0_1px_0_rgba(255,255,255,0.03)]">
+      <div className="min-h-screen overflow-x-hidden bg-[#111214] text-white">
+
+        {/* ── HEADER ── */}
+        <header className="sticky top-0 z-40 border-b border-white/8 bg-[#111214]/95 backdrop-blur-xl">
+          <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
+            <button
+              type="button"
+              onClick={() => setShowClientSheet(true)}
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-semibold leading-tight text-white">
+                  {client.nombre?.trim() || "Sin cliente"}
+                </p>
+                <p className="text-[11px] text-[#555]">
+                  {remitoNumero} · {remitoDateRef.current}
+                </p>
+              </div>
+              <ChevronDown className="size-3.5 shrink-0 text-[#444]" />
+            </button>
+
+            <div className="relative shrink-0">
+              <select
+                value={priceListId}
+                onChange={(e) => setPriceListId(e.target.value as PriceListId)}
+                className="h-8 appearance-none rounded-lg border border-white/10 bg-[#1a1a1c] px-2.5 pr-6 text-[13px] font-medium text-white outline-none"
+              >
+                {PRICE_LISTS.map((l) => (
+                  <option key={l.id} value={l.id}>{l.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-[#555]" />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => hasDraft ? setShowConfirmNew(true) : confirmNewRemito()}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[#1a1a1c] text-[#666] active:opacity-60"
+              aria-label="Nuevo remito"
+            >
+              <RotateCcw className="size-3.5" />
+            </button>
+          </div>
+
+          {!isOnline && (
+            <div className="border-t border-red-500/20 bg-red-500/10 px-4 py-1.5">
+              <p className="text-center text-[11px] font-medium text-red-300">
+                Sin internet — no se puede guardar
+              </p>
+            </div>
+          )}
+
+          {showDraftBanner && (
+            <div className="border-t border-amber-500/20 bg-amber-500/10 px-4 py-1.5 flex items-center justify-between gap-3">
+              <p className="text-[11px] font-medium text-amber-300">
+                Pedido anterior recuperado ({items.length} productos)
+              </p>
               <button
                 type="button"
-                onClick={() => setHeaderCollapsed((prev) => !prev)}
-                className="flex w-full items-start justify-between gap-3 px-4 py-2.5 text-left"
-                aria-expanded={!headerCollapsed}
-                aria-label={headerCollapsed ? "Mostrar datos del pedido" : "Ocultar datos del pedido"}
+                onClick={() => { setShowDraftBanner(false); setShowConfirmNew(true) }}
+                className="text-[11px] text-amber-300 underline active:opacity-60 shrink-0"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#9f9fa6]">
-                    Pedido nuevo
-                  </p>
-                  <h1 className="mt-0.5 truncate text-[16px] font-semibold leading-none text-white">
-                    {client.nombre?.trim() || "Nuevo remito"}
-                  </h1>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] leading-none text-[#a9a9ae]">
-                    <span className="font-semibold text-white">{remitoNumero}</span>
-                    <span className="text-white/15">•</span>
-                    <span>{remitoDateRef.current}</span>
-                    <span className="text-white/15">•</span>
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getPriceListBadgeClass(priceListId)}`}
-                    >
-                      {getPriceListLabel(priceListId)}
-                    </span>
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                        isOnline
-                          ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
-                          : "border-red-400/20 bg-red-500/10 text-red-200"
-                      }`}
-                    >
-                      {isOnline ? "Online" : "Sin internet"}
-                    </span>
-                  </div>
-                </div>
+                Descartar
+              </button>
+            </div>
+          )}
+        </header>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setShowActions(true)
-                    }}
-                    aria-label="Más acciones"
-                    className="size-9 rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </Button>
+        {/* ── CONTENIDO ── */}
+        <main
+          className="mx-auto w-full max-w-md px-4 pt-3"
+          style={{
+            paddingBottom: `calc(${BOTTOM_NAV_PX + actionBarPx}px + env(safe-area-inset-bottom) + 16px)`,
+          }}
+        >
+          {isLoadingProducts && products.length === 0 ? (
+            <div className="space-y-3 pt-2">
+              <div className="h-11 animate-pulse rounded-xl bg-[#1a1a1c]" />
+              <div className="h-14 animate-pulse rounded-2xl bg-[#1a1a1c]" />
+              <div className="h-14 animate-pulse rounded-2xl bg-[#1a1a1c]" />
+              <div className="h-14 animate-pulse rounded-2xl bg-[#1a1a1c]" />
+            </div>
+          ) : (
+            <ProductSelector
+              products={products}
+              items={items}
+              onItemsChange={handleItemsChange}
+            />
+          )}
+        </main>
 
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-black/15 ring-1 ring-white/10">
-                    {headerCollapsed ? (
-                      <ChevronDown className="size-4 text-[#c4c4c8]" />
-                    ) : (
-                      <ChevronUp className="size-4 text-[#c4c4c8]" />
-                    )}
-                  </div>
+        {/* ── BARRA DE ACCIÓN ── */}
+        <AnimatePresence>
+          {canPrint && (
+            <motion.div
+              initial={{ y: 60, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 60, opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="fixed inset-x-0 z-50 border-t border-white/8 bg-[#111214]/98 backdrop-blur-xl"
+              style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
+            >
+              <button
+                type="button"
+                onClick={() => setActionBarCollapsed((v) => !v)}
+                className="flex w-full items-center justify-center py-1 active:opacity-60"
+              >
+                <div className="flex items-center gap-1.5">
+                  <div className="h-0.5 w-6 rounded-full bg-white/20" />
+                  {actionBarCollapsed
+                    ? <ChevronUp className="size-3 text-[#444]" />
+                    : <ChevronDown className="size-3 text-[#444]" />
+                  }
+                  <div className="h-0.5 w-6 rounded-full bg-white/20" />
                 </div>
               </button>
 
               <AnimatePresence initial={false}>
-                {!headerCollapsed && (
+                {!actionBarCollapsed && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.18, ease: "easeOut" }}
-                    className="overflow-hidden border-t border-white/10"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="overflow-hidden"
                   >
-                    <div className="px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <PriceListSelect value={priceListId} onChange={setPriceListId} />
-
-                       
+                    <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pb-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-semibold text-white tabular-nums leading-none">
+                          {formatCurrency(total)}
+                          <span className="ml-2 text-[11px] font-normal text-[#555]">
+                            {totalUnits} unid.
+                          </span>
+                        </p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowPreview(true)}
+                        className="flex h-9 items-center gap-1.5 rounded-xl border border-white/10 bg-[#1a1a1c] px-3 text-[13px] font-medium text-[#aaa] active:opacity-60"
+                      >
+                        <Eye className="size-3.5" />
+                        Ver
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleBluetoothPrint}
+                        disabled={!isOnline || isSaving || isPrintingBluetooth}
+                        className="flex h-9 items-center gap-1.5 rounded-xl bg-[#1976d2] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40"
+                      >
+                        {isPrintingBluetooth
+                          ? <Loader2 className="size-3.5 animate-spin" />
+                          : <Bluetooth className="size-3.5" />
+                        }
+                        {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
+                      </button>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
-          </div>
-        </header>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {!isOnline && (
-          <div className="mx-auto w-full max-w-md px-4 pt-3">
-            <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-              <div className="flex items-start gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-red-500/15 text-red-200">
-                  <span className="text-sm font-bold">!</span>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-red-100">Sin internet</p>
-                  <p className="mt-1 text-sm leading-relaxed text-red-100/80">
-                    Podés ver el pedido, pero no se puede guardar ni imprimir hasta recuperar conexión.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <main
-          className="mx-auto w-full max-w-md px-4 pb-4 pt-3"
-          style={{
-            paddingBottom:
-              items.length > 0
-                ? `calc(${BOTTOM_NAV_PX + (footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX)}px + env(safe-area-inset-bottom) + 18px)`
-                : `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom) + 18px)`,
-          }}
-        >
-          <div className="space-y-5">
-            <section className="pt-1">
-              {isLoadingProducts && products.length === 0 ? (
-                <div className="space-y-3">
-                  <div className="h-11 animate-pulse rounded-xl bg-[#1a1a1c]" />
-                  <div className="h-20 animate-pulse rounded-2xl bg-[#1a1a1c]" />
-                  <div className="h-20 animate-pulse rounded-2xl bg-[#1a1a1c]" />
-                </div>
-              ) : (
-                <ProductSelector
-                  products={products}
-                  items={items}
-                  onItemsChange={handleItemsChange}
-                />
-              )}
-            </section>
-
-            <section className="pt-1">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-bold uppercase tracking-[0.06em] text-[#d6d6da]">
-                    Datos del comercio
-                  </h2>
-                  <p className="mt-1 text-sm text-[#9e9ea6]">
-                    Opcional. Se imprimen en el remito si los completás.
-                  </p>
-                </div>
-
-                <span className="rounded-full border border-white/10 bg-[#1a1a1c] px-2.5 py-1 text-[11px] font-medium text-[#b0b0b6]">
-                  Opcional
-                </span>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-                <ClientForm
-                  data={client}
-                  onFieldChange={(field, value) =>
-                    setClient((prev) => ({ ...prev, [field]: value }))
-                  }
-                />
-              </div>
-            </section>
-          </div>
-        </main>
-
-        {items.length > 0 && (
-          <div
-            className="fixed inset-x-0 z-50 border-t border-white/10 bg-[#2a2926]/98 backdrop-blur-xl"
-            style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
-          >
-            <div className="mx-auto w-full max-w-md px-4 py-3">
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#2f2d29] shadow-lg">
-                <button
-                  type="button"
-                  onClick={() => setFooterCollapsed((prev) => !prev)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                  aria-expanded={!footerCollapsed}
-                  aria-label={footerCollapsed ? "Mostrar acciones del remito" : "Ocultar acciones del remito"}
-                >
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
-                      Total del remito
-                    </p>
-                    <p className="mt-1 truncate text-[18px] font-semibold tracking-tight text-white tabular-nums">
-                      {formatCurrency(total)}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-full bg-black/15 px-2.5 py-1 text-[11px] font-medium text-[#d1d1d5]">
-                      {items.length} {items.length === 1 ? "item" : "items"}
-                    </div>
-
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-black/15 ring-1 ring-white/10">
-                      {footerCollapsed ? (
-                        <ChevronUp className="size-4 text-[#c4c4c8]" />
-                      ) : (
-                        <ChevronDown className="size-4 text-[#c4c4c8]" />
-                      )}
-                    </div>
-                  </div>
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {!footerCollapsed && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.18, ease: "easeOut" }}
-                      className="overflow-hidden border-t border-white/10"
-                    >
-                      <div className="px-4 py-3">
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-xs font-medium text-[#b0b0b6]">
-                              {items.length} {items.length === 1 ? "producto" : "productos"} cargados
-                            </p>
-                          </div>
-                          <p className="text-sm font-semibold text-white tabular-nums">
-                            {formatCurrency(total)}
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            variant="default"
-                            onClick={handleBluetoothPrint}
-                            disabled={!canPrint || !isOnline || isSaving || isPrintingBluetooth}
-                            className="h-12 rounded-2xl bg-[#1976d2] text-base font-semibold text-white hover:bg-[#1c82e4] active:scale-[0.98]"
-                          >
-                            {isPrintingBluetooth ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <Bluetooth className="size-4" />
-                            )}
-                            <span>{isPrintingBluetooth ? "Conectando..." : "Imprimir BT"}</span>
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            onClick={() => setShowPreview(true)}
-                            disabled={!canPrint || isPrintingBluetooth}
-                            className="h-11 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/5"
-                          >
-                            <Eye className="size-4" />
-                            <span>Ver ticket</span>
-                          </Button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* ── TOAST ── */}
         <AnimatePresence>
           {toast.open && (
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.98 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              transition={{ duration: 0.18 }}
               className="fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2"
               style={{
-                bottom: `calc(${BOTTOM_NAV_PX + (items.length > 0 ? footerCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX : 0)}px + env(safe-area-inset-bottom) + 12px)`,
+                bottom: `calc(${BOTTOM_NAV_PX + actionBarPx}px + env(safe-area-inset-bottom) + 10px)`,
               }}
               role="alert"
             >
-              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1b1b1d] px-4 py-3 shadow-lg">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#1976d2] text-white">
-                  <CheckCircle2 className="size-4" />
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1b1b1d] px-4 py-2.5 shadow-lg">
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#1976d2] text-white">
+                  <CheckCircle2 className="size-3" />
                 </div>
-                <p className="text-sm font-medium text-white">{toast.text}</p>
+                <p className="text-[13px] font-medium text-white">{toast.text}</p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
+      {/* ── MODAL: Ver ticket ── */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent
-          className="
-            fixed left-1/2 top-1/2 z-50
-            flex h-[100dvh] w-screen max-w-none
-            -translate-x-1/2 -translate-y-1/2
-            flex-col overflow-hidden rounded-none border-0 bg-[#111214] p-0 text-white
-            sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-4xl sm:rounded-3xl sm:border sm:border-white/10
-          "
-        >
-          <DialogHeader className="border-b border-white/10 px-4 py-4">
-            <DialogTitle className="text-base font-semibold tracking-tight text-white">
-              Ver ticket
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto bg-[#161618] px-3 py-3 sm:px-4 sm:py-4">
-            <div className="mx-auto w-fit overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/10">
+        <DialogContent className="fixed left-1/2 top-1/2 z-50 flex h-[100dvh] w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-none border-0 bg-[#111214] p-0 text-white sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-sm sm:rounded-2xl sm:border sm:border-white/10">
+          <div className="flex items-center justify-between border-b border-white/8 px-4 py-2.5">
+            <p className="text-[13px] font-semibold text-white">Vista previa</p>
+            <button type="button" onClick={() => setShowPreview(false)} className="text-[12px] text-[#555] active:opacity-60">
+              Cerrar
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto bg-[#0e0e0f] px-4 py-4">
+            <div className="mx-auto w-fit overflow-hidden rounded-xl bg-white shadow-sm">
               <RemitoPrint data={remitoData} />
             </div>
           </div>
-
-          <div className="border-t border-white/10 bg-[#111214] px-4 py-3">
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowPreview(false)}
-                className="flex-1 border-white/15 bg-transparent text-white hover:bg-white/5"
-              >
-                Cerrar
-              </Button>
-              <Button
-                onClick={handlePreviewPrint}
-                disabled={!isOnline || isSaving || isPrintingBluetooth}
-                size="lg"
-                className="flex-1 bg-[#1976d2] text-white hover:bg-[#1c82e4]"
-              >
-                {isSaving ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Printer className="size-4" />
-                )}
-                <span>{isSaving ? "Imprimiendo..." : "Imprimir normal"}</span>
-              </Button>
-            </div>
+          <div className="border-t border-white/8 px-4 py-2.5">
+            <button
+              type="button"
+              onClick={handlePreviewPrint}
+              disabled={!isOnline || isSaving || isPrintingBluetooth}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#1976d2] text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40"
+            >
+              {isSaving ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
+              {isSaving ? "Imprimiendo..." : "Imprimir"}
+            </button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showActions} onOpenChange={setShowActions}>
+      {/* ── MODAL: Datos del cliente ── */}
+      <Dialog open={showClientSheet} onOpenChange={setShowClientSheet}>
         <DialogContent className="max-w-sm rounded-3xl border-white/10 bg-[#1b1b1d] text-white">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold tracking-tight text-white">
-              Acciones del pedido
-            </DialogTitle>
+            <DialogTitle className="text-[14px] font-semibold text-white">Datos del cliente</DialogTitle>
           </DialogHeader>
-
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowActions(false)
-                if (!hasDraft) {
-                  confirmNewRemito()
-                  return
-                }
-                setShowConfirmNew(true)
-              }}
-              className="justify-start border-white/10 bg-transparent text-white hover:bg-white/5"
-            >
-              <RotateCcw className="size-4" />
-              Nuevo remito
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowActions(false)
-                if (items.length === 0) return
-                setShowConfirmClear(true)
-              }}
-              disabled={items.length === 0}
-              className="justify-start border-white/10 bg-transparent text-white hover:bg-white/5"
-            >
-              <Trash2 className="size-4" />
-              Vaciar productos
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowActions(false)
-                setShowPreview(true)
-              }}
-              disabled={!canPrint}
-              className="justify-start border-white/10 bg-transparent text-white hover:bg-white/5"
-            >
-              <Eye className="size-4" />
-              Ver ticket
-            </Button>
-          </div>
+          <p className="text-[12px] text-[#666]">Opcional. Se imprimen en el remito.</p>
+          <ClientForm
+            data={client}
+            onFieldChange={(field, value) => setClient((prev) => ({ ...prev, [field]: value }))}
+          />
+          <button
+            type="button"
+            onClick={() => setShowClientSheet(false)}
+            className="mt-2 flex h-10 w-full items-center justify-center rounded-xl bg-[#1976d2] text-[13px] font-semibold text-white active:opacity-80"
+          >
+            Listo
+          </button>
         </DialogContent>
       </Dialog>
 
+      {/* ── MODAL: Confirmar nuevo remito ── */}
       <Dialog open={showConfirmNew} onOpenChange={setShowConfirmNew}>
         <DialogContent className="max-w-sm rounded-3xl border-white/10 bg-[#1b1b1d] text-white">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold tracking-tight text-white">
-              Empezar un nuevo remito
-            </DialogTitle>
+            <DialogTitle className="text-[14px] font-semibold text-white">Nuevo remito</DialogTitle>
           </DialogHeader>
-
-          <p className="text-sm text-[#b0b0b6]">
-            Se va a limpiar el pedido actual y vas a empezar uno nuevo.
-          </p>
-
+          <p className="text-[13px] text-[#888]">Se limpia el pedido actual y empezás uno nuevo.</p>
           <div className="mt-2 flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1 border-white/10 bg-transparent text-white hover:bg-white/5"
+            <button
+              type="button"
               onClick={() => setShowConfirmNew(false)}
+              className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-transparent text-[13px] font-medium text-white active:opacity-60"
             >
               Cancelar
-            </Button>
-            <Button
-              size="lg"
-              className="flex-1 bg-[#1976d2] text-white hover:bg-[#1c82e4]"
+            </button>
+            <button
+              type="button"
               onClick={confirmNewRemito}
+              className="flex h-10 flex-1 items-center justify-center rounded-xl bg-[#1976d2] text-[13px] font-semibold text-white active:opacity-80"
             >
               Continuar
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showConfirmClear} onOpenChange={setShowConfirmClear}>
-        <DialogContent className="max-w-sm rounded-3xl border-white/10 bg-[#1b1b1d] text-white">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold tracking-tight text-white">
-              Vaciar productos
-            </DialogTitle>
-          </DialogHeader>
-
-          <p className="text-sm text-[#b0b0b6]">
-            Se van a eliminar {items.length} {items.length === 1 ? "producto" : "productos"} del pedido actual.
-          </p>
-
-          <div className="mt-2 flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1 border-white/10 bg-transparent text-white hover:bg-white/5"
-              onClick={() => setShowConfirmClear(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              size="lg"
-              className="flex-1"
-              onClick={confirmClearItems}
-            >
-              Vaciar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
+      {/* ── OCULTO PARA IMPRESIÓN ── */}
       <div className="hidden" aria-hidden="true">
         <div id="printable-remito">
           <RemitoPrint data={remitoData} />

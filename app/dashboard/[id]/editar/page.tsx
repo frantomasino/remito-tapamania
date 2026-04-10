@@ -4,27 +4,8 @@ import { useEffect, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  ArrowLeft,
-  Plus,
-  Trash2,
-  FileText,
-  Store,
-  Package2,
-  MessageSquare,
-  ReceiptText,
-} from "lucide-react"
+import { ArrowLeft, Plus, Trash2 } from "lucide-react"
 import type { RemitoWithItems } from "@/lib/remito-types"
 
 interface ItemForm {
@@ -79,13 +60,10 @@ export default function EditarRemitoPage() {
         }))
       )
     }
-
     setLoading(false)
   }, [remitoId])
 
-  useEffect(() => {
-    fetchRemito()
-  }, [fetchRemito])
+  useEffect(() => { fetchRemito() }, [fetchRemito])
 
   function addItem() {
     setItems((prev) => [...prev, { descripcion: "", cantidad: "1", unidad: "unidad" }])
@@ -115,8 +93,7 @@ export default function EditarRemitoPage() {
       return
     }
 
-    const hasEmptyItem = items.some((item) => !item.descripcion.trim())
-    if (hasEmptyItem) {
+    if (items.some((item) => !item.descripcion.trim())) {
       setError("Todos los items deben tener una descripción")
       setSaving(false)
       return
@@ -135,28 +112,20 @@ export default function EditarRemitoPage() {
       })
       .eq("id", remitoId)
 
-    if (updateError) {
-      setError("Error al actualizar el pedido.")
-      setSaving(false)
-      return
-    }
+    if (updateError) { setError("Error al actualizar el pedido."); setSaving(false); return }
 
     await supabase.from("remito_items").delete().eq("remito_id", remitoId)
 
-    const remitoItems = items.map((item) => ({
-      remito_id: remitoId,
-      descripcion: item.descripcion,
-      cantidad: parseFloat(item.cantidad) || 1,
-      unidad: item.unidad,
-    }))
+    const { error: itemsError } = await supabase.from("remito_items").insert(
+      items.map((item) => ({
+        remito_id: remitoId,
+        descripcion: item.descripcion,
+        cantidad: parseFloat(item.cantidad) || 1,
+        unidad: item.unidad,
+      }))
+    )
 
-    const { error: itemsError } = await supabase.from("remito_items").insert(remitoItems)
-
-    if (itemsError) {
-      setError("Error al actualizar los items.")
-      setSaving(false)
-      return
-    }
+    if (itemsError) { setError("Error al actualizar los items."); setSaving(false); return }
 
     router.push(`/dashboard/${remitoId}`)
     router.refresh()
@@ -164,270 +133,201 @@ export default function EditarRemitoPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-4 px-4 pb-5 pt-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-2xl bg-[#232326]" />
-          <Skeleton className="h-6 w-40 rounded-2xl bg-[#232326]" />
-        </div>
-        <Skeleton className="h-36 rounded-3xl bg-[#232326]" />
-        <Skeleton className="h-64 rounded-3xl bg-[#232326]" />
-        <Skeleton className="h-28 rounded-3xl bg-[#232326]" />
+      <div className="flex flex-col gap-3 px-4 pt-4">
+        <Skeleton className="h-8 w-32 rounded-xl bg-[#1a1a1c]" />
+        <Skeleton className="h-32 rounded-xl bg-[#1a1a1c]" />
+        <Skeleton className="h-48 rounded-xl bg-[#1a1a1c]" />
       </div>
     )
   }
 
+  const inputClass = "h-11 w-full rounded-xl border border-white/10 bg-[#1a1a1c] px-3 text-[15px] text-white placeholder:text-[#444] outline-none focus:border-white/20"
+  const labelClass = "text-[12px] font-medium text-[#888]"
+  const fieldClass = "flex flex-col gap-1.5"
+  const sectionClass = "rounded-xl border border-white/8 bg-[#161616] overflow-hidden"
+  const sectionHeaderClass = "flex items-center justify-between px-3 py-2.5 border-b border-white/8"
+  const sectionTitleClass = "text-[11px] font-semibold uppercase tracking-wide text-[#444]"
+
   return (
-    <div className="flex flex-col gap-4 px-4 pb-5 pt-4 text-white">
-      <header className="rounded-[28px] border border-white/10 bg-[#2a2926] px-4 py-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-        <div className="flex items-start gap-3">
-          <Link
-            href={`/dashboard/${remitoId}`}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white"
-            aria-label="Volver al detalle"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+    <div className="mx-auto max-w-md px-4 pb-6 pt-3 text-white">
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#1976d2] text-white">
-                <ReceiptText className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#b0b0b6]">
-                  Editar pedido
-                </p>
-                <h1 className="mt-1 text-base font-semibold tracking-tight text-white">
-                  {form.numero_remito || "Sin número"}
-                </h1>
-              </div>
-            </div>
-          </div>
+      {/* ── HEADER ── */}
+      <div className="mb-4 flex items-center gap-3">
+        <Link
+          href={`/dashboard/${remitoId}`}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[#1a1a1c] text-[#666] active:opacity-60"
+          aria-label="Volver"
+        >
+          <ArrowLeft className="size-3.5" />
+        </Link>
+        <div>
+          <h1 className="text-[18px] font-semibold text-white">Editar pedido</h1>
+          <p className="text-[11px] text-[#555]">{form.numero_remito || "Sin número"}</p>
         </div>
-      </header>
+      </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <section className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-          <div className="mb-4 flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#232326] ring-1 ring-white/10">
-              <FileText className="h-4 w-4 text-[#9e9ea6]" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold tracking-tight text-white">
-                Datos del pedido
-              </h2>
-              <p className="mt-1 text-sm text-[#9e9ea6]">
-                Número, fecha y estado actual.
-              </p>
-            </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+
+        {/* ── DATOS DEL PEDIDO ── */}
+        <div className={sectionClass}>
+          <div className={sectionHeaderClass}>
+            <p className={sectionTitleClass}>Datos del pedido</p>
           </div>
-
-          <div className="flex flex-col gap-3">
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium text-white">Número</p>
-              <Input
-                id="numero"
+          <div className="flex flex-col gap-3 p-3">
+            <div className={fieldClass}>
+              <label className={labelClass}>Número</label>
+              <input
                 value={form.numero_remito}
                 onChange={(e) => setForm({ ...form, numero_remito: e.target.value })}
                 required
-                className="h-11 rounded-xl"
+                className={inputClass}
               />
             </div>
-
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium text-white">Fecha</p>
-              <Input
-                id="fecha"
+            <div className={fieldClass}>
+              <label className={labelClass}>Fecha</label>
+              <input
                 type="date"
                 value={form.fecha}
                 onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-                className="h-11 rounded-xl"
+                className={inputClass}
               />
             </div>
-
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium text-white">Estado</p>
-              <Select
+            <div className={fieldClass}>
+              <label className={labelClass}>Estado</label>
+              <select
                 value={form.estado}
-                onValueChange={(v) => setForm({ ...form, estado: v as typeof form.estado })}
+                onChange={(e) => setForm({ ...form, estado: e.target.value as typeof form.estado })}
+                className={inputClass + " appearance-none"}
               >
-                <SelectTrigger className="border-white/10 bg-[#1a1a1c] text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-white/10 bg-[#1b1b1d] text-white">
-                  <SelectItem value="pendiente">Pendiente</SelectItem>
-                  <SelectItem value="entregado">Entregado</SelectItem>
-                  <SelectItem value="cancelado">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="pendiente">Pendiente</option>
+                <option value="entregado">Entregado</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
             </div>
           </div>
-        </section>
+        </div>
 
-        <section className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#232326] ring-1 ring-white/10">
-                <Package2 className="h-4 w-4 text-[#9e9ea6]" />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold tracking-tight text-white">Productos</h2>
-                <p className="mt-1 text-sm text-[#9e9ea6]">
-                  {items.length} {items.length === 1 ? "producto" : "productos"}
-                </p>
-              </div>
-            </div>
-
-            <Button
+        {/* ── PRODUCTOS ── */}
+        <div className={sectionClass}>
+          <div className={sectionHeaderClass}>
+            <p className={sectionTitleClass}>
+              Productos · {items.length} {items.length === 1 ? "ítem" : "ítems"}
+            </p>
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={addItem}
-              className="border-white/10 bg-transparent text-white hover:bg-white/5"
+              className="flex items-center gap-1 text-[12px] text-[#5aa9ff] active:opacity-60"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="size-3" />
               Agregar
-            </Button>
+            </button>
           </div>
-
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col divide-y divide-white/8">
             {items.map((item, index) => (
-              <div
-                key={index}
-                className="rounded-2xl border border-white/10 bg-[#232326] px-3 py-3"
-              >
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-white">Producto {index + 1}</p>
-
+              <div key={index} className="flex flex-col gap-2.5 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-medium text-[#555]">Producto {index + 1}</p>
                   {items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl text-[#b0b0b6] transition-colors hover:bg-white/5 hover:text-[#ff6b6b]"
-                      aria-label="Eliminar producto"
+                      className="text-[#ff5555] active:opacity-60"
+                      aria-label="Eliminar"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="size-3.5" />
                     </button>
                   )}
                 </div>
-
-                <div className="space-y-2.5">
-                  <div className="space-y-1.5">
-                    <p className="text-sm font-medium text-white">Descripción</p>
-                    <Input
-                      placeholder="Descripción del producto"
-                      value={item.descripcion}
-                      onChange={(e) => updateItem(index, "descripcion", e.target.value)}
-                      className="h-11 rounded-xl"
+                <div className={fieldClass}>
+                  <label className={labelClass}>Descripción</label>
+                  <input
+                    placeholder="Descripción del producto"
+                    value={item.descripcion}
+                    onChange={(e) => updateItem(index, "descripcion", e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className={fieldClass}>
+                    <label className={labelClass}>Cantidad</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={item.cantidad}
+                      onChange={(e) => updateItem(index, "cantidad", e.target.value)}
+                      className={inputClass}
                     />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1.5">
-                      <p className="text-sm font-medium text-white">Cantidad</p>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="Cantidad"
-                        value={item.cantidad}
-                        onChange={(e) => updateItem(index, "cantidad", e.target.value)}
-                        className="h-11 rounded-xl"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <p className="text-sm font-medium text-white">Unidad</p>
-                      <Select
-                        value={item.unidad}
-                        onValueChange={(v) => updateItem(index, "unidad", v)}
-                      >
-                        <SelectTrigger className="border-white/10 bg-[#1a1a1c] text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="border-white/10 bg-[#1b1b1d] text-white">
-                          <SelectItem value="unidad">Unidad</SelectItem>
-                          <SelectItem value="kg">Kg</SelectItem>
-                          <SelectItem value="litro">Litro</SelectItem>
-                          <SelectItem value="metro">Metro</SelectItem>
-                          <SelectItem value="caja">Caja</SelectItem>
-                          <SelectItem value="bulto">Bulto</SelectItem>
-                          <SelectItem value="pack">Pack</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className={fieldClass}>
+                    <label className={labelClass}>Unidad</label>
+                    <select
+                      value={item.unidad}
+                      onChange={(e) => updateItem(index, "unidad", e.target.value)}
+                      className={inputClass + " appearance-none"}
+                    >
+                      <option value="unidad">Unidad</option>
+                      <option value="kg">Kg</option>
+                      <option value="litro">Litro</option>
+                      <option value="metro">Metro</option>
+                      <option value="caja">Caja</option>
+                      <option value="bulto">Bulto</option>
+                      <option value="pack">Pack</option>
+                    </select>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
 
-        <section className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-          <div className="mb-4 flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#232326] ring-1 ring-white/10">
-              <Store className="h-4 w-4 text-[#9e9ea6]" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold tracking-tight text-white">
-                Cliente o comercio
-              </h2>
-              <p className="mt-1 text-sm text-[#9e9ea6]">
-                Opcional. Solo si querés dejarlo cargado.
-              </p>
+        {/* ── CLIENTE ── */}
+        <div className={sectionClass}>
+          <div className={sectionHeaderClass}>
+            <p className={sectionTitleClass}>Cliente</p>
+          </div>
+          <div className="p-3">
+            <div className={fieldClass}>
+              <label className={labelClass}>Nombre (opcional)</label>
+              <input
+                value={form.cliente_nombre}
+                onChange={(e) => setForm({ ...form, cliente_nombre: e.target.value })}
+                placeholder="Ej: Kiosco Juan"
+                className={inputClass}
+              />
             </div>
           </div>
+        </div>
 
-          <div className="space-y-1.5">
-            <p className="text-sm font-medium text-white">Nombre</p>
-            <Input
-              id="cliente"
-              value={form.cliente_nombre}
-              onChange={(e) => setForm({ ...form, cliente_nombre: e.target.value })}
-              className="h-11 rounded-xl"
-              placeholder="Ej: Kiosco Juan"
+        {/* ── OBSERVACIONES ── */}
+        <div className={sectionClass}>
+          <div className={sectionHeaderClass}>
+            <p className={sectionTitleClass}>Observaciones</p>
+          </div>
+          <div className="p-3">
+            <textarea
+              placeholder="Notas adicionales..."
+              value={form.observaciones}
+              onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
+              className="min-h-[80px] w-full rounded-xl border border-white/10 bg-[#1a1a1c] px-3 py-2.5 text-[15px] text-white placeholder:text-[#444] outline-none focus:border-white/20 resize-none"
             />
           </div>
-        </section>
-
-        <section className="rounded-2xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-          <div className="mb-4 flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-[#232326] ring-1 ring-white/10">
-              <MessageSquare className="h-4 w-4 text-[#9e9ea6]" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold tracking-tight text-white">
-                Observaciones
-              </h2>
-              <p className="mt-1 text-sm text-[#9e9ea6]">Notas adicionales del pedido.</p>
-            </div>
-          </div>
-
-          <Textarea
-            placeholder="Notas adicionales..."
-            value={form.observaciones}
-            onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
-            className="min-h-24 rounded-2xl border-white/10 bg-[#1a1a1c] text-white placeholder:text-[#8f8f95]"
-          />
-        </section>
+        </div>
 
         {error && (
-          <div
-            className="rounded-2xl border border-[#ff5a5f]/20 bg-[#ff5a5f]/10 px-3 py-2.5 text-sm text-white"
-            role="alert"
-          >
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-[13px] text-red-300" role="alert">
             {error}
           </div>
         )}
 
-        <Button
+        <button
           type="submit"
           disabled={saving}
-          size="lg"
-          className="h-12 rounded-2xl bg-[#1976d2] text-white hover:bg-[#1c82e4]"
+          className="h-11 w-full rounded-xl bg-[#1976d2] text-[14px] font-semibold text-white active:opacity-80 disabled:opacity-40"
         >
           {saving ? "Guardando..." : "Guardar cambios"}
-        </Button>
+        </button>
+
       </form>
     </div>
   )

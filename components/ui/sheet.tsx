@@ -65,16 +65,16 @@ function SheetContent({
         )}
         {...props}
       >
-        {side === "bottom" ? (
+        {side === "bottom" && (
           <div className="flex justify-center pt-2">
-            <div className="h-1.5 w-10 rounded-full bg-white/15" />
+            <div className="h-1 w-8 rounded-full bg-white/15" />
           </div>
-        ) : null}
+        )}
 
         {children}
 
-        <SheetPrimitive.Close className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[#b0b0b6] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/15 disabled:pointer-events-none">
-          <XIcon className="size-4" />
+        <SheetPrimitive.Close className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-[#666] transition-colors hover:text-white focus-visible:outline-none disabled:pointer-events-none">
+          <XIcon className="size-3.5" />
           <span className="sr-only">Cerrar</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>
@@ -109,7 +109,7 @@ function SheetTitle({
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn("text-base font-semibold tracking-tight text-white", className)}
+      className={cn("text-[14px] font-semibold text-white", className)}
       {...props}
     />
   )
@@ -122,7 +122,7 @@ function SheetDescription({
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn("text-sm text-[#b0b0b6]", className)}
+      className={cn("text-[13px] text-[#666]", className)}
       {...props}
     />
   )

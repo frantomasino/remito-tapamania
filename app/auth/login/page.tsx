@@ -4,10 +4,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { ClipboardList, Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -23,11 +20,7 @@ export default function LoginPage() {
     setError(null)
 
     const supabase = createClient()
-
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (signInError) {
       setError("Email o contraseña incorrectos")
@@ -38,124 +31,104 @@ export default function LoginPage() {
     try {
       const userId = signInData.user?.id
       const userEmail = signInData.user?.email ?? email
-
       if (userId) {
         await supabase.from("profiles").upsert(
-          {
-            id: userId,
-            email: userEmail,
-            last_login_at: new Date().toISOString(),
-          },
+          { id: userId, email: userEmail, last_login_at: new Date().toISOString() },
           { onConflict: "id" }
         )
       }
-    } catch {
-      // nada
-    }
+    } catch {}
 
     router.push("/dashboard")
     router.refresh()
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#111214] px-5 pb-8 pt-8 text-white">
-      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center">
-        <div className="mb-8">
-          <div className="flex size-14 items-center justify-center rounded-3xl bg-[#1976d2] text-white shadow-[0_8px_24px_rgba(25,118,210,0.18)]">
-            <ClipboardList className="size-7" />
-          </div>
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[#111214] px-5 text-white">
+      <div className="w-full max-w-sm">
 
-          <div className="mt-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
-              App
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-white">
-              Ingresar
-            </h1>
-            <p className="mt-2 text-sm leading-relaxed text-[#9e9ea6]">
-              Entrá para cargar pedidos, imprimir remitos y seguir el recorrido.
-            </p>
+        {/* ── LOGO + TÍTULO ── */}
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex size-10 items-center justify-center rounded-2xl bg-[#1976d2]">
+            {/* Ícono simple: dos líneas como un remito */}
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <rect x="2" y="2" width="14" height="2" rx="1" fill="white"/>
+              <rect x="2" y="7" width="10" height="2" rx="1" fill="white"/>
+              <rect x="2" y="12" width="12" height="2" rx="1" fill="white"/>
+            </svg>
           </div>
+          <h1 className="text-[22px] font-semibold text-white">Tapamanía Remitos</h1>
+          <p className="mt-1 text-[13px] text-[#555]">Ingresá para continuar</p>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className="text-sm font-medium text-white">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+        {/* ── FORMULARIO ── */}
+        <form onSubmit={handleLogin} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="email" className="text-[12px] font-medium text-[#888]">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              placeholder="tu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="h-11 w-full rounded-xl border border-white/10 bg-[#1a1a1c] px-3 text-[15px] text-white placeholder:text-[#444] outline-none focus:border-white/20"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="password" className="text-[12px] font-medium text-[#888]">
+              Contraseña
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Tu contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
-                className="h-11 rounded-xl"
+                className="h-11 w-full rounded-xl border border-white/10 bg-[#1a1a1c] px-3 pr-11 text-[15px] text-white placeholder:text-[#444] outline-none focus:border-white/20"
               />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password" className="text-sm font-medium text-white">
-                Contraseña
-              </Label>
-
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Tu contraseña"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-11 rounded-xl pr-12"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9e9ea6] transition-colors hover:text-white"
-                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                >
-                  {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
-                </button>
-              </div>
-
-              <div className="pt-0.5 text-right">
-                <Link
-                  href="/auth/forgot-password"
-                  className="text-sm font-medium text-[#5aa9ff] underline underline-offset-4"
-                >
-                  ¿Olvidaste tu contraseña?
-                </Link>
-              </div>
-            </div>
-
-            {error && (
-              <div
-                className="rounded-2xl border border-[#ff5a5f]/20 bg-[#ff5a5f]/10 px-3 py-2.5 text-sm text-white"
-                role="alert"
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555]"
+                aria-label={showPassword ? "Ocultar" : "Mostrar"}
               >
-                {error}
-              </div>
-            )}
+                {showPassword ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+              </button>
+            </div>
+            <div className="text-right">
+              <Link
+                href="/auth/forgot-password"
+                className="text-[12px] text-[#5aa9ff]"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+          </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="mt-1 h-12 rounded-2xl bg-[#1976d2] text-sm font-semibold text-white hover:bg-[#1c82e4]"
-            >
-              {loading ? "Ingresando..." : "Ingresar"}
-            </Button>
-          </form>
-        </div>
+          {error && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-[13px] text-red-300" role="alert">
+              {error}
+            </div>
+          )}
 
-        <p className="mt-6 text-center text-sm text-[#9e9ea6]">
-          ¿No tenés cuenta?{" "}
-          <Link
-            href="/auth/sign-up"
-            className="font-medium text-[#5aa9ff] underline underline-offset-4"
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-1 h-11 w-full rounded-xl bg-[#1976d2] text-[14px] font-semibold text-white active:opacity-80 disabled:opacity-40"
           >
+            {loading ? "Ingresando..." : "Ingresar"}
+          </button>
+        </form>
+
+        <p className="mt-5 text-center text-[13px] text-[#555]">
+          ¿No tenés cuenta?{" "}
+          <Link href="/auth/sign-up" className="text-[#5aa9ff]">
             Registrate
           </Link>
         </p>

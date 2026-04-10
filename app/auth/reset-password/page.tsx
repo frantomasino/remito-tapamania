@@ -2,28 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, KeyRound } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
 function translateResetError(msg: string) {
   const m = msg.toLowerCase()
-
-  if (m.includes("new password should be different")) {
-    return "La nueva contraseña debe ser diferente a la anterior."
-  }
-  if (m.includes("password should be at least")) {
-    return "La contraseña debe tener al menos 6 caracteres."
-  }
-  if (m.includes("invalid") && (m.includes("token") || m.includes("code"))) {
-    return "El enlace de recuperación es inválido o ya venció. Pedí uno nuevo."
-  }
-  if (m.includes("expired")) {
-    return "El enlace de recuperación venció. Pedí uno nuevo."
-  }
-
+  if (m.includes("new password should be different")) return "La nueva contraseña debe ser diferente a la anterior."
+  if (m.includes("password should be at least")) return "La contraseña debe tener al menos 6 caracteres."
+  if (m.includes("invalid") && (m.includes("token") || m.includes("code"))) return "El enlace es inválido o ya venció. Pedí uno nuevo."
+  if (m.includes("expired")) return "El enlace venció. Pedí uno nuevo."
   return msg
 }
 
@@ -33,7 +20,6 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -41,156 +27,106 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getSession().then(({ data }) => {
-      setReady(!!data.session)
-    })
+    supabase.auth.getSession().then(({ data }) => setReady(!!data.session))
   }, [])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setSuccess(null)
-
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.")
-      return
-    }
-    if (password !== confirm) {
-      setError("Las contraseñas no coinciden.")
-      return
-    }
-
+    if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres."); return }
+    if (password !== confirm) { setError("Las contraseñas no coinciden."); return }
     setLoading(true)
-
     const supabase = createClient()
     const { error } = await supabase.auth.updateUser({ password })
-
     setLoading(false)
-
-    if (error) {
-      setError(translateResetError(error.message))
-      return
-    }
-
-    setSuccess("Contraseña cambiada con éxito. Ya podés ingresar.")
-
-    setTimeout(() => {
-      router.replace("/auth/login")
-    }, 900)
+    if (error) { setError(translateResetError(error.message)); return }
+    setSuccess("Contraseña cambiada. Redirigiendo...")
+    setTimeout(() => router.replace("/auth/login"), 900)
   }
 
-  return (
-    <div className="flex min-h-dvh flex-col bg-[#111214] px-5 pb-8 pt-8 text-white">
-      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center">
-        <div className="mb-8">
-          <div className="flex size-14 items-center justify-center rounded-3xl bg-[#1976d2] text-white shadow-[0_8px_24px_rgba(25,118,210,0.18)]">
-            <KeyRound className="size-7" />
-          </div>
+  const inputClass = "h-11 w-full rounded-xl border border-white/10 bg-[#1a1a1c] px-3 pr-11 text-[15px] text-white placeholder:text-[#444] outline-none focus:border-white/20"
 
-          <div className="mt-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a9a9ae]">
-              Tapamanía
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-white">
-              Nueva contraseña
-            </h1>
-            <p className="mt-2 text-sm leading-relaxed text-[#9e9ea6]">
-              Elegí una nueva contraseña para volver a entrar a tu cuenta.
-            </p>
-          </div>
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[#111214] px-5 text-white">
+      <div className="w-full max-w-sm">
+
+        <div className="mb-6">
+          <h1 className="text-[22px] font-semibold text-white">Nueva contraseña</h1>
+          <p className="mt-1 text-[13px] text-[#555]">Elegí una nueva contraseña para tu cuenta.</p>
         </div>
 
         {!ready ? (
-          <div className="rounded-3xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-            <p className="text-sm text-white">
-              No encontramos una sesión de recuperación activa.
-            </p>
-            <p className="mt-2 text-sm text-[#9e9ea6]">
-              Abrí este enlace desde el email de recuperación o pedí uno nuevo.
-            </p>
+          <div className="rounded-xl border border-white/8 bg-[#161616] px-4 py-4">
+            <p className="text-[13px] text-white">No encontramos una sesión de recuperación activa.</p>
+            <p className="mt-1 text-[12px] text-[#555]">Abrí el link desde el email de recuperación o pedí uno nuevo.</p>
           </div>
         ) : (
-          <div className="rounded-3xl border border-white/10 bg-[#1b1b1d] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
-            <form onSubmit={onSubmit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="password" className="text-sm font-medium text-white">
-                  Nueva contraseña
-                </Label>
-
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 rounded-xl pr-12"
-                    required
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9e9ea6] transition-colors hover:text-white"
-                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="confirm" className="text-sm font-medium text-white">
-                  Confirmar contraseña
-                </Label>
-
-                <div className="relative">
-                  <Input
-                    id="confirm"
-                    type={showConfirm ? "text" : "password"}
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    className="h-11 rounded-xl pr-12"
-                    required
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9e9ea6] transition-colors hover:text-white"
-                    aria-label={showConfirm ? "Ocultar contraseña" : "Mostrar contraseña"}
-                  >
-                    {showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div
-                  className="rounded-2xl border border-[#ff5a5f]/20 bg-[#ff5a5f]/10 px-3 py-2.5 text-sm text-white"
-                  role="alert"
+          <form onSubmit={onSubmit} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="password" className="text-[12px] font-medium text-[#888]">Nueva contraseña</label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className={inputClass}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555]"
+                  aria-label={showPassword ? "Ocultar" : "Mostrar"}
                 >
-                  {error}
-                </div>
-              )}
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+            </div>
 
-              {success && (
-                <div
-                  className="rounded-2xl border border-[#1976d2]/20 bg-[#1976d2]/10 px-3 py-2.5 text-sm text-white"
-                  role="status"
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="confirm" className="text-[12px] font-medium text-[#888]">Confirmar contraseña</label>
+              <div className="relative">
+                <input
+                  id="confirm"
+                  type={showConfirm ? "text" : "password"}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  required
+                  className={inputClass}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555]"
+                  aria-label={showConfirm ? "Ocultar" : "Mostrar"}
                 >
-                  {success}
-                </div>
-              )}
+                  {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+            </div>
 
-              <Button
-                type="submit"
-                disabled={loading}
-                className="h-12 rounded-2xl bg-[#1976d2] text-sm font-semibold text-white hover:bg-[#1c82e4]"
-              >
-                {loading ? "Guardando..." : "Guardar contraseña"}
-              </Button>
-            </form>
-          </div>
+            {error && (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-[13px] text-red-300" role="alert">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="rounded-xl border border-[#1976d2]/20 bg-[#1976d2]/10 px-3 py-2 text-[13px] text-white" role="status">
+                {success}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-1 h-11 w-full rounded-xl bg-[#1976d2] text-[14px] font-semibold text-white active:opacity-80 disabled:opacity-40"
+            >
+              {loading ? "Guardando..." : "Guardar contraseña"}
+            </button>
+          </form>
         )}
       </div>
     </div>
