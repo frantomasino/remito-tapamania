@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   Printer,
   FileText,
-  RotateCcw,
   CheckCircle2,
   Loader2,
   Eye,
@@ -15,9 +14,10 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
+  WifiOff,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ClientForm } from "@/components/client-form"
 import { ProductSelector } from "@/components/product-selector"
 import { RemitoPrint } from "@/components/remito-print"
 import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
@@ -84,8 +84,8 @@ type DraftData = {
   savedAt: number
 }
 
-// Estado de éxito después de imprimir
 type SuccessState = {
+  remitoId: string
   numero: string
   cliente: string
   total: number
@@ -104,6 +104,7 @@ function buildAddedToast(product: Product, opcion?: string) {
 }
 
 export default function RemitoPage() {
+  const router = useRouter()
   const [userId, setUserId] = useState<string>("")
   const [products, setProducts] = useState<Product[]>([])
   const [items, setItems] = useState<LineItem[]>([])
@@ -111,7 +112,6 @@ export default function RemitoPage() {
   const [nextNumber, setNextNumber] = useState(1)
   const [showPreview, setShowPreview] = useState(false)
   const [showConfirmNew, setShowConfirmNew] = useState(false)
-  const [showClientSheet, setShowClientSheet] = useState(false)
   const [showDraftBanner, setShowDraftBanner] = useState(false)
   const [successState, setSuccessState] = useState<SuccessState>(null)
   const [priceListId, setPriceListId] = useState<PriceListId>("minorista")
@@ -339,7 +339,6 @@ export default function RemitoPage() {
     nextVisibleNumber: number,
     successData: SuccessState
   ) => {
-    // Mostrar pantalla de éxito ANTES de limpiar
     setSuccessState(successData)
     setNextNumber(nextVisibleNumber)
     setClient(defaultClient)
@@ -350,7 +349,7 @@ export default function RemitoPage() {
     remitoDateRef.current = getTodayDateSafe()
   }, [userId, clearDraft])
 
-  const persistRemito = useCallback(async (): Promise<number | null> => {
+  const persistRemito = useCallback(async (): Promise<{ nextNumber: number; remitoId: string } | null> => {
     if (!isOnline) { showToast("Sin internet"); return null }
     if (!userId) { showToast("Falta sesión"); return null }
     if (items.length === 0) { showToast("No hay productos"); return null }
@@ -386,7 +385,7 @@ export default function RemitoPage() {
         }))
       )
       if (itemsError) { showToast("Error al guardar items"); return null }
-      return consumedNumber + 1
+      return { nextNumber: consumedNumber + 1, remitoId: remitoInserted.id }
     } catch {
       showToast("Error al guardar")
       return null
@@ -415,8 +414,7 @@ export default function RemitoPage() {
 
   const handlePreviewPrint = useCallback(async () => {
     if (!isOnline || !canPrint || isSaving || isPrintingBluetooth) return
-    // Capturar datos antes de resetear
-    const successData: SuccessState = {
+    const successData = {
       numero: remitoNumero,
       cliente: client.nombre?.trim() || "Sin cliente",
       total,
@@ -426,15 +424,14 @@ export default function RemitoPage() {
     const printWindow = isIOS() ? openPrintWindowImmediate() : null
     if (isIOS() && !printWindow) { showToast("No se pudo abrir impresión"); return }
     if (!isIOS()) window.print()
-    const nextVisibleNumber = await persistRemito()
-    if (!nextVisibleNumber) return
-    advanceAndReset(nextVisibleNumber, successData)
+    const result = await persistRemito()
+    if (!result) return
+    advanceAndReset(result.nextNumber, { ...successData, remitoId: result.remitoId })
   }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, client.nombre, total, totalUnits, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
 
   const handleBluetoothPrint = useCallback(async () => {
     if (!isOnline || !canPrint || isSaving || isPrintingBluetooth) return
-    // Capturar datos antes de resetear
-    const successData: SuccessState = {
+    const successData = {
       numero: remitoNumero,
       cliente: client.nombre?.trim() || "Sin cliente",
       total,
@@ -447,9 +444,9 @@ export default function RemitoPage() {
       const { device, characteristic } = await connectBlePrinter()
       showToast(`Conectado a ${device.name?.trim() || "impresora"}. Enviando...`)
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
-      const nextVisibleNumber = await persistRemito()
-      if (!nextVisibleNumber) return
-      advanceAndReset(nextVisibleNumber, successData)
+      const result = await persistRemito()
+      if (!result) return
+      advanceAndReset(result.nextNumber, { ...successData, remitoId: result.remitoId })
     } catch (error) {
       const msg = error instanceof Error ? error.message : ""
       if (/bluetooth no disponible/i.test(msg)) { showToast("BT no disponible en este celu"); return }
@@ -484,7 +481,7 @@ export default function RemitoPage() {
     )
   }
 
-  // ── PANTALLA DE ÉXITO ────────────────────────────────────────────────────
+  // ── PANTALLA DE ÉXITO ──────────────────────────────────────────────────
   if (successState) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#111214] px-6 text-white">
@@ -494,15 +491,11 @@ export default function RemitoPage() {
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="w-full max-w-sm text-center"
         >
-          {/* Ícono de éxito */}
           <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-emerald-500/15">
             <CheckCircle2 className="size-8 text-emerald-400" />
           </div>
-
           <h1 className="text-[22px] font-semibold text-white">Ticket enviado</h1>
           <p className="mt-1 text-[13px] text-[#555]">{successState.numero}</p>
-
-          {/* Resumen */}
           <div className="mt-5 rounded-xl border border-white/8 bg-[#161616] px-4 py-4 text-left">
             <div className="flex justify-between py-1.5 border-b border-white/8">
               <span className="text-[12px] text-[#555]">Cliente</span>
@@ -517,16 +510,24 @@ export default function RemitoPage() {
               <span className="text-[15px] font-semibold text-white tabular-nums">{formatCurrency(successState.total)}</span>
             </div>
           </div>
-
-          {/* Botón nuevo pedido */}
-          <button
-            type="button"
-            onClick={() => setSuccessState(null)}
-            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1976d2] text-[14px] font-semibold text-white active:opacity-80"
-          >
-            <Plus className="size-4" />
-            Nuevo pedido
-          </button>
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => router.push(`/dashboard/${successState.remitoId}`)}
+              className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-transparent text-[13px] font-medium text-[#888] active:opacity-60"
+            >
+              <Eye className="size-3.5" />
+              Ver pedido
+            </button>
+            <button
+              type="button"
+              onClick={() => setSuccessState(null)}
+              className="flex h-11 flex-[2] items-center justify-center gap-2 rounded-xl bg-[#1976d2] text-[14px] font-semibold text-white active:opacity-80"
+            >
+              <Plus className="size-4" />
+              Nuevo pedido
+            </button>
+          </div>
         </motion.div>
       </div>
     )
@@ -539,22 +540,11 @@ export default function RemitoPage() {
         {/* ── HEADER ── */}
         <header className="sticky top-0 z-40 border-b border-white/8 bg-[#111214]/95 backdrop-blur-xl">
           <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
-            <button
-              type="button"
-              onClick={() => setShowClientSheet(true)}
-              className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-[14px] font-semibold leading-tight text-white">
-                  {client.nombre?.trim() || "Sin cliente"}
-                </p>
-                <p className="text-[11px] text-[#555]">
-                  {remitoNumero} · {remitoDateRef.current}
-                </p>
-              </div>
-              <ChevronDown className="size-3.5 shrink-0 text-[#444]" />
-            </button>
-
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] text-[#555]">
+                {remitoNumero} · {remitoDateRef.current}
+              </p>
+            </div>
             <div className="relative shrink-0">
               <select
                 value={priceListId}
@@ -567,24 +557,36 @@ export default function RemitoPage() {
               </select>
               <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-[#555]" />
             </div>
-
             <button
               type="button"
               onClick={() => hasDraft ? setShowConfirmNew(true) : confirmNewRemito()}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[#1a1a1c] text-[#666] active:opacity-60"
-              aria-label="Nuevo remito"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-[#1a1a1c] px-2.5 text-[12px] font-medium text-[#666] active:opacity-60"
+              aria-label="Nuevo pedido"
             >
-              <RotateCcw className="size-3.5" />
+              <Plus className="size-3" />
+              Nuevo
             </button>
           </div>
 
-          {!isOnline && (
-            <div className="border-t border-red-500/20 bg-red-500/10 px-4 py-1.5">
-              <p className="text-center text-[11px] font-medium text-red-300">
-                Sin internet — no se puede guardar
-              </p>
-            </div>
-          )}
+          {/* ── BANNER SIN INTERNET ── */}
+          <AnimatePresence>
+            {!isOnline && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="overflow-hidden"
+              >
+                <div className="flex items-center gap-2 border-t border-red-500/30 bg-red-500/15 px-4 py-2.5">
+                  <WifiOff className="size-3.5 shrink-0 text-red-400" />
+                  <p className="text-[12px] font-semibold text-red-300">
+                    Sin internet — no podés imprimir hasta recuperar señal
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {showDraftBanner && (
             <div className="border-t border-amber-500/20 bg-amber-500/10 px-4 py-1.5 flex items-center justify-between gap-3">
@@ -609,8 +611,18 @@ export default function RemitoPage() {
             paddingBottom: `calc(${BOTTOM_NAV_PX + actionBarPx}px + env(safe-area-inset-bottom) + 16px)`,
           }}
         >
+          <div className="mb-3">
+            <input
+              type="text"
+              placeholder="Nombre del cliente (opcional)"
+              value={client.nombre}
+              onChange={(e) => setClient((prev) => ({ ...prev, nombre: e.target.value }))}
+              className="h-11 w-full rounded-xl border border-white/10 bg-[#1a1a1c] px-3 text-[15px] text-white placeholder:text-[#444] outline-none focus:border-white/20"
+            />
+          </div>
+
           {isLoadingProducts && products.length === 0 ? (
-            <div className="space-y-3 pt-2">
+            <div className="space-y-3">
               <div className="h-11 animate-pulse rounded-xl bg-[#1a1a1c]" />
               <div className="h-14 animate-pulse rounded-2xl bg-[#1a1a1c]" />
               <div className="h-14 animate-pulse rounded-2xl bg-[#1a1a1c]" />
@@ -633,21 +645,22 @@ export default function RemitoPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 60, opacity: 0 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="fixed inset-x-0 z-50 border-t border-white/8 bg-[#111214]/98 backdrop-blur-xl"
+              className="fixed inset-x-0 z-50 border-t border-white/10 bg-[#202023]/98 backdrop-blur-xl"
               style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
             >
+              {/* Pestaña colapsar */}
               <button
                 type="button"
                 onClick={() => setActionBarCollapsed((v) => !v)}
                 className="flex w-full items-center justify-center py-1 active:opacity-60"
               >
                 <div className="flex items-center gap-1.5">
-                  <div className="h-0.5 w-6 rounded-full bg-white/20" />
+                  <div className="h-0.5 w-6 rounded-full bg-white/15" />
                   {actionBarCollapsed
-                    ? <ChevronUp className="size-3 text-[#444]" />
-                    : <ChevronDown className="size-3 text-[#444]" />
+                    ? <ChevronUp className="size-3 text-[#555]" />
+                    : <ChevronDown className="size-3 text-[#555]" />
                   }
-                  <div className="h-0.5 w-6 rounded-full bg-white/20" />
+                  <div className="h-0.5 w-6 rounded-full bg-white/15" />
                 </div>
               </button>
 
@@ -660,35 +673,50 @@ export default function RemitoPage() {
                     transition={{ duration: 0.15, ease: "easeOut" }}
                     className="overflow-hidden"
                   >
-                    <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pb-2">
+                    <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pb-3">
+
+                      {/* Total — pill con label */}
                       <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-semibold text-white tabular-nums leading-none">
-                          {formatCurrency(total)}
-                          <span className="ml-2 text-[11px] font-normal text-[#555]">
-                            {totalUnits} unid.
+                        <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-[#2a2a2e] px-3 py-1.5">
+                          <span className="text-[11px] font-medium text-[#666]">Total</span>
+                          <span className="text-[15px] font-bold text-white tabular-nums leading-none">
+                            {formatCurrency(total)}
                           </span>
-                        </p>
+                          <span className="text-[10px] text-[#444]">·</span>
+                          <span className="text-[11px] font-medium text-[#555]">{totalUnits} u.</span>
+                        </div>
                       </div>
+
+                      {/* Ver */}
                       <button
                         type="button"
                         onClick={() => setShowPreview(true)}
-                        className="flex h-9 items-center gap-1.5 rounded-xl border border-white/10 bg-[#1a1a1c] px-3 text-[13px] font-medium text-[#aaa] active:opacity-60"
+                        className="flex h-9 items-center gap-1.5 rounded-xl border border-white/10 bg-[#2a2a2e] px-3 text-[13px] font-medium text-[#aaa] active:opacity-60"
                       >
                         <Eye className="size-3.5" />
                         Ver
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleBluetoothPrint}
-                        disabled={!isOnline || isSaving || isPrintingBluetooth}
-                        className="flex h-9 items-center gap-1.5 rounded-xl bg-[#1976d2] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40"
-                      >
-                        {isPrintingBluetooth
-                          ? <Loader2 className="size-3.5 animate-spin" />
-                          : <Bluetooth className="size-3.5" />
-                        }
-                        {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
-                      </button>
+
+                      {/* Imprimir / Sin señal */}
+                      {!isOnline ? (
+                        <div className="flex h-9 items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/10 px-3 text-[12px] font-medium text-red-400">
+                          <WifiOff className="size-3.5" />
+                          Sin señal
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleBluetoothPrint}
+                          disabled={isSaving || isPrintingBluetooth}
+                          className="flex h-9 items-center gap-1.5 rounded-xl bg-[#1976d2] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40"
+                        >
+                          {isPrintingBluetooth
+                            ? <Loader2 className="size-3.5 animate-spin" />
+                            : <Bluetooth className="size-3.5" />
+                          }
+                          {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -711,7 +739,7 @@ export default function RemitoPage() {
               }}
               role="alert"
             >
-              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1b1b1d] px-4 py-2.5 shadow-lg">
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#252528] px-4 py-2.5 shadow-lg">
                 <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#1976d2] text-white">
                   <CheckCircle2 className="size-3" />
                 </div>
@@ -747,27 +775,6 @@ export default function RemitoPage() {
               {isSaving ? "Imprimiendo..." : "Imprimir"}
             </button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── MODAL: Datos del cliente ── */}
-      <Dialog open={showClientSheet} onOpenChange={setShowClientSheet}>
-        <DialogContent className="max-w-sm rounded-3xl border-white/10 bg-[#1b1b1d] text-white">
-          <DialogHeader>
-            <DialogTitle className="text-[14px] font-semibold text-white">Datos del cliente</DialogTitle>
-          </DialogHeader>
-          <p className="text-[12px] text-[#666]">Opcional. Se imprimen en el remito.</p>
-          <ClientForm
-            data={client}
-            onFieldChange={(field, value) => setClient((prev) => ({ ...prev, [field]: value }))}
-          />
-          <button
-            type="button"
-            onClick={() => setShowClientSheet(false)}
-            className="mt-2 flex h-10 w-full items-center justify-center rounded-xl bg-[#1976d2] text-[13px] font-semibold text-white active:opacity-80"
-          >
-            Listo
-          </button>
         </DialogContent>
       </Dialog>
 
