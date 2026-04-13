@@ -1,7 +1,7 @@
 "use client"
 
 import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
-import { Plus, Trash2, Search, Package2, X, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, Trash2, Search, Package2, X, ChevronDown, ChevronUp, Pencil } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { type Product, type LineItem, formatCurrency } from "@/lib/remito-types"
@@ -107,21 +107,128 @@ const productOptions = (s: string) => {
 const itemKey = (desc: string, opcion?: string) => `${desc}||${opcion ?? ""}`
 type Derived = { title: string; tags: string[]; options: string[]; haystack: string }
 
-// ── FILA DE PRODUCTO ──────────────────────────────────────────────────────────
+// ── MODAL DE OPCIONES MÚLTIPLES ───────────────────────────────────────────────
+interface MultiOptionModalProps {
+  open: boolean
+  product: Product | null
+  title: string
+  options: string[]
+  // cantidades actuales en el carrito para precargar
+  currentQtys: Record<string, number>
+  onConfirm: (qtys: Record<string, number>) => void
+  onClose: () => void
+}
+
+function MultiOptionModal({ open, product, title, options, currentQtys, onConfirm, onClose }: MultiOptionModalProps) {
+  const [qtys, setQtys] = useState<Record<string, number>>({})
+
+  // Al abrir, precargar cantidades actuales
+  useEffect(() => {
+    if (open) {
+      const init: Record<string, number> = {}
+      for (const o of options) init[o] = currentQtys[o] ?? 0
+      setQtys(init)
+    }
+  }, [open, options, currentQtys])
+
+  const totalUnidades = Object.values(qtys).reduce((s, v) => s + v, 0)
+
+  const handleChange = (opcion: string, delta: number) => {
+    setQtys((prev) => ({ ...prev, [opcion]: Math.max(0, (prev[opcion] ?? 0) + delta) }))
+  }
+
+  const handleInput = (opcion: string, val: string) => {
+    const n = parseInt(val, 10)
+    setQtys((prev) => ({ ...prev, [opcion]: isNaN(n) || n < 0 ? 0 : n }))
+  }
+
+  if (!product) return null
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent className="max-w-sm border-white/10 bg-[#1b1b1d] text-white">
+        <DialogHeader>
+          <DialogTitle className="text-[14px] font-semibold text-white">{title}</DialogTitle>
+        </DialogHeader>
+        <p className="text-[12px] text-[#666]">Seleccioná la cantidad de cada tipo</p>
+
+        <div className="flex flex-col divide-y divide-white/8 mt-1">
+          {options.map((opcion) => (
+            <div key={opcion} className="flex items-center justify-between py-3">
+              <span className="text-[14px] font-medium text-white">{opcion}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleChange(opcion, -1)}
+                  disabled={(qtys[opcion] ?? 0) === 0}
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold",
+                    (qtys[opcion] ?? 0) > 0
+                      ? "bg-[#2a2a2e] text-white active:opacity-60"
+                      : "bg-[#1a1a1c] text-[#333] cursor-not-allowed"
+                  )}
+                >−</button>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={qtys[opcion] ?? 0}
+                  onChange={(e) => handleInput(opcion, e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  className="h-9 w-12 rounded-lg border border-white/10 bg-[#1a1a1c] text-center text-[15px] font-bold text-white outline-none focus:border-[#1976d2] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleChange(opcion, 1)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2a2a2e] text-lg font-bold text-white active:opacity-60"
+                >+</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-white/8">
+          <span className="text-[12px] text-[#666]">Total unidades:</span>
+          <span className="text-[15px] font-bold text-white">{totalUnidades}</span>
+        </div>
+
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-transparent text-[13px] font-medium text-white active:opacity-60"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(qtys)}
+            disabled={totalUnidades === 0}
+            className="flex h-10 flex-[2] items-center justify-center rounded-xl bg-[#1976d2] text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-30"
+          >
+            Confirmar
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ── FILA DE PRODUCTO (lista) ──────────────────────────────────────────────────
 interface ProductRowProps {
   product: Product
   title: string
   infoTags: string[]
   options: string[]
-  selectedOpt: string
-  selectedCount: number
-  onSelectOption: (desc: string, opt: string) => void
+  totalSelected: number  // total unidades de este producto en el carrito
   onAdd: (product: Product, opcion?: string) => void
+  onOpenMulti: (product: Product) => void
 }
 
 const ProductRow = memo(function ProductRow({
-  product, title, infoTags, options, selectedOpt, selectedCount, onSelectOption, onAdd,
+  product, title, infoTags, options, totalSelected, onAdd, onOpenMulti,
 }: ProductRowProps) {
+  const hasMultiOptions = options.length > 1
+
   return (
     <article className="border-b border-white/8 py-3 last:border-b-0">
       <div className="flex items-center gap-3">
@@ -133,23 +240,12 @@ const ProductRow = memo(function ProductRow({
             </p>
           </div>
           {options.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {options.map((o) => {
-                const active = normalize(o) === normalize(selectedOpt)
-                return (
-                  <button
-                    key={o}
-                    type="button"
-                    onClick={() => onSelectOption(product.descripcion, o)}
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors",
-                      active ? "bg-[#1976d2] text-white" : "bg-[#222] text-[#777] ring-1 ring-white/8"
-                    )}
-                  >
-                    {o}
-                  </button>
-                )
-              })}
+            <div className="mt-1 flex flex-wrap gap-1">
+              {options.map((o) => (
+                <span key={o} className="rounded-full bg-[#222] px-2 py-0.5 text-[11px] text-[#666]">
+                  {o}
+                </span>
+              ))}
             </div>
           )}
           {options.length === 0 && infoTags.length > 0 && (
@@ -162,58 +258,155 @@ const ProductRow = memo(function ProductRow({
             </div>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => onAdd(product, selectedOpt || undefined)}
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors active:opacity-60",
-            selectedCount > 0
-              ? "border-[#1976d2]/40 bg-[#1976d2]/15 text-[#60aaff]"
-              : "border-white/10 bg-[#1e1e20] text-white"
-          )}
-        >
-          {selectedCount > 0
-            ? <span className="text-[12px] font-bold leading-none">{selectedCount}</span>
-            : <Plus className="size-4" />
-          }
-        </button>
+
+        {hasMultiOptions ? (
+          // Productos con múltiples opciones → abre modal
+          <button
+            type="button"
+            onClick={() => onOpenMulti(product)}
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors active:opacity-60",
+              totalSelected > 0
+                ? "border-[#1976d2]/40 bg-[#1976d2]/15 text-[#60aaff]"
+                : "border-white/10 bg-[#1e1e20] text-white"
+            )}
+          >
+            {totalSelected > 0
+              ? <span className="text-[12px] font-bold leading-none">{totalSelected}</span>
+              : <Plus className="size-4" />
+            }
+          </button>
+        ) : (
+          // Producto sin opciones o con una sola → agregar directo
+          <button
+            type="button"
+            onClick={() => onAdd(product, options[0] || undefined)}
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors active:opacity-60",
+              totalSelected > 0
+                ? "border-[#1976d2]/40 bg-[#1976d2]/15 text-[#60aaff]"
+                : "border-white/10 bg-[#1e1e20] text-white"
+            )}
+          >
+            {totalSelected > 0
+              ? <span className="text-[12px] font-bold leading-none">{totalSelected}</span>
+              : <Plus className="size-4" />
+            }
+          </button>
+        )}
       </div>
     </article>
   )
 })
 
-// ── FILA EN EL CARRITO ────────────────────────────────────────────────────────
-interface CartItemRowProps {
-  item: LineItem
+// ── FILA AGRUPADA EN EL CARRITO ───────────────────────────────────────────────
+type CartGroup = {
+  baseDesc: string
   title: string
-  onRemove: (desc: string, opcion?: string) => void
+  precio: number
+  totalCantidad: number
+  totalSubtotal: number
+  items: LineItem[]
+  hasOpciones: boolean
+  options: string[]
+}
+
+function groupCartItems(items: LineItem[], derivedByDesc: Map<string, Derived>): CartGroup[] {
+  const groups = new Map<string, CartGroup>()
+  for (const item of items) {
+    const baseDesc = item.product.descripcion
+    const d = derivedByDesc.get(baseDesc)
+    const title = d?.title ?? shortDesc(baseDesc)
+    const options = d?.options ?? productOptions(baseDesc)
+    if (groups.has(baseDesc)) {
+      const g = groups.get(baseDesc)!
+      g.totalCantidad += item.cantidad
+      g.totalSubtotal += item.subtotal
+      g.items.push(item)
+      if (item.opcion) g.hasOpciones = true
+    } else {
+      groups.set(baseDesc, {
+        baseDesc, title, options,
+        precio: item.product.precio,
+        totalCantidad: item.cantidad,
+        totalSubtotal: item.subtotal,
+        items: [item],
+        hasOpciones: !!item.opcion,
+      })
+    }
+  }
+  return Array.from(groups.values())
+}
+
+interface CartGroupRowProps {
+  group: CartGroup
+  onRemoveGroup: (desc: string) => void
+  onEditGroup: (group: CartGroup) => void
+  onRemoveSingle: (desc: string, opcion?: string) => void
   onUpdateQuantity: (desc: string, opcion: string | undefined, cantidad: number) => void
 }
 
-const CartItemRow = memo(function CartItemRow({ item, title, onRemove, onUpdateQuantity }: CartItemRowProps) {
-  const [localValue, setLocalValue] = useState(String(item.cantidad))
+const CartGroupRow = memo(function CartGroupRow({
+  group, onRemoveGroup, onEditGroup, onRemoveSingle, onUpdateQuantity,
+}: CartGroupRowProps) {
+  const [localVal, setLocalVal] = useState(String(group.totalCantidad))
+  useEffect(() => { setLocalVal(String(group.totalCantidad)) }, [group.totalCantidad])
 
-  useEffect(() => { setLocalValue(String(item.cantidad)) }, [item.cantidad])
+  // Grupo con múltiples opciones → mostrar resumen compacto + editar
+  if (group.hasOpciones && group.options.length > 1) {
+    const resumen = group.items
+      .filter((i) => i.cantidad > 0)
+      .map((i) => `${i.cantidad} ${i.opcion ?? ""}`)
+      .join(", ")
 
+    return (
+      <div className="flex items-center gap-2 py-2.5 border-b border-white/8 last:border-b-0">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold text-white truncate">
+            {group.title}
+            <span className="ml-1.5 text-[#555] font-normal text-[12px]">· {group.totalCantidad} u.</span>
+          </p>
+          <p className="text-[12px] text-[#555] truncate">{resumen}</p>
+          <p className="text-[11px] text-[#444] tabular-nums">{formatCurrency(group.totalSubtotal)}</p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => onEditGroup(group)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-[#1e1e20] text-[#888] active:opacity-60"
+            aria-label="Editar"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onRemoveGroup(group.baseDesc)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#3a3a3a] hover:text-[#ff6b6b] active:opacity-60"
+            aria-label="Eliminar"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Producto sin opciones → fila simple con +/- y cantidad editable
+  const item = group.items[0]
   const handleBlur = () => {
-    const parsed = parseInt(localValue, 10)
+    const parsed = parseInt(localVal, 10)
     if (!isNaN(parsed) && parsed > 0) onUpdateQuantity(item.product.descripcion, item.opcion, parsed)
-    else setLocalValue(String(item.cantidad))
+    else setLocalVal(String(item.cantidad))
   }
 
   return (
     <div className="flex items-center gap-2 py-2.5 border-b border-white/8 last:border-b-0">
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold text-white truncate">
-          {title}
-          {item.opcion ? <span className="text-[#555]"> · {item.opcion}</span> : null}
-        </p>
-        <p className="text-[12px] text-[#555] tabular-nums">
-          {formatCurrency(item.subtotal)}
-          {item.cantidad > 1 && (
-            <span className="ml-1.5 text-[#444]">
-              ({item.cantidad} × {formatCurrency(item.product.precio)})
-            </span>
+        <p className="text-[13px] font-semibold text-white truncate">{group.title}</p>
+        <p className="text-[11px] text-[#444] tabular-nums">
+          {formatCurrency(group.totalSubtotal)}
+          {group.totalCantidad > 1 && (
+            <span className="ml-1">({group.totalCantidad} × {formatCurrency(group.precio)})</span>
           )}
         </p>
       </div>
@@ -233,8 +426,8 @@ const CartItemRow = memo(function CartItemRow({ item, title, onRemove, onUpdateQ
           type="number"
           inputMode="numeric"
           pattern="[0-9]*"
-          value={localValue}
-          onChange={(e) => setLocalValue(e.target.value)}
+          value={localVal}
+          onChange={(e) => setLocalVal(e.target.value)}
           onBlur={handleBlur}
           onFocus={(e) => e.target.select()}
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
@@ -247,7 +440,7 @@ const CartItemRow = memo(function CartItemRow({ item, title, onRemove, onUpdateQ
         >+</button>
         <button
           type="button"
-          onClick={() => onRemove(item.product.descripcion, item.opcion)}
+          onClick={() => onRemoveSingle(item.product.descripcion, item.opcion)}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-[#3a3a3a] hover:text-[#ff6b6b] active:opacity-60 ml-0.5"
         >
           <X className="size-3.5" />
@@ -263,19 +456,21 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const deferredSearch = useDeferredValue(search)
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(true)
-  const [selectedOptionByDesc, setSelectedOptionByDesc] = useState<Record<string, string>>({})
   const [visibleCount, setVisibleCount] = useState(MAX_VISIBLE_PRODUCTS)
+
+  // Estado del modal de opciones múltiples
+  const [multiModal, setMultiModal] = useState<{
+    open: boolean
+    product: Product | null
+    title: string
+    options: string[]
+  }>({ open: false, product: null, title: "", options: [] })
 
   const prevLengthRef = useRef(0)
   useEffect(() => {
     if (prevLengthRef.current === 0 && items.length > 0) setCartOpen(true)
     prevLengthRef.current = items.length
   }, [items.length])
-
-  const getSelectedOpt = useCallback((desc: string) => selectedOptionByDesc[desc] ?? "", [selectedOptionByDesc])
-  const setSelectedOpt = useCallback((desc: string, opt: string) => {
-    setSelectedOptionByDesc((prev) => prev[desc] === opt ? prev : { ...prev, [desc]: opt })
-  }, [])
 
   const derivedByDesc = useMemo(() => {
     const m = new Map<string, Derived>()
@@ -297,16 +492,59 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
   const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
 
-  const itemCountByKey = useMemo(() => {
+  // Total unidades por descripción base (para el botón +)
+  const totalByDesc = useMemo(() => {
     const map = new Map<string, number>()
     for (const item of items) {
-      const key = itemKey(item.product.descripcion, item.opcion)
-      map.set(key, (map.get(key) ?? 0) + item.cantidad)
+      map.set(item.product.descripcion, (map.get(item.product.descripcion) ?? 0) + item.cantidad)
+    }
+    return map
+  }, [items])
+
+  // Cantidades actuales por (desc, opcion) para precargar el modal
+  const currentQtysByDesc = useMemo(() => {
+    const map = new Map<string, Record<string, number>>()
+    for (const item of items) {
+      if (!map.has(item.product.descripcion)) map.set(item.product.descripcion, {})
+      map.get(item.product.descripcion)![item.opcion ?? ""] = item.cantidad
     }
     return map
   }, [items])
 
   const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
+  const cartGroups = useMemo(() => groupCartItems(items, derivedByDesc), [items, derivedByDesc])
+
+  // Abre el modal de opciones
+  const openMultiModal = useCallback((product: Product) => {
+    const d = derivedByDesc.get(product.descripcion)
+    const options = d?.options ?? productOptions(product.descripcion)
+    const title = d?.title ?? shortDesc(product.descripcion)
+    setMultiModal({ open: true, product, title, options })
+  }, [derivedByDesc])
+
+  // Confirmar selección del modal → reemplaza los ítems de ese producto
+  const handleMultiConfirm = useCallback((qtys: Record<string, number>) => {
+    if (!multiModal.product) return
+    const product = multiModal.product
+    onItemsChange((prev) => {
+      // Quitar todos los ítems de este producto
+      const rest = prev.filter((i) => i.product.descripcion !== product.descripcion)
+      // Agregar uno por opción con cantidad > 0
+      const newItems: LineItem[] = []
+      for (const [opcion, cantidad] of Object.entries(qtys)) {
+        if (cantidad > 0) {
+          newItems.push({
+            product,
+            cantidad,
+            subtotal: cantidad * product.precio,
+            opcion,
+          })
+        }
+      }
+      return [...rest, ...newItems]
+    })
+    setMultiModal((prev) => ({ ...prev, open: false }))
+  }, [multiModal.product, onItemsChange])
 
   const addItem = useCallback((product: Product, opcion?: string) => {
     const key = itemKey(product.descripcion, opcion)
@@ -342,11 +580,36 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
     onItemsChange((prev) => prev.filter((i) => itemKey(i.product.descripcion, i.opcion) !== key))
   }, [onItemsChange])
 
+  const removeGroup = useCallback((desc: string) => {
+    onItemsChange((prev) => prev.filter((i) => i.product.descripcion !== desc))
+  }, [onItemsChange])
+
+  const editGroup = useCallback((group: CartGroup) => {
+    if (group.options.length > 1) {
+      openMultiModal(group.items[0].product)
+    }
+  }, [openMultiModal])
+
   useEffect(() => { setVisibleCount(MAX_VISIBLE_PRODUCTS) }, [deferredSearch, products])
 
   return (
     <>
-      {/* ── MODAL VACIAR — botones nativos compactos ── */}
+      {/* ── MODAL OPCIONES MÚLTIPLES ── */}
+      <MultiOptionModal
+        open={multiModal.open}
+        product={multiModal.product}
+        title={multiModal.title}
+        options={multiModal.options}
+        currentQtys={
+          multiModal.product
+            ? (currentQtysByDesc.get(multiModal.product.descripcion) ?? {})
+            : {}
+        }
+        onConfirm={handleMultiConfirm}
+        onClose={() => setMultiModal((prev) => ({ ...prev, open: false }))}
+      />
+
+      {/* ── MODAL VACIAR ── */}
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
         <DialogContent className="max-w-sm border-white/10 bg-[#1b1b1d] text-white">
           <DialogHeader>
@@ -388,7 +651,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
           />
         </div>
 
-        {/* ── CARRITO — colapsable ── */}
+        {/* ── CARRITO ── */}
         {items.length > 0 && (
           <div className="rounded-2xl border border-white/10 bg-[#161616] overflow-hidden">
             <button
@@ -402,7 +665,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                   : <ChevronDown className="size-3.5 text-[#555]" />
                 }
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-[#555]">
-                  Pedido · {items.length} {items.length === 1 ? "ítem" : "ítems"}
+                  Pedido · {cartGroups.length} {cartGroups.length === 1 ? "producto" : "productos"}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -422,19 +685,16 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
             {cartOpen && (
               <div className="border-t border-white/8 px-3">
-                {items.map((item) => {
-                  const d = derivedByDesc.get(item.product.descripcion)
-                  const title = d?.title ?? shortDesc(item.product.descripcion)
-                  return (
-                    <CartItemRow
-                      key={itemKey(item.product.descripcion, item.opcion)}
-                      item={item}
-                      title={title}
-                      onRemove={removeItem}
-                      onUpdateQuantity={updateQuantity}
-                    />
-                  )
-                })}
+                {cartGroups.map((group) => (
+                  <CartGroupRow
+                    key={group.baseDesc}
+                    group={group}
+                    onRemoveGroup={removeGroup}
+                    onEditGroup={editGroup}
+                    onRemoveSingle={removeItem}
+                    onUpdateQuantity={updateQuantity}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -464,22 +724,18 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                 const title = d?.title ?? shortDesc(p.descripcion)
                 const options = d?.options ?? productOptions(p.descripcion)
                 const infoTags = d?.tags ?? detailTags(p.descripcion)
-                const selectedOpt = options.length > 0 ? (getSelectedOpt(p.descripcion) || options[0]) : ""
-                const selectedCount = options.length > 0
-                  ? itemCountByKey.get(itemKey(p.descripcion, selectedOpt)) ?? 0
-                  : itemCountByKey.get(itemKey(p.descripcion)) ?? 0
+                const totalSelected = totalByDesc.get(p.descripcion) ?? 0
 
                 return (
                   <ProductRow
-                    key={itemKey(p.descripcion)}
+                    key={p.descripcion}
                     product={p}
                     title={title}
                     infoTags={infoTags}
                     options={options}
-                    selectedOpt={selectedOpt}
-                    selectedCount={selectedCount}
-                    onSelectOption={setSelectedOpt}
+                    totalSelected={totalSelected}
                     onAdd={addItem}
+                    onOpenMulti={openMultiModal}
                   />
                 )
               })}
