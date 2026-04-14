@@ -27,22 +27,22 @@ export default async function PerfilPage() {
   const selectedPriceList = profile?.selected_price_list ?? null
 
   return (
-    <div className="mx-auto max-w-md px-4 pb-6 pt-3 text-white">
+    <div className="mx-auto max-w-md px-4 pb-6 pt-3">
       <div className="flex flex-col gap-3">
 
         {/* ── HEADER ── */}
         <div className="mb-1">
-          <h1 className="text-[18px] font-semibold text-white">Cuenta</h1>
-          <p className="text-[12px] text-[#555]">Configuración y sesión</p>
+          <h1 className="text-[18px] font-semibold text-gray-900">Cuenta</h1>
+          <p className="text-[12px] text-gray-500">Configuración y sesión</p>
         </div>
 
         {/* ── EMAIL ── */}
-        <div className="rounded-xl border border-white/8 bg-[#161616] px-3 py-3">
+        <div className="rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm">
           <div className="flex items-center gap-3">
-            <Mail className="size-4 shrink-0 text-[#555]" />
+            <Mail className="size-4 shrink-0 text-gray-400" />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-[#444]">Usuario</p>
-              <p className="mt-0.5 truncate text-[13px] font-semibold text-white">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Usuario</p>
+              <p className="mt-0.5 truncate text-[13px] font-semibold text-gray-900">
                 {user.email || "Sin email"}
               </p>
             </div>
@@ -50,12 +50,12 @@ export default async function PerfilPage() {
         </div>
 
         {/* ── LISTA ACTIVA ── */}
-        <div className="rounded-xl border border-white/8 bg-[#161616] px-3 py-3">
+        <div className="rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm">
           <div className="flex items-center gap-3">
-            <Tags className="size-4 shrink-0 text-[#555]" />
+            <Tags className="size-4 shrink-0 text-gray-400" />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-[#444]">Lista activa por defecto</p>
-              <p className="mt-0.5 text-[13px] font-semibold text-white">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Lista activa por defecto</p>
+              <p className="mt-0.5 text-[13px] font-semibold text-gray-900">
                 {getPriceListLabel(selectedPriceList)}
               </p>
             </div>
@@ -66,7 +66,7 @@ export default async function PerfilPage() {
         <form action="/auth/signout" method="post" className="mt-1">
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/8 bg-[#161616] py-2.5 text-[13px] font-medium text-[#ff5555] active:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white py-2.5 text-[13px] font-medium text-red-500 active:opacity-60 shadow-sm"
           >
             <LogOut className="size-3.5" />
             Cerrar sesión

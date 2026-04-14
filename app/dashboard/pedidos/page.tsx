@@ -9,9 +9,7 @@ import { createClient } from "@/lib/supabase/server"
 
 function getTodayDateSafe(): string {
   return new Date().toLocaleDateString("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
+    day: "2-digit", month: "2-digit", year: "numeric",
   })
 }
 
@@ -84,22 +82,22 @@ export default async function PedidosPage() {
   }))
 
   return (
-    <div className="mx-auto max-w-md px-4 pb-6 pt-3 text-white">
+    <div className="mx-auto max-w-md px-4 pb-6 pt-3">
       <div className="flex flex-col gap-3">
 
         {/* ── HEADER ── */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-medium text-[#555] uppercase tracking-wide">
+            <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">
               {todayLabel}
             </p>
-            <h1 className="text-[18px] font-semibold leading-tight text-white">
+            <h1 className="text-[18px] font-semibold leading-tight text-gray-900">
               Pedidos de hoy
             </h1>
           </div>
           <Link
             href="/dashboard/nuevo"
-            className="flex h-8 items-center gap-1.5 rounded-xl bg-[#1976d2] px-3 text-[13px] font-semibold text-white active:opacity-80"
+            className="flex h-8 items-center gap-1.5 rounded-xl bg-[#1565c0] px-3 text-[13px] font-semibold text-white active:opacity-80 shadow-sm"
           >
             <Plus className="size-3.5" />
             Nuevo
@@ -108,15 +106,15 @@ export default async function PedidosPage() {
 
         {/* ── STATS ── */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl border border-white/8 bg-[#161616] px-3 py-2.5">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-[#444]">Pedidos</p>
-            <p className="mt-0.5 text-[22px] font-semibold leading-none text-white tabular-nums">
+          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Pedidos</p>
+            <p className="mt-0.5 text-[22px] font-semibold leading-none text-gray-900 tabular-nums">
               {records.length}
             </p>
           </div>
-          <div className="rounded-xl border border-white/8 bg-[#161616] px-3 py-2.5">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-[#444]">Total del día</p>
-            <p className="mt-0.5 truncate text-[18px] font-semibold leading-none text-white tabular-nums">
+          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Total del día</p>
+            <p className="mt-0.5 truncate text-[18px] font-semibold leading-none text-gray-900 tabular-nums">
               {formatCurrency(totalHoy)}
             </p>
           </div>
