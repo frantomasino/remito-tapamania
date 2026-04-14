@@ -152,10 +152,22 @@ export default function RemitoPage() {
 
   useEffect(() => { if (!userId || !draftRestoredRef.current) return; scheduleDraftSave(items, client, priceListId, userId) }, [items, client, priceListId, userId, scheduleDraftSave])
 
-  useEffect(() => {
-    if (!userId) return
-    createClient().from("profiles").update({ selected_price_list: priceListId }).eq("id", userId).then(() => {}).catch(() => {})
-  }, [priceListId, userId])
+ useEffect(() => {
+  if (!userId) return
+
+  const updateProfile = async () => {
+    const { error } = await createClient()
+      .from("profiles")
+      .update({ selected_price_list: priceListId })
+      .eq("id", userId)
+
+    if (error) {
+      console.error("Error updating profile:", error)
+    }
+  }
+
+  updateProfile()
+}, [priceListId, userId])
 
   const saveProductsCache = useCallback((cache: Record<PriceListId, ProductsCacheEntry>) => {
     if (!userId) return
