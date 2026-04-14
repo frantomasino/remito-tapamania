@@ -113,7 +113,6 @@ interface MultiOptionModalProps {
   product: Product | null
   title: string
   options: string[]
-  // cantidades actuales en el carrito para precargar
   currentQtys: Record<string, number>
   onConfirm: (qtys: Record<string, number>) => void
   onClose: () => void
@@ -122,7 +121,6 @@ interface MultiOptionModalProps {
 function MultiOptionModal({ open, product, title, options, currentQtys, onConfirm, onClose }: MultiOptionModalProps) {
   const [qtys, setQtys] = useState<Record<string, number>>({})
 
-  // Al abrir, precargar cantidades actuales
   useEffect(() => {
     if (open) {
       const init: Record<string, number> = {}
@@ -146,7 +144,8 @@ function MultiOptionModal({ open, product, title, options, currentQtys, onConfir
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
-      <DialogContent className="max-w-sm border-white/10 bg-[#1b1b1d] text-white">
+      {/* ── max-h + overflow-y-auto para que sea scrolleable cuando sube el teclado ── */}
+      <DialogContent className="max-w-sm border-white/10 bg-[#1b1b1d] text-white max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-[14px] font-semibold text-white">{title}</DialogTitle>
         </DialogHeader>
@@ -219,7 +218,7 @@ interface ProductRowProps {
   title: string
   infoTags: string[]
   options: string[]
-  totalSelected: number  // total unidades de este producto en el carrito
+  totalSelected: number
   onAdd: (product: Product, opcion?: string) => void
   onOpenMulti: (product: Product) => void
 }
@@ -260,7 +259,6 @@ const ProductRow = memo(function ProductRow({
         </div>
 
         {hasMultiOptions ? (
-          // Productos con múltiples opciones → abre modal
           <button
             type="button"
             onClick={() => onOpenMulti(product)}
@@ -277,7 +275,6 @@ const ProductRow = memo(function ProductRow({
             }
           </button>
         ) : (
-          // Producto sin opciones o con una sola → agregar directo
           <button
             type="button"
             onClick={() => onAdd(product, options[0] || undefined)}
@@ -352,7 +349,6 @@ const CartGroupRow = memo(function CartGroupRow({
   const [localVal, setLocalVal] = useState(String(group.totalCantidad))
   useEffect(() => { setLocalVal(String(group.totalCantidad)) }, [group.totalCantidad])
 
-  // Grupo con múltiples opciones → mostrar resumen compacto + editar
   if (group.hasOpciones && group.options.length > 1) {
     const resumen = group.items
       .filter((i) => i.cantidad > 0)
@@ -391,7 +387,6 @@ const CartGroupRow = memo(function CartGroupRow({
     )
   }
 
-  // Producto sin opciones → fila simple con +/- y cantidad editable
   const item = group.items[0]
   const handleBlur = () => {
     const parsed = parseInt(localVal, 10)
@@ -458,7 +453,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const [cartOpen, setCartOpen] = useState(true)
   const [visibleCount, setVisibleCount] = useState(MAX_VISIBLE_PRODUCTS)
 
-  // Estado del modal de opciones múltiples
   const [multiModal, setMultiModal] = useState<{
     open: boolean
     product: Product | null
@@ -492,7 +486,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
   const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
 
-  // Total unidades por descripción base (para el botón +)
   const totalByDesc = useMemo(() => {
     const map = new Map<string, number>()
     for (const item of items) {
@@ -501,7 +494,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
     return map
   }, [items])
 
-  // Cantidades actuales por (desc, opcion) para precargar el modal
   const currentQtysByDesc = useMemo(() => {
     const map = new Map<string, Record<string, number>>()
     for (const item of items) {
@@ -514,7 +506,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
   const cartGroups = useMemo(() => groupCartItems(items, derivedByDesc), [items, derivedByDesc])
 
-  // Abre el modal de opciones
   const openMultiModal = useCallback((product: Product) => {
     const d = derivedByDesc.get(product.descripcion)
     const options = d?.options ?? productOptions(product.descripcion)
@@ -522,23 +513,15 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
     setMultiModal({ open: true, product, title, options })
   }, [derivedByDesc])
 
-  // Confirmar selección del modal → reemplaza los ítems de ese producto
   const handleMultiConfirm = useCallback((qtys: Record<string, number>) => {
     if (!multiModal.product) return
     const product = multiModal.product
     onItemsChange((prev) => {
-      // Quitar todos los ítems de este producto
       const rest = prev.filter((i) => i.product.descripcion !== product.descripcion)
-      // Agregar uno por opción con cantidad > 0
       const newItems: LineItem[] = []
       for (const [opcion, cantidad] of Object.entries(qtys)) {
         if (cantidad > 0) {
-          newItems.push({
-            product,
-            cantidad,
-            subtotal: cantidad * product.precio,
-            opcion,
-          })
+          newItems.push({ product, cantidad, subtotal: cantidad * product.precio, opcion })
         }
       }
       return [...rest, ...newItems]
@@ -585,31 +568,23 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   }, [onItemsChange])
 
   const editGroup = useCallback((group: CartGroup) => {
-    if (group.options.length > 1) {
-      openMultiModal(group.items[0].product)
-    }
+    if (group.options.length > 1) openMultiModal(group.items[0].product)
   }, [openMultiModal])
 
   useEffect(() => { setVisibleCount(MAX_VISIBLE_PRODUCTS) }, [deferredSearch, products])
 
   return (
     <>
-      {/* ── MODAL OPCIONES MÚLTIPLES ── */}
       <MultiOptionModal
         open={multiModal.open}
         product={multiModal.product}
         title={multiModal.title}
         options={multiModal.options}
-        currentQtys={
-          multiModal.product
-            ? (currentQtysByDesc.get(multiModal.product.descripcion) ?? {})
-            : {}
-        }
+        currentQtys={multiModal.product ? (currentQtysByDesc.get(multiModal.product.descripcion) ?? {}) : {}}
         onConfirm={handleMultiConfirm}
         onClose={() => setMultiModal((prev) => ({ ...prev, open: false }))}
       />
 
-      {/* ── MODAL VACIAR ── */}
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
         <DialogContent className="max-w-sm border-white/10 bg-[#1b1b1d] text-white">
           <DialogHeader>
@@ -639,7 +614,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
       <div className="flex flex-col gap-3">
 
-        {/* ── BUSCADOR ── */}
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#444]" />
           <input
@@ -651,7 +625,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
           />
         </div>
 
-        {/* ── CARRITO ── */}
         {items.length > 0 && (
           <div className="rounded-2xl border border-white/10 bg-[#161616] overflow-hidden">
             <button
@@ -700,7 +673,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
           </div>
         )}
 
-        {/* ── LISTA DE PRODUCTOS ── */}
         <div className="rounded-2xl border border-white/8 bg-[#141414] overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/8">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[#444]">Productos</p>
