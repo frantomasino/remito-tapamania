@@ -22,7 +22,7 @@ export function BottomNav() {
   }, [router])
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white shadow-sm">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">
       <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5">
         {navItems.map((item) => {
           const isActive =
@@ -41,7 +41,7 @@ export function BottomNav() {
               >
                 <motion.div
                   whileTap={{ scale: 0.96 }}
-                  className="flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl bg-[#1565c0] text-white shadow-sm"
+                  className="flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl bg-[#1565c0] text-white"
                 >
                   <item.icon className="size-4" />
                   <span className="text-[10px] font-semibold leading-none">{item.label}</span>

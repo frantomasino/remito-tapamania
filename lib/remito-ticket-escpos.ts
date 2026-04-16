@@ -1,49 +1,35 @@
 import type { RemitoData, LineItem } from "@/lib/remito-types"
 import { formatCurrency } from "@/lib/remito-types"
 import {
-  align,
-  bold,
-  cut,
-  feed,
-  hr,
-  initPrinter,
-  joinBytes,
-  line,
-  size,
-  twoCols,
-  wrapText,
+  align, bold, cut, feed, hr, initPrinter, joinBytes, line, size, twoCols, wrapText,
 } from "@/lib/escpos"
 
 function cleanDesc(value: string) {
-  return value
-    .replace(/\([^)]*\)/g, "")
-    .replace(/\s{2,}/g, " ")
-    .trim()
+  return value.replace(/\([^)]*\)/g, "").replace(/\s{2,}/g, " ").trim()
 }
 
-// Agrupa ítems del mismo producto base
 type PrintGroup = {
   title: string
   precio: number
   totalCantidad: number
   totalSubtotal: number
-  opciones: Array<{ opcion: string; cantidad: number }>
+  totalDevolucion: number
+  opciones: Array<{ opcion: string; cantidad: number; devolucion: number }>
   hasOpciones: boolean
 }
 
 function groupItems(items: LineItem[]): PrintGroup[] {
   const groups = new Map<string, PrintGroup>()
-
   for (const item of items) {
     const baseDesc = item.product.descripcion
     const title = cleanDesc(baseDesc)
-
     if (groups.has(baseDesc)) {
       const g = groups.get(baseDesc)!
       g.totalCantidad += item.cantidad
       g.totalSubtotal += item.subtotal
+      g.totalDevolucion += item.devolucion ?? 0
       if (item.opcion) {
-        g.opciones.push({ opcion: item.opcion, cantidad: item.cantidad })
+        g.opciones.push({ opcion: item.opcion, cantidad: item.cantidad, devolucion: item.devolucion ?? 0 })
         g.hasOpciones = true
       }
     } else {
@@ -52,18 +38,19 @@ function groupItems(items: LineItem[]): PrintGroup[] {
         precio: item.product.precio,
         totalCantidad: item.cantidad,
         totalSubtotal: item.subtotal,
-        opciones: item.opcion ? [{ opcion: item.opcion, cantidad: item.cantidad }] : [],
+        totalDevolucion: item.devolucion ?? 0,
+        opciones: item.opcion ? [{ opcion: item.opcion, cantidad: item.cantidad, devolucion: item.devolucion ?? 0 }] : [],
         hasOpciones: !!item.opcion,
       })
     }
   }
-
   return Array.from(groups.values())
 }
 
 export function buildRemitoEscPos(data: RemitoData) {
   const total = data.items.reduce((sum, item) => sum + item.subtotal, 0)
   const totalUnidades = data.items.reduce((sum, item) => sum + item.cantidad, 0)
+  const totalDevolucion = data.items.reduce((sum, item) => sum + (item.devolucion ?? 0), 0)
   const comercio = (data.client.nombre ?? "").trim() || "Sin especificar"
   const grouped = groupItems(data.items)
 
@@ -86,6 +73,9 @@ export function buildRemitoEscPos(data: RemitoData) {
   chunks.push(twoCols("Comercio:", comercio, 32))
   chunks.push(twoCols("Items:", String(grouped.length), 32))
   chunks.push(twoCols("Unidades:", String(totalUnidades), 32))
+  if (totalDevolucion > 0) {
+    chunks.push(twoCols("Devoluciones:", String(totalDevolucion), 32))
+  }
   chunks.push(hr())
 
   chunks.push(bold(true))
@@ -94,30 +84,29 @@ export function buildRemitoEscPos(data: RemitoData) {
   chunks.push(hr())
 
   for (const group of grouped) {
-    // Nombre + total unidades en la misma línea
-    // Ej: "Tapas empanadas x 330g.  30 u."
     const titleWithQty = `${group.title} x${group.totalCantidad}`
     const titleLines = wrapText(titleWithQty, 32)
     for (const l of titleLines) chunks.push(line(l))
 
-    // Desglose de opciones si las hay: "Horno 10, Freír 15, Criolla 5"
+    // Desglose venta por opción
     if (group.hasOpciones && group.opciones.length > 0) {
-      const detalle = group.opciones
-        .map((o) => `${o.opcion} ${o.cantidad}`)
-        .join(", ")
-      const detalleLines = wrapText(detalle, 30)
-      for (const l of detalleLines) chunks.push(line(`  ${l}`))
+      const detalle = group.opciones.filter(o => o.cantidad > 0).map((o) => `${o.opcion} ${o.cantidad}`).join(", ")
+      if (detalle) {
+        const detalleLines = wrapText(detalle, 30)
+        for (const l of detalleLines) chunks.push(line(`  ${l}`))
+      }
     }
 
-    // Precio unitario × total → subtotal
-    chunks.push(
-      twoCols(
-        `${group.totalCantidad} x ${formatCurrency(group.precio)}`,
-        formatCurrency(group.totalSubtotal),
-        32
-      )
-    )
+    // Devoluciones
+    if (group.totalDevolucion > 0) {
+      const devText = group.hasOpciones
+        ? group.opciones.filter(o => o.devolucion > 0).map((o) => `${o.devolucion} ${o.opcion}`).join(", ")
+        : String(group.totalDevolucion)
+      const devLines = wrapText(`Dev: ${devText}`, 30)
+      for (const l of devLines) chunks.push(line(`  ${l}`))
+    }
 
+    chunks.push(twoCols(`${group.totalCantidad} x ${formatCurrency(group.precio)}`, formatCurrency(group.totalSubtotal), 32))
     chunks.push(hr("-".charCodeAt(0), 32))
   }
 
@@ -125,8 +114,12 @@ export function buildRemitoEscPos(data: RemitoData) {
   chunks.push(bold(true))
   chunks.push(twoCols("TOTAL", formatCurrency(total), 32))
   chunks.push(bold(false))
-  chunks.push(feed(2))
 
+  if (totalDevolucion > 0) {
+    chunks.push(hr())
+  }
+
+  chunks.push(feed(2))
   chunks.push(align("center"))
   chunks.push(line("Gracias"))
   chunks.push(feed(3))

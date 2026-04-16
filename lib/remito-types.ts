@@ -8,6 +8,7 @@ export interface LineItem {
   cantidad: number
   subtotal: number
   opcion?: string
+  devolucion?: number  // unidades devueltas — NO afecta el subtotal
 }
 
 export interface ClientData {
@@ -48,12 +49,7 @@ export function parseCSV(text: string): Product[] {
   if (lines.length < 2) return []
 
   const normalizeHeader = (s: string) =>
-    s
-      .trim()
-      .toLowerCase()
-      .replace(/"/g, "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
+    s.trim().toLowerCase().replace(/"/g, "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
 
   const detectDelimiter = (sample: string) => {
     const counts = {
@@ -61,22 +57,18 @@ export function parseCSV(text: string): Product[] {
       ";": (sample.match(/;/g) || []).length,
       ",": (sample.match(/,/g) || []).length,
     }
-
     return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] as "\t" | ";" | ",") || ";"
   }
 
   const parsePrice = (raw: string): number => {
     if (!raw) return NaN
     let s = String(raw).trim()
-
     s = s.replace(/\$/g, "").replace(/\s+/g, "")
-
     if (s.includes(".") && s.includes(",")) {
       s = s.replace(/\./g, "").replace(",", ".")
       const n = Number(s)
       return Number.isFinite(n) ? n : NaN
     }
-
     if (s.includes(".") && !s.includes(",")) {
       const parts = s.split(".")
       const last = parts[parts.length - 1]
@@ -88,13 +80,11 @@ export function parseCSV(text: string): Product[] {
       const n = Number(s)
       return Number.isFinite(n) ? n : NaN
     }
-
     if (s.includes(",") && !s.includes(".")) {
       s = s.replace(",", ".")
       const n = Number(s)
       return Number.isFinite(n) ? n : NaN
     }
-
     const n = Number(s)
     return Number.isFinite(n) ? n : NaN
   }
@@ -104,22 +94,11 @@ export function parseCSV(text: string): Product[] {
   const headers = headerLine.split(separator).map(normalizeHeader)
 
   const descripcionIdx = headers.findIndex(
-    (h) =>
-      h.includes("descripcion") ||
-      h.includes("nombre") ||
-      h.includes("producto") ||
-      h.includes("detalle")
+    (h) => h.includes("descripcion") || h.includes("nombre") || h.includes("producto") || h.includes("detalle")
   )
-
   const precioIdx = headers.findIndex(
-    (h) =>
-      h.includes("precio") ||
-      h.includes("price") ||
-      h.includes("valor") ||
-      h.includes("importe") ||
-      h.includes("costo")
+    (h) => h.includes("precio") || h.includes("price") || h.includes("valor") || h.includes("importe") || h.includes("costo")
   )
-
   const headerOk = descripcionIdx !== -1 && precioIdx !== -1
 
   const products: Product[] = []
@@ -128,33 +107,22 @@ export function parseCSV(text: string): Product[] {
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i]
     if (!line) continue
-
     const cols = line.split(separator).map((c) => c.trim().replace(/"/g, ""))
-
     let descripcion = ""
     let precioRaw = ""
-
     if (headerOk) {
       descripcion = cols[descripcionIdx] || ""
       precioRaw = cols[precioIdx] || ""
     } else {
-      if (cols.length >= 2) {
-        descripcion = cols[0] || ""
-        precioRaw = cols[1] || ""
-      } else {
-        continue
-      }
+      if (cols.length >= 2) { descripcion = cols[0] || ""; precioRaw = cols[1] || "" }
+      else continue
     }
-
     if (!descripcion) continue
-
     const precio = parsePrice(precioRaw)
     if (!Number.isFinite(precio) || precio <= 0) continue
-
     const key = `${descripcion}||${precio}`
     if (seen.has(key)) continue
     seen.add(key)
-
     products.push({ descripcion, precio })
   }
 

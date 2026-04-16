@@ -7,13 +7,16 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   Printer, FileText, CheckCircle2, Loader2, Eye,
   Bluetooth, ChevronDown, ChevronUp, Plus, WifiOff,
+  ClipboardList, PlusCircle, Settings2,
 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
+import Link from "next/link"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ProductSelector } from "@/components/product-selector"
 import { RemitoPrint } from "@/components/remito-print"
 import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
 import { buildRemitoEscPos } from "@/lib/remito-ticket-escpos"
+import { cn } from "@/lib/utils"
 import {
   type Product, type LineItem, type ClientData, type RemitoData,
   formatRemitoNumber, formatCurrency, parseCSV,
@@ -25,6 +28,12 @@ const PRICE_LISTS: { id: PriceListId; label: string }[] = [
   { id: "minorista", label: "Minorista" },
   { id: "mayorista", label: "Mayorista" },
   { id: "oferta", label: "Oferta" },
+]
+
+const navItems = [
+  { href: "/dashboard/pedidos", label: "Pedidos", icon: ClipboardList },
+  { href: "/dashboard/nuevo", label: "Nuevo", icon: PlusCircle, primary: true },
+  { href: "/dashboard/perfil", label: "Cuenta", icon: Settings2 },
 ]
 
 const defaultClient: ClientData = { nombre: "", direccion: "", telefono: "", mail: "", formaPago: "" }
@@ -39,8 +48,7 @@ function k(base: string, userId: string) { return `${base}:${userId}` }
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
 
 const BOTTOM_NAV_PX = 72
-const ACTION_BAR_EXPANDED_PX = 56
-const ACTION_BAR_COLLAPSED_PX = 28
+const ACTION_BAR_PX = 60
 
 type ProductsCacheEntry = { loadedAt: number; products: Product[] }
 type DraftData = { items: LineItem[]; clientNombre: string; priceListId: PriceListId; savedAt: number }
@@ -54,6 +62,7 @@ function buildAddedToast(product: Product, opcion?: string) {
 
 export default function RemitoPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const [userId, setUserId] = useState<string>("")
   const [products, setProducts] = useState<Product[]>([])
   const [items, setItems] = useState<LineItem[]>([])
@@ -152,22 +161,10 @@ export default function RemitoPage() {
 
   useEffect(() => { if (!userId || !draftRestoredRef.current) return; scheduleDraftSave(items, client, priceListId, userId) }, [items, client, priceListId, userId, scheduleDraftSave])
 
- useEffect(() => {
-  if (!userId) return
-
-  const updateProfile = async () => {
-    const { error } = await createClient()
-      .from("profiles")
-      .update({ selected_price_list: priceListId })
-      .eq("id", userId)
-
-    if (error) {
-      console.error("Error updating profile:", error)
-    }
-  }
-
-  updateProfile()
-}, [priceListId, userId])
+  useEffect(() => {
+    if (!userId) return
+    createClient().from("profiles").update({ selected_price_list: priceListId }).eq("id", userId).then(() => {}).catch(() => {})
+  }, [priceListId, userId])
 
   const saveProductsCache = useCallback((cache: Record<PriceListId, ProductsCacheEntry>) => {
     if (!userId) return
@@ -200,23 +197,19 @@ export default function RemitoPage() {
   const remitoNumero = useMemo(() => formatRemitoNumber(nextNumber), [nextNumber])
   const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
   const totalUnits = useMemo(() => items.reduce((s, i) => s + i.cantidad, 0), [items])
+  const totalDev = useMemo(() => items.reduce((s, i) => s + (i.devolucion ?? 0), 0), [items])
   const remitoData: RemitoData = useMemo(() => ({ numero: remitoNumero, fecha: remitoDateRef.current, client, items, subtotal: total, total }), [remitoNumero, client, items, total])
 
-  const canPrint = items.length > 0
+  const canPrint = items.filter(i => i.cantidad > 0).length > 0
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
-  const actionBarPx = canPrint ? actionBarCollapsed ? ACTION_BAR_COLLAPSED_PX : ACTION_BAR_EXPANDED_PX : 0
+  const fixedBottomPx = BOTTOM_NAV_PX + (canPrint ? (actionBarCollapsed ? 0 : ACTION_BAR_PX) : 0)
 
   const handleItemsChange = useCallback<React.Dispatch<React.SetStateAction<LineItem[]>>>((updater) => {
     setItems((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater
-      const prevMap = new Map(prev.map((item) => [`${item.product.descripcion}||${item.opcion ?? ""}`, item.cantidad]))
-      for (const item of next) {
-        const key = `${item.product.descripcion}||${item.opcion ?? ""}`
-        if (item.cantidad > (prevMap.get(key) ?? 0)) { showToast(buildAddedToast(item.product, item.opcion)); break }
-      }
       return next
     })
-  }, [showToast])
+  }, [])
 
   const advanceAndReset = useCallback((nextVisibleNumber: number, successData: SuccessState) => {
     setSuccessState(successData); setNextNumber(nextVisibleNumber); setClient(defaultClient); setItems([])
@@ -226,7 +219,7 @@ export default function RemitoPage() {
   const persistRemito = useCallback(async (): Promise<{ nextNumber: number; remitoId: string } | null> => {
     if (!isOnline) { showToast("Sin internet"); return null }
     if (!userId) { showToast("Falta sesión"); return null }
-    if (items.length === 0) { showToast("No hay productos"); return null }
+    if (items.filter(i => i.cantidad > 0).length === 0) { showToast("No hay productos"); return null }
     try {
       setIsSaving(true)
       const supabase = createClient()
@@ -238,7 +231,7 @@ export default function RemitoPage() {
       }).select("id").single()
       if (remitoError || !remitoInserted) { showToast("Error al guardar"); return null }
       const { error: itemsError } = await supabase.from("remito_items").insert(
-        items.map((item) => ({ remito_id: remitoInserted.id, descripcion: item.product.descripcion, cantidad: item.cantidad, precio_unitario: item.product.precio, subtotal: item.subtotal, opcion: item.opcion || null }))
+        items.filter(i => i.cantidad > 0).map((item) => ({ remito_id: remitoInserted.id, descripcion: item.product.descripcion, cantidad: item.cantidad, precio_unitario: item.product.precio, subtotal: item.subtotal, opcion: item.opcion || null }))
       )
       if (itemsError) { showToast("Error al guardar items"); return null }
       return { nextNumber: consumedNumber + 1, remitoId: remitoInserted.id }
@@ -310,7 +303,6 @@ export default function RemitoPage() {
     )
   }
 
-  // ── PANTALLA DE ÉXITO ──────────────────────────────────────────────────
   if (successState) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-6">
@@ -358,20 +350,14 @@ export default function RemitoPage() {
               <p className="text-[11px] text-gray-400">{remitoNumero} · {remitoDateRef.current}</p>
             </div>
             <div className="relative shrink-0">
-              <select
-                value={priceListId}
-                onChange={(e) => setPriceListId(e.target.value as PriceListId)}
-                className="h-8 appearance-none rounded-lg border border-gray-300 bg-gray-50 px-2.5 pr-6 text-[13px] font-medium text-gray-700 outline-none focus:border-[#1565c0]"
-              >
+              <select value={priceListId} onChange={(e) => setPriceListId(e.target.value as PriceListId)}
+                className="h-8 appearance-none rounded-lg border border-gray-300 bg-gray-50 px-2.5 pr-6 text-[13px] font-medium text-gray-700 outline-none focus:border-[#1565c0]">
                 {PRICE_LISTS.map((l) => (<option key={l.id} value={l.id}>{l.label}</option>))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-gray-400" />
             </div>
-            <button
-              type="button"
-              onClick={() => hasDraft ? setShowConfirmNew(true) : confirmNewRemito()}
-              className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-gray-300 bg-gray-50 px-2.5 text-[12px] font-medium text-gray-600 active:opacity-60"
-            >
+            <button type="button" onClick={() => hasDraft ? setShowConfirmNew(true) : confirmNewRemito()}
+              className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-gray-300 bg-gray-50 px-2.5 text-[12px] font-medium text-gray-600 active:opacity-60">
               <Plus className="size-3" />Nuevo
             </button>
           </div>
@@ -396,70 +382,60 @@ export default function RemitoPage() {
         </header>
 
         {/* ── CONTENIDO ── */}
-        <main className="mx-auto w-full max-w-md px-4 pt-3" style={{ paddingBottom: `calc(${BOTTOM_NAV_PX + actionBarPx}px + env(safe-area-inset-bottom) + 16px)` }}>
+        <main className="mx-auto w-full max-w-md px-4 pt-3"
+          style={{ paddingBottom: `calc(${fixedBottomPx}px + env(safe-area-inset-bottom) + 24px)` }}>
           <div className="mb-3">
-            <input
-              type="text"
-              placeholder="Nombre del cliente (opcional)"
-              value={client.nombre}
-              onChange={(e) => setClient((prev) => ({ ...prev, nombre: e.target.value }))}
-              className="h-11 w-full rounded-xl border border-gray-300 bg-white px-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#1565c0] shadow-sm"
-            />
+            <input type="text" placeholder="Nombre del cliente (opcional)"
+              value={client.nombre} onChange={(e) => setClient((prev) => ({ ...prev, nombre: e.target.value }))}
+              className="h-11 w-full rounded-xl border border-gray-300 bg-white px-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#1565c0] shadow-sm" />
           </div>
-
           {isLoadingProducts && products.length === 0 ? (
-            <div className="space-y-3">
-              {[1,2,3,4].map(i => <div key={i} className="h-14 animate-pulse rounded-xl bg-gray-200" />)}
-            </div>
+            <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-14 animate-pulse rounded-xl bg-gray-200" />)}</div>
           ) : (
             <ProductSelector products={products} items={items} onItemsChange={handleItemsChange} />
           )}
         </main>
 
-        {/* ── BARRA DE ACCIÓN ── */}
-        <AnimatePresence>
-          {canPrint && (
-            <motion.div
-              initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="fixed inset-x-0 z-50 border-t border-gray-200 bg-white shadow-lg"
-              style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
-            >
-              <button type="button" onClick={() => setActionBarCollapsed((v) => !v)} className="flex w-full items-center justify-center py-1.5 active:opacity-60">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-0.5 w-6 rounded-full bg-gray-300" />
-                  {actionBarCollapsed ? <ChevronUp className="size-3 text-gray-400" /> : <ChevronDown className="size-3 text-gray-400" />}
-                  <div className="h-0.5 w-6 rounded-full bg-gray-300" />
-                </div>
-              </button>
+        {/* ── BLOQUE FIJO INFERIOR ── */}
+        <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
 
+          {/* Barra de acción */}
+          {canPrint && (
+            <div className="border-b border-gray-100">
               <AnimatePresence initial={false}>
                 {!actionBarCollapsed && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15, ease: "easeOut" }} className="overflow-hidden">
-                    <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pb-3">
-
-                      {/* Total */}
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div
+                      className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-3 cursor-pointer select-none"
+                      onClick={() => setActionBarCollapsed(true)}
+                    >
+                      <ChevronDown className="size-4 shrink-0 text-gray-300" />
                       <div className="min-w-0 flex-1">
-                        <div className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5">
-                          <span className="text-[11px] font-medium text-gray-500">Total</span>
-                          <span className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</span>
-                          <span className="text-[10px] text-gray-300">·</span>
-                          <span className="text-[11px] font-medium text-gray-400">{totalUnits} u.</span>
-                        </div>
+                        <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {totalUnits} unid.
+                          {totalDev > 0 && <span className="ml-1.5 text-orange-500">{totalDev} dev.</span>}
+                        </p>
                       </div>
-
-                      {/* Ver */}
-                      <button type="button" onClick={() => setShowPreview(true)} className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60 shadow-sm">
+                      <button type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowPreview(true) }}
+                        className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
                         <Eye className="size-3.5" />Ver
                       </button>
-
-                      {/* Imprimir / Sin señal */}
                       {!isOnline ? (
-                        <div className="flex h-10 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-[12px] font-medium text-red-500">
+                        <div className="flex h-10 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-[12px] font-medium text-red-500"
+                          onClick={(e) => e.stopPropagation()}>
                           <WifiOff className="size-3.5" />Sin señal
                         </div>
                       ) : (
-                        <button type="button" onClick={handleBluetoothPrint} disabled={isSaving || isPrintingBluetooth} className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40 shadow-sm">
+                        <button type="button"
+                          onClick={(e) => { e.stopPropagation(); handleBluetoothPrint() }}
+                          disabled={isSaving || isPrintingBluetooth}
+                          className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
                           {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
                           {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
                         </button>
@@ -468,18 +444,64 @@ export default function RemitoPage() {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
+
+              {/* Cuando está colapsado — tira pequeña para re-abrir */}
+              {actionBarCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => setActionBarCollapsed(false)}
+                  className="flex w-full items-center justify-center gap-2 py-1.5 active:opacity-60"
+                >
+                  <div className="h-0.5 w-8 rounded-full bg-gray-200" />
+                  <ChevronUp className="size-3.5 text-gray-300" />
+                  <div className="h-0.5 w-8 rounded-full bg-gray-200" />
+                </button>
+              )}
+            </div>
           )}
-        </AnimatePresence>
+
+          {/* Bottom nav */}
+          <nav>
+            <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5">
+              {navItems.map((item) => {
+                const isActive = item.href === "/dashboard/pedidos"
+                  ? pathname === "/dashboard/pedidos"
+                  : pathname.startsWith(item.href)
+                if (item.primary) {
+                  return (
+                    <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
+                      <div className="flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl bg-[#1565c0] text-white">
+                        <item.icon className="size-4" />
+                        <span className="text-[10px] font-semibold leading-none">{item.label}</span>
+                      </div>
+                    </Link>
+                  )
+                }
+                return (
+                  <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
+                    <div className={cn(
+                      "flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl transition-colors",
+                      isActive ? "text-[#1565c0]" : "text-gray-400"
+                    )}>
+                      <item.icon className="size-4" />
+                      <span className={cn("text-[10px] leading-none", isActive ? "font-semibold" : "font-medium")}>
+                        {item.label}
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </nav>
+        </div>
 
         {/* ── TOAST ── */}
         <AnimatePresence>
           {toast.open && (
             <motion.div initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.98 }} transition={{ duration: 0.18 }}
               className="fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2"
-              style={{ bottom: `calc(${BOTTOM_NAV_PX + actionBarPx}px + env(safe-area-inset-bottom) + 10px)` }}
-              role="alert"
-            >
+              style={{ bottom: `calc(${fixedBottomPx}px + env(safe-area-inset-bottom) + 10px)` }}
+              role="alert">
               <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-lg">
                 <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#1565c0] text-white">
                   <CheckCircle2 className="size-3" />
@@ -504,7 +526,8 @@ export default function RemitoPage() {
             </div>
           </div>
           <div className="border-t border-gray-200 bg-white px-4 py-2.5">
-            <button type="button" onClick={handlePreviewPrint} disabled={!isOnline || isSaving || isPrintingBluetooth} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#1565c0] text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
+            <button type="button" onClick={handlePreviewPrint} disabled={!isOnline || isSaving || isPrintingBluetooth}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#1565c0] text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
               {isSaving ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
               {isSaving ? "Imprimiendo..." : "Imprimir"}
             </button>

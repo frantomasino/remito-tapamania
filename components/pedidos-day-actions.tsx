@@ -59,7 +59,7 @@ export function PedidosDayActions({
         type="button"
         onClick={handlePrintDay}
         disabled={cantidadPedidos === 0 || isPrinting}
-        className="flex h-9 items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-[#161616] text-[13px] font-medium text-[#888] active:opacity-60 disabled:opacity-30"
+        className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white text-[13px] font-medium text-gray-600 shadow-sm active:opacity-60 disabled:opacity-40"
       >
         {isPrinting ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
         {isPrinting ? "Imprimiendo..." : "Imprimir día"}
@@ -69,7 +69,7 @@ export function PedidosDayActions({
         type="button"
         onClick={handleClear}
         disabled={disabledClear || isClearing}
-        className="flex h-9 items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-[#161616] text-[13px] font-medium text-[#ff5555] active:opacity-60 disabled:opacity-30"
+        className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white text-[13px] font-medium text-red-500 shadow-sm active:opacity-60 disabled:opacity-40"
       >
         {isClearing ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
         {isClearing ? "Limpiando..." : "Limpiar día"}

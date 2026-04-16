@@ -1,4 +1,4 @@
-import { LogOut, Mail, Tags } from "lucide-react"
+import { LogOut, Mail, Tags, Info, Building2 } from "lucide-react"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 
@@ -12,6 +12,9 @@ function getPriceListLabel(value?: string | null) {
     default: return "Sin definir"
   }
 }
+
+const APP_VERSION = "1.0.0"
+const APP_EMPRESA = "Tapamanía"
 
 export default async function PerfilPage() {
   const supabase = await createClient()
@@ -59,6 +62,24 @@ export default async function PerfilPage() {
                 {getPriceListLabel(selectedPriceList)}
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* ── INFO APP ── */}
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+          <div className="flex items-center justify-between px-3 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <Building2 className="size-4 shrink-0 text-gray-400" />
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Empresa</p>
+            </div>
+            <p className="text-[13px] font-semibold text-gray-900">{APP_EMPRESA}</p>
+          </div>
+          <div className="flex items-center justify-between px-3 py-3">
+            <div className="flex items-center gap-3">
+              <Info className="size-4 shrink-0 text-gray-400" />
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Versión</p>
+            </div>
+            <p className="text-[13px] font-semibold text-gray-900">{APP_VERSION}</p>
           </div>
         </div>
 

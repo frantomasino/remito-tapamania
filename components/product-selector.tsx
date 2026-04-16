@@ -1,7 +1,7 @@
 "use client"
 
 import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
-import { Plus, Trash2, Search, Package2, X, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, Trash2, Search, Package2, X, ChevronDown, ChevronUp, RotateCcw } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { type Product, type LineItem, formatCurrency } from "@/lib/remito-types"
@@ -117,14 +117,15 @@ interface ProductRowProps {
   selectedCount: number
   onSelectOption: (desc: string, opt: string) => void
   onAdd: (product: Product, opcion?: string) => void
+  onAddDevolucion: (product: Product, opcion?: string) => void
 }
 
 const ProductRow = memo(function ProductRow({
-  product, title, infoTags, options, selectedOpt, selectedCount, onSelectOption, onAdd,
+  product, title, infoTags, options, selectedOpt, selectedCount, onSelectOption, onAdd, onAddDevolucion,
 }: ProductRowProps) {
   return (
     <article className="border-b border-gray-200 py-3 last:border-b-0">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 flex-wrap">
             <p className="text-[14px] font-semibold text-gray-900 leading-snug">{title}</p>
@@ -167,6 +168,17 @@ const ProductRow = memo(function ProductRow({
           )}
         </div>
 
+        {/* Botón devolución — naranja */}
+        <button
+          type="button"
+          onClick={() => onAddDevolucion(product, selectedOpt || undefined)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-orange-300 bg-white text-orange-400 transition-colors active:opacity-60"
+          title="Registrar devolución"
+        >
+          <RotateCcw className="size-4" />
+        </button>
+
+        {/* Botón agregar — azul */}
         <button
           type="button"
           onClick={() => onAdd(product, selectedOpt || undefined)}
@@ -194,6 +206,7 @@ type CartGroup = {
   precio: number
   totalCantidad: number
   totalSubtotal: number
+  totalDevolucion: number
   items: LineItem[]
   hasOpciones: boolean
   options: string[]
@@ -210,6 +223,7 @@ function groupCartItems(items: LineItem[], derivedByDesc: Map<string, Derived>):
       const g = groups.get(baseDesc)!
       g.totalCantidad += item.cantidad
       g.totalSubtotal += item.subtotal
+      g.totalDevolucion += item.devolucion ?? 0
       g.items.push(item)
       if (item.opcion) g.hasOpciones = true
     } else {
@@ -218,6 +232,7 @@ function groupCartItems(items: LineItem[], derivedByDesc: Map<string, Derived>):
         precio: item.product.precio,
         totalCantidad: item.cantidad,
         totalSubtotal: item.subtotal,
+        totalDevolucion: item.devolucion ?? 0,
         items: [item],
         hasOpciones: !!item.opcion,
       })
@@ -231,19 +246,19 @@ interface CartGroupRowProps {
   onRemoveGroup: (desc: string) => void
   onRemoveSingle: (desc: string, opcion?: string) => void
   onUpdateQuantity: (desc: string, opcion: string | undefined, cantidad: number) => void
+  onUpdateDevolucion: (desc: string, opcion: string | undefined, devolucion: number) => void
 }
 
 const CartGroupRow = memo(function CartGroupRow({
-  group, onRemoveGroup, onRemoveSingle, onUpdateQuantity,
+  group, onRemoveGroup, onRemoveSingle, onUpdateQuantity, onUpdateDevolucion,
 }: CartGroupRowProps) {
   const [localVal, setLocalVal] = useState(String(group.totalCantidad))
   useEffect(() => { setLocalVal(String(group.totalCantidad)) }, [group.totalCantidad])
 
+  // Grupo con múltiples opciones
   if (group.hasOpciones && group.options.length > 1) {
-    const resumen = group.items
-      .filter((i) => i.cantidad > 0)
-      .map((i) => `${i.cantidad} ${i.opcion ?? ""}`)
-      .join(", ")
+    const ventaResumen = group.items.filter((i) => i.cantidad > 0).map((i) => `${i.cantidad} ${i.opcion ?? ""}`).join(", ")
+    const devResumen = group.items.filter((i) => (i.devolucion ?? 0) > 0).map((i) => `${i.devolucion} ${i.opcion ?? ""}`).join(", ")
 
     return (
       <div className="border-b border-gray-200 last:border-b-0 py-2.5">
@@ -252,8 +267,12 @@ const CartGroupRow = memo(function CartGroupRow({
             <p className="text-[13px] font-semibold text-gray-900">
               {group.title}
               <span className="ml-1.5 text-gray-500 font-normal text-[12px]">· {group.totalCantidad} u.</span>
+              {group.totalDevolucion > 0 && (
+                <span className="ml-1.5 text-orange-500 font-normal text-[12px]">({group.totalDevolucion} dev.)</span>
+              )}
             </p>
-            <p className="text-[12px] text-gray-500 mt-0.5">{resumen}</p>
+            <p className="text-[12px] text-gray-500 mt-0.5">{ventaResumen}</p>
+            {devResumen && <p className="text-[12px] text-orange-500 mt-0.5">Dev: {devResumen}</p>}
             <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">{formatCurrency(group.totalSubtotal)}</p>
           </div>
           <button
@@ -264,25 +283,31 @@ const CartGroupRow = memo(function CartGroupRow({
             <X className="size-3.5" />
           </button>
         </div>
-        <div className="mt-2 flex flex-col gap-1.5 pl-1">
+        <div className="mt-2 flex flex-col gap-2 pl-1">
           {group.items.map((item) => (
-            <div key={itemKey(item.product.descripcion, item.opcion)} className="flex items-center gap-2">
-              <span className="text-[12px] text-gray-500 min-w-[60px]">{item.opcion}</span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => item.cantidad > 1
-                    ? onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1)
-                    : onRemoveSingle(item.product.descripcion, item.opcion)
-                  }
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 text-base font-bold active:opacity-60"
-                >−</button>
-                <span className="w-8 text-center text-[13px] font-bold text-gray-900 tabular-nums">{item.cantidad}</span>
-                <button
-                  type="button"
-                  onClick={() => onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 text-base font-bold active:opacity-60"
-                >+</button>
+            <div key={itemKey(item.product.descripcion, item.opcion)}>
+              <p className="text-[12px] font-medium text-gray-600 mb-1">{item.opcion}</p>
+              {/* Venta */}
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[11px] text-gray-400 w-10">Venta:</span>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => item.cantidad > 1 ? onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1) : onRemoveSingle(item.product.descripcion, item.opcion)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 text-base font-bold active:opacity-60">−</button>
+                  <span className="w-7 text-center text-[13px] font-bold text-gray-900 tabular-nums">{item.cantidad}</span>
+                  <button type="button" onClick={() => onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 text-base font-bold active:opacity-60">+</button>
+                </div>
+              </div>
+              {/* Devolución */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-orange-500 w-10">Dev:</span>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, Math.max(0, (item.devolucion ?? 0) - 1))}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">−</button>
+                  <span className="w-7 text-center text-[13px] font-bold text-orange-500 tabular-nums">{item.devolucion ?? 0}</span>
+                  <button type="button" onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, (item.devolucion ?? 0) + 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">+</button>
+                </div>
               </div>
             </div>
           ))}
@@ -291,6 +316,7 @@ const CartGroupRow = memo(function CartGroupRow({
     )
   }
 
+  // Producto sin opciones
   const item = group.items[0]
   const handleBlur = () => {
     const parsed = parseInt(localVal, 10)
@@ -299,51 +325,57 @@ const CartGroupRow = memo(function CartGroupRow({
   }
 
   return (
-    <div className="flex items-center gap-2 py-2.5 border-b border-gray-200 last:border-b-0">
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold text-gray-900 truncate">{group.title}</p>
-        <p className="text-[11px] text-gray-400 tabular-nums">
-          {formatCurrency(group.totalSubtotal)}
-          {group.totalCantidad > 1 && (
-            <span className="ml-1">({group.totalCantidad} × {formatCurrency(group.precio)})</span>
-          )}
-        </p>
-      </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <button
-          type="button"
-          onClick={() => item.cantidad > 1 && onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1)}
-          disabled={item.cantidad <= 1}
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg border text-base font-bold",
-            item.cantidad > 1
-              ? "border-gray-300 bg-white text-gray-700 active:opacity-60"
-              : "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
-          )}
-        >−</button>
-        <input
-          type="number"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          value={localVal}
-          onChange={(e) => setLocalVal(e.target.value)}
-          onBlur={handleBlur}
-          onFocus={(e) => e.target.select()}
-          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-          className="h-8 w-12 rounded-lg border border-gray-300 bg-white text-center text-[13px] font-bold text-gray-900 outline-none focus:border-[#1565c0] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        />
-        <button
-          type="button"
-          onClick={() => onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-base font-bold text-gray-700 active:opacity-60"
-        >+</button>
-        <button
-          type="button"
-          onClick={() => onRemoveSingle(item.product.descripcion, item.opcion)}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:text-red-500 active:opacity-60 ml-0.5"
-        >
-          <X className="size-3.5" />
-        </button>
+    <div className="border-b border-gray-200 last:border-b-0 py-2.5">
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold text-gray-900 truncate">
+            {group.title}
+            {group.totalDevolucion > 0 && (
+              <span className="ml-1.5 text-orange-500 font-normal text-[12px]">({group.totalDevolucion} dev.)</span>
+            )}
+          </p>
+          <p className="text-[11px] text-gray-400 tabular-nums">
+            {formatCurrency(group.totalSubtotal)}
+            {group.totalCantidad > 1 && (
+              <span className="ml-1">({group.totalCantidad} × {formatCurrency(group.precio)})</span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button type="button"
+            onClick={() => item.cantidad > 1 && onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1)}
+            disabled={item.cantidad <= 1}
+            className={cn("flex h-8 w-8 items-center justify-center rounded-lg border text-base font-bold",
+              item.cantidad > 1 ? "border-gray-300 bg-white text-gray-700 active:opacity-60" : "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
+            )}>−</button>
+          <input
+            type="number" inputMode="numeric" pattern="[0-9]*"
+            value={localVal}
+            onChange={(e) => setLocalVal(e.target.value)}
+            onBlur={handleBlur}
+            onFocus={(e) => e.target.select()}
+            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+            className="h-8 w-10 rounded-lg border border-gray-300 bg-white text-center text-[13px] font-bold text-gray-900 outline-none focus:border-[#1565c0] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <button type="button"
+            onClick={() => onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-base font-bold text-gray-700 active:opacity-60">+</button>
+          {/* Dev − / cantidad / + */}
+          <div className="flex items-center gap-0.5 ml-1">
+            <button type="button"
+              onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, Math.max(0, (item.devolucion ?? 0) - 1))}
+              className="flex h-8 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">−</button>
+            <span className="w-6 text-center text-[12px] font-bold text-orange-500 tabular-nums">{item.devolucion ?? 0}</span>
+            <button type="button"
+              onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, (item.devolucion ?? 0) + 1)}
+              className="flex h-8 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">+</button>
+          </div>
+          <button type="button"
+            onClick={() => onRemoveSingle(item.product.descripcion, item.opcion)}
+            className="flex h-8 w-7 items-center justify-center rounded-lg text-gray-300 hover:text-red-500 active:opacity-60">
+            <X className="size-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -354,14 +386,15 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const [search, setSearch] = useState("")
   const deferredSearch = useDeferredValue(search)
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
-  const [cartOpen, setCartOpen] = useState(true)
+  const [cartOpen, setCartOpen] = useState(false)
   const [selectedOptionByDesc, setSelectedOptionByDesc] = useState<Record<string, string>>({})
   const [visibleCount, setVisibleCount] = useState(MAX_VISIBLE_PRODUCTS)
 
   const prevLengthRef = useRef(0)
   useEffect(() => {
-    if (prevLengthRef.current === 0 && items.length > 0) setCartOpen(true)
+    const scrollY = window.scrollY
     prevLengthRef.current = items.length
+    requestAnimationFrame(() => { window.scrollTo({ top: scrollY, behavior: "instant" as ScrollBehavior }) })
   }, [items.length])
 
   const getSelectedOpt = useCallback((desc: string) => selectedOptionByDesc[desc] ?? "", [selectedOptionByDesc])
@@ -399,6 +432,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   }, [items])
 
   const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
+  const totalDevolucion = useMemo(() => items.reduce((s, i) => s + (i.devolucion ?? 0), 0), [items])
   const cartGroups = useMemo(() => groupCartItems(items, derivedByDesc), [items, derivedByDesc])
 
   const addItem = useCallback((product: Product, opcion?: string) => {
@@ -416,16 +450,57 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
     })
   }, [onItemsChange])
 
+  const addDevolucion = useCallback((product: Product, opcion?: string) => {
+    const key = itemKey(product.descripcion, opcion)
+    onItemsChange((prev) => {
+      const idx = prev.findIndex((i) => itemKey(i.product.descripcion, i.opcion) === key)
+      if (idx >= 0) {
+        // Ya existe el ítem — sumar 1 a devolucion
+        const next = prev.slice()
+        const cur = next[idx]
+        next[idx] = { ...cur, devolucion: (cur.devolucion ?? 0) + 1 }
+        return next
+      }
+      // No existe — crear ítem con cantidad 0 solo para la devolución
+      return [...prev, { product, cantidad: 0, subtotal: 0, opcion, devolucion: 1 }]
+    })
+  }, [onItemsChange])
+
   const updateQuantity = useCallback((desc: string, opcion: string | undefined, cantidad: number) => {
     const key = itemKey(desc, opcion)
     onItemsChange((prev) => {
       const idx = prev.findIndex((i) => itemKey(i.product.descripcion, i.opcion) === key)
       if (idx < 0) return prev
-      if (cantidad <= 0) return prev.filter((i) => itemKey(i.product.descripcion, i.opcion) !== key)
+      if (cantidad <= 0) {
+        // Si tiene devolución, mantener con cantidad 0; sino eliminar
+        const cur = prev[idx]
+        if ((cur.devolucion ?? 0) > 0) {
+          const next = prev.slice()
+          next[idx] = { ...cur, cantidad: 0, subtotal: 0 }
+          return next
+        }
+        return prev.filter((i) => itemKey(i.product.descripcion, i.opcion) !== key)
+      }
       const next = prev.slice()
       const cur = next[idx]
       if (cur.cantidad === cantidad) return prev
       next[idx] = { ...cur, cantidad, subtotal: cantidad * cur.product.precio }
+      return next
+    })
+  }, [onItemsChange])
+
+  const updateDevolucion = useCallback((desc: string, opcion: string | undefined, devolucion: number) => {
+    const key = itemKey(desc, opcion)
+    onItemsChange((prev) => {
+      const idx = prev.findIndex((i) => itemKey(i.product.descripcion, i.opcion) === key)
+      if (idx < 0) return prev
+      const next = prev.slice()
+      const cur = next[idx]
+      // Si devolucion = 0 y cantidad = 0, eliminar el ítem
+      if (devolucion <= 0 && cur.cantidad <= 0) {
+        return prev.filter((i) => itemKey(i.product.descripcion, i.opcion) !== key)
+      }
+      next[idx] = { ...cur, devolucion: Math.max(0, devolucion) }
       return next
     })
   }, [onItemsChange])
@@ -443,7 +518,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
   return (
     <>
-      {/* ── MODAL VACIAR ── */}
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
         <DialogContent className="max-w-sm border-gray-200 bg-white text-gray-900">
           <DialogHeader>
@@ -453,18 +527,12 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
             Se eliminan {items.length} {items.length === 1 ? "producto" : "productos"}.
           </p>
           <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setConfirmClearOpen(false)}
-              className="flex h-10 flex-1 items-center justify-center rounded-xl border border-gray-300 bg-white text-[13px] font-medium text-gray-700 active:opacity-60"
-            >
+            <button type="button" onClick={() => setConfirmClearOpen(false)}
+              className="flex h-10 flex-1 items-center justify-center rounded-xl border border-gray-300 bg-white text-[13px] font-medium text-gray-700 active:opacity-60">
               Cancelar
             </button>
-            <button
-              type="button"
-              onClick={() => { onItemsChange([]); setConfirmClearOpen(false) }}
-              className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-[13px] font-semibold text-white active:opacity-80"
-            >
+            <button type="button" onClick={() => { onItemsChange([]); setConfirmClearOpen(false) }}
+              className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-[13px] font-semibold text-white active:opacity-80">
               Vaciar
             </button>
           </div>
@@ -488,29 +556,21 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
         {/* ── CARRITO ── */}
         {items.length > 0 && (
           <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-            <button
-              type="button"
-              onClick={() => setCartOpen((v) => !v)}
-              className="flex w-full items-center justify-between px-3 py-2.5 text-left active:opacity-70 bg-gray-50"
-            >
+            <button type="button" onClick={() => setCartOpen((v) => !v)}
+              className="flex w-full items-center justify-between px-3 py-2.5 text-left active:opacity-70 bg-gray-50">
               <div className="flex items-center gap-2">
-                {cartOpen
-                  ? <ChevronUp className="size-3.5 text-gray-400" />
-                  : <ChevronDown className="size-3.5 text-gray-400" />
-                }
+                {cartOpen ? <ChevronUp className="size-3.5 text-gray-400" /> : <ChevronDown className="size-3.5 text-gray-400" />}
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                   Pedido · {cartGroups.length} {cartGroups.length === 1 ? "producto" : "productos"}
                 </span>
+                {totalDevolucion > 0 && (
+                  <span className="text-[11px] font-medium text-orange-500">· {totalDevolucion} dev.</span>
+                )}
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-[13px] font-semibold text-gray-900 tabular-nums">
-                  {formatCurrency(total)}
-                </span>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setConfirmClearOpen(true) }}
-                  className="flex items-center text-red-400 active:opacity-60"
-                >
+                <span className="text-[13px] font-semibold text-gray-900 tabular-nums">{formatCurrency(total)}</span>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setConfirmClearOpen(true) }}
+                  className="flex items-center text-red-400 active:opacity-60">
                   <Trash2 className="size-3.5" />
                 </button>
               </div>
@@ -525,6 +585,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                     onRemoveGroup={removeGroup}
                     onRemoveSingle={removeItem}
                     onUpdateQuantity={updateQuantity}
+                    onUpdateDevolucion={updateDevolucion}
                   />
                 ))}
               </div>
@@ -556,9 +617,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                 const title = d?.title ?? shortDesc(p.descripcion)
                 const options = d?.options ?? productOptions(p.descripcion)
                 const infoTags = d?.tags ?? detailTags(p.descripcion)
-                const selectedOpt = options.length > 0
-                  ? (getSelectedOpt(p.descripcion) || options[0])
-                  : ""
+                const selectedOpt = options.length > 0 ? (getSelectedOpt(p.descripcion) || options[0]) : ""
                 const selectedCount = options.length > 0
                   ? itemCountByKey.get(itemKey(p.descripcion, selectedOpt)) ?? 0
                   : itemCountByKey.get(itemKey(p.descripcion)) ?? 0
@@ -574,6 +633,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                     selectedCount={selectedCount}
                     onSelectOption={setSelectedOpt}
                     onAdd={addItem}
+                    onAddDevolucion={addDevolucion}
                   />
                 )
               })}
@@ -582,11 +642,9 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
           {filtered.length > visibleCount && (
             <div className="px-3 pb-3 pt-1">
-              <button
-                type="button"
+              <button type="button"
                 onClick={() => setVisibleCount((prev) => prev + MAX_VISIBLE_PRODUCTS)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-sm text-gray-500 active:opacity-60"
-              >
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-sm text-gray-500 active:opacity-60">
                 Ver {filtered.length - visibleCount} más
               </button>
             </div>
