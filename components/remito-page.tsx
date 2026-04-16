@@ -163,8 +163,9 @@ export default function RemitoPage() {
 
   useEffect(() => {
     if (!userId) return
-    createClient().from("profiles").update({ selected_price_list: priceListId }).eq("id", userId).then(() => {}).catch(() => {})
-  }, [priceListId, userId])
+Promise.resolve(
+  createClient().from("profiles").update({ selected_price_list: priceListId }).eq("id", userId)
+).then(() => {}).catch(() => {})  }, [priceListId, userId])
 
   const saveProductsCache = useCallback((cache: Record<PriceListId, ProductsCacheEntry>) => {
     if (!userId) return
