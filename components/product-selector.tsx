@@ -1,7 +1,7 @@
 "use client"
 
 import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
-import { Plus, Trash2, Search, Package2, X, ChevronDown, ChevronUp, RotateCcw } from "lucide-react"
+import { Plus, Trash2, Search, Package2, X, ChevronDown, ChevronUp, RotateCcw, Check } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { type Product, type LineItem, formatCurrency } from "@/lib/remito-types"
@@ -107,6 +107,73 @@ const productOptions = (s: string) => {
 const itemKey = (desc: string, opcion?: string) => `${desc}||${opcion ?? ""}`
 type Derived = { title: string; tags: string[]; options: string[]; haystack: string }
 
+// ── BOTÓN DE CANTIDAD CON INPUT INLINE ───────────────────────────────────────
+interface QtyButtonProps {
+  count: number
+  onConfirm: (qty: number) => void
+}
+
+const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const openEdit = () => {
+    setVal(count > 0 ? String(count) : "")
+    setEditing(true)
+    setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select() }, 30)
+  }
+
+  const confirm = () => {
+    const n = parseInt(val, 10)
+    if (!isNaN(n) && n >= 0) onConfirm(n)
+    else if (val === "" || val === "0") onConfirm(0)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          ref={inputRef}
+          type="number"
+          inputMode="numeric"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") confirm(); if (e.key === "Escape") setEditing(false) }}
+          onBlur={confirm}
+          className="h-10 w-14 rounded-xl border-2 border-[#1565c0] bg-white text-center text-[15px] font-bold text-gray-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
+        <button
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); confirm() }}
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1565c0] text-white active:opacity-80"
+        >
+          <Check className="size-4" />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={openEdit}
+      className={cn(
+        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 transition-colors active:opacity-60 font-bold",
+        count > 0
+          ? "border-[#1565c0] bg-[#1565c0] text-white"
+          : "border-gray-300 bg-white text-gray-700"
+      )}
+    >
+      {count > 0
+        ? <span className="text-[13px] font-bold leading-none">{count}</span>
+        : <Plus className="size-4" />
+      }
+    </button>
+  )
+})
+
 // ── FILA DE PRODUCTO ──────────────────────────────────────────────────────────
 interface ProductRowProps {
   product: Product
@@ -116,12 +183,12 @@ interface ProductRowProps {
   selectedOpt: string
   selectedCount: number
   onSelectOption: (desc: string, opt: string) => void
-  onAdd: (product: Product, opcion?: string) => void
+  onSetQuantity: (product: Product, opcion: string | undefined, qty: number) => void
   onAddDevolucion: (product: Product, opcion?: string) => void
 }
 
 const ProductRow = memo(function ProductRow({
-  product, title, infoTags, options, selectedOpt, selectedCount, onSelectOption, onAdd, onAddDevolucion,
+  product, title, infoTags, options, selectedOpt, selectedCount, onSelectOption, onSetQuantity, onAddDevolucion,
 }: ProductRowProps) {
   return (
     <article className="border-b border-gray-200 py-3 last:border-b-0">
@@ -168,32 +235,20 @@ const ProductRow = memo(function ProductRow({
           )}
         </div>
 
-        {/* Botón devolución — naranja */}
+        {/* Botón devolución */}
         <button
           type="button"
           onClick={() => onAddDevolucion(product, selectedOpt || undefined)}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-orange-300 bg-white text-orange-400 transition-colors active:opacity-60"
-          title="Registrar devolución"
         >
           <RotateCcw className="size-4" />
         </button>
 
-        {/* Botón agregar — azul */}
-        <button
-          type="button"
-          onClick={() => onAdd(product, selectedOpt || undefined)}
-          className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 transition-colors active:opacity-60 font-bold",
-            selectedCount > 0
-              ? "border-[#1565c0] bg-[#1565c0] text-white"
-              : "border-gray-300 bg-white text-gray-700"
-          )}
-        >
-          {selectedCount > 0
-            ? <span className="text-[13px] font-bold leading-none">{selectedCount}</span>
-            : <Plus className="size-4" />
-          }
-        </button>
+        {/* Botón cantidad con input inline */}
+        <QtyButton
+          count={selectedCount}
+          onConfirm={(qty) => onSetQuantity(product, selectedOpt || undefined, qty)}
+        />
       </div>
     </article>
   )
@@ -255,7 +310,6 @@ const CartGroupRow = memo(function CartGroupRow({
   const [localVal, setLocalVal] = useState(String(group.totalCantidad))
   useEffect(() => { setLocalVal(String(group.totalCantidad)) }, [group.totalCantidad])
 
-  // Grupo con múltiples opciones
   if (group.hasOpciones && group.options.length > 1) {
     const ventaResumen = group.items.filter((i) => i.cantidad > 0).map((i) => `${i.cantidad} ${i.opcion ?? ""}`).join(", ")
     const devResumen = group.items.filter((i) => (i.devolucion ?? 0) > 0).map((i) => `${i.devolucion} ${i.opcion ?? ""}`).join(", ")
@@ -275,11 +329,8 @@ const CartGroupRow = memo(function CartGroupRow({
             {devResumen && <p className="text-[12px] text-orange-500 mt-0.5">Dev: {devResumen}</p>}
             <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">{formatCurrency(group.totalSubtotal)}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => onRemoveGroup(group.baseDesc)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 active:opacity-60"
-          >
+          <button type="button" onClick={() => onRemoveGroup(group.baseDesc)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 active:opacity-60">
             <X className="size-3.5" />
           </button>
         </div>
@@ -287,7 +338,6 @@ const CartGroupRow = memo(function CartGroupRow({
           {group.items.map((item) => (
             <div key={itemKey(item.product.descripcion, item.opcion)}>
               <p className="text-[12px] font-medium text-gray-600 mb-1">{item.opcion}</p>
-              {/* Venta */}
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[11px] text-gray-400 w-10">Venta:</span>
                 <div className="flex items-center gap-1">
@@ -298,7 +348,6 @@ const CartGroupRow = memo(function CartGroupRow({
                     className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 text-base font-bold active:opacity-60">+</button>
                 </div>
               </div>
-              {/* Devolución */}
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-orange-500 w-10">Dev:</span>
                 <div className="flex items-center gap-1">
@@ -316,7 +365,6 @@ const CartGroupRow = memo(function CartGroupRow({
     )
   }
 
-  // Producto sin opciones
   const item = group.items[0]
   const handleBlur = () => {
     const parsed = parseInt(localVal, 10)
@@ -360,7 +408,6 @@ const CartGroupRow = memo(function CartGroupRow({
           <button type="button"
             onClick={() => onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-base font-bold text-gray-700 active:opacity-60">+</button>
-          {/* Dev − / cantidad / + */}
           <div className="flex items-center gap-0.5 ml-1">
             <button type="button"
               onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, Math.max(0, (item.devolucion ?? 0) - 1))}
@@ -435,18 +482,28 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const totalDevolucion = useMemo(() => items.reduce((s, i) => s + (i.devolucion ?? 0), 0), [items])
   const cartGroups = useMemo(() => groupCartItems(items, derivedByDesc), [items, derivedByDesc])
 
-  const addItem = useCallback((product: Product, opcion?: string) => {
+  // Setear cantidad directa (desde QtyButton)
+  const setQuantity = useCallback((product: Product, opcion: string | undefined, qty: number) => {
     const key = itemKey(product.descripcion, opcion)
     onItemsChange((prev) => {
       const idx = prev.findIndex((i) => itemKey(i.product.descripcion, i.opcion) === key)
+      if (qty <= 0) {
+        if (idx < 0) return prev
+        const cur = prev[idx]
+        if ((cur.devolucion ?? 0) > 0) {
+          const next = prev.slice()
+          next[idx] = { ...cur, cantidad: 0, subtotal: 0 }
+          return next
+        }
+        return prev.filter((i) => itemKey(i.product.descripcion, i.opcion) !== key)
+      }
       if (idx >= 0) {
         const next = prev.slice()
         const cur = next[idx]
-        const cantidad = cur.cantidad + 1
-        next[idx] = { ...cur, cantidad, subtotal: cantidad * cur.product.precio }
+        next[idx] = { ...cur, cantidad: qty, subtotal: qty * cur.product.precio }
         return next
       }
-      return [...prev, { product, cantidad: 1, subtotal: product.precio, opcion }]
+      return [...prev, { product, cantidad: qty, subtotal: qty * product.precio, opcion }]
     })
   }, [onItemsChange])
 
@@ -455,13 +512,11 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
     onItemsChange((prev) => {
       const idx = prev.findIndex((i) => itemKey(i.product.descripcion, i.opcion) === key)
       if (idx >= 0) {
-        // Ya existe el ítem — sumar 1 a devolucion
         const next = prev.slice()
         const cur = next[idx]
         next[idx] = { ...cur, devolucion: (cur.devolucion ?? 0) + 1 }
         return next
       }
-      // No existe — crear ítem con cantidad 0 solo para la devolución
       return [...prev, { product, cantidad: 0, subtotal: 0, opcion, devolucion: 1 }]
     })
   }, [onItemsChange])
@@ -472,7 +527,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
       const idx = prev.findIndex((i) => itemKey(i.product.descripcion, i.opcion) === key)
       if (idx < 0) return prev
       if (cantidad <= 0) {
-        // Si tiene devolución, mantener con cantidad 0; sino eliminar
         const cur = prev[idx]
         if ((cur.devolucion ?? 0) > 0) {
           const next = prev.slice()
@@ -496,7 +550,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
       if (idx < 0) return prev
       const next = prev.slice()
       const cur = next[idx]
-      // Si devolucion = 0 y cantidad = 0, eliminar el ítem
       if (devolucion <= 0 && cur.cantidad <= 0) {
         return prev.filter((i) => itemKey(i.product.descripcion, i.opcion) !== key)
       }
@@ -541,7 +594,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
       <div className="flex flex-col gap-3">
 
-        {/* ── BUSCADOR ── */}
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -553,7 +605,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
           />
         </div>
 
-        {/* ── CARRITO ── */}
         {items.length > 0 && (
           <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
             <button type="button" onClick={() => setCartOpen((v) => !v)}
@@ -593,7 +644,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
           </div>
         )}
 
-        {/* ── LISTA DE PRODUCTOS ── */}
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-200 bg-gray-50">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Productos</p>
@@ -632,7 +682,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                     selectedOpt={selectedOpt}
                     selectedCount={selectedCount}
                     onSelectOption={setSelectedOpt}
-                    onAdd={addItem}
+                    onSetQuantity={setQuantity}
                     onAddDevolucion={addDevolucion}
                   />
                 )

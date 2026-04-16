@@ -78,7 +78,7 @@ export default function RemitoPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isPrintingBluetooth, setIsPrintingBluetooth] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
-  const [actionBarCollapsed, setActionBarCollapsed] = useState(false)
+  const [actionBarCollapsed, setActionBarCollapsed] = useState(true)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
   const toastTimer = useRef<number | null>(null)
@@ -163,9 +163,10 @@ export default function RemitoPage() {
 
   useEffect(() => {
     if (!userId) return
-Promise.resolve(
+    Promise.resolve(
   createClient().from("profiles").update({ selected_price_list: priceListId }).eq("id", userId)
-).then(() => {}).catch(() => {})  }, [priceListId, userId])
+).then(() => {}).catch(() => {})
+  }, [priceListId, userId])
 
   const saveProductsCache = useCallback((cache: Record<PriceListId, ProductsCacheEntry>) => {
     if (!userId) return
@@ -374,12 +375,7 @@ Promise.resolve(
             )}
           </AnimatePresence>
 
-          {showDraftBanner && (
-            <div className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 flex items-center justify-between gap-3">
-              <p className="text-[11px] font-medium text-amber-700">Pedido anterior recuperado ({items.length} productos)</p>
-              <button type="button" onClick={() => { setShowDraftBanner(false); setShowConfirmNew(true) }} className="text-[11px] text-amber-600 underline active:opacity-60 shrink-0">Descartar</button>
-            </div>
-          )}
+         
         </header>
 
         {/* ── CONTENIDO ── */}
