@@ -438,10 +438,20 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const [visibleCount, setVisibleCount] = useState(MAX_VISIBLE_PRODUCTS)
 
   const prevLengthRef = useRef(0)
+  const scrollRef = useRef(0)
   useEffect(() => {
-    const scrollY = window.scrollY
-    prevLengthRef.current = items.length
-    requestAnimationFrame(() => { window.scrollTo({ top: scrollY, behavior: "instant" as ScrollBehavior }) })
+    // Guardar scroll ANTES del cambio
+    scrollRef.current = window.scrollY
+  })
+  useEffect(() => {
+    if (prevLengthRef.current !== items.length) {
+      prevLengthRef.current = items.length
+      // Restaurar scroll en el próximo frame
+      const saved = scrollRef.current
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: saved, behavior: "instant" as ScrollBehavior })
+      })
+    }
   }, [items.length])
 
   const getSelectedOpt = useCallback((desc: string) => selectedOptionByDesc[desc] ?? "", [selectedOptionByDesc])
