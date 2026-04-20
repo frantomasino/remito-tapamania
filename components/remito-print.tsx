@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/remito-types"
 
 interface RemitoPrintProps {
   data: RemitoData
+  empresa?: string
 }
 
 const cleanDesc = (value: string) =>
@@ -51,7 +52,7 @@ function groupItems(items: LineItem[]): PrintGroup[] {
 }
 
 export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function RemitoPrint(
-  { data },
+  { data, empresa = "Remito" },
   ref
 ) {
   const total = useMemo(() => data.items.reduce((sum, item) => sum + item.subtotal, 0), [data.items])
@@ -69,7 +70,7 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
       <div className="px-[2mm] py-[2mm] text-[10px] leading-tight">
         {/* Header */}
         <div className="border-b border-dashed border-black pb-[2mm] text-center">
-          <p className="text-[12px] font-bold uppercase">Tapamanía</p>
+          <p className="text-[12px] font-bold uppercase">{empresa}</p>
           <p className="mt-1 text-[10px] font-semibold">Remito - Pedido</p>
           <p className="mt-1">N° {data.numero}</p>
           <p>{data.fecha}</p>
