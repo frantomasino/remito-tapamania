@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client"
 import type React from "react"
-import { useState, useRef, useCallback, useEffect, useMemo, startTransition } from "react"
+import { useState, useRef, useCallback, useEffect, useMemo, startTransition, useLayoutEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Printer, FileText, CheckCircle2, Loader2, Eye,
@@ -64,6 +64,7 @@ export default function RemitoPage() {
   const router = useRouter()
   const pathname = usePathname()
   const [userId, setUserId] = useState<string>("")
+  const [empresa, setEmpresa] = useState<string>("")
   const [products, setProducts] = useState<Product[]>([])
   const [items, setItems] = useState<LineItem[]>([])
   const [client, setClient] = useState<ClientData>(defaultClient)
@@ -91,6 +92,18 @@ export default function RemitoPage() {
     mayorista: { loadedAt: 0, products: [] },
     oferta: { loadedAt: 0, products: [] },
   })
+
+  // Fix: cliente Supabase memoizado — evita crear una instancia nueva en cada render
+  const supabase = useMemo(() => createClient(), [])
+
+  // Fix: refs para leer valores actuales en persistRemito sin agregarlos como dependencias del useCallback
+  const itemsRef = useRef(items)
+  const clientRef = useRef(client)
+  const priceListIdRef = useRef(priceListId)
+  const totalRef = useRef(0)
+  useLayoutEffect(() => { itemsRef.current = items }, [items])
+  useLayoutEffect(() => { clientRef.current = client }, [client])
+  useLayoutEffect(() => { priceListIdRef.current = priceListId }, [priceListId])
 
   useEffect(() => setMounted(true), [])
 
@@ -124,15 +137,15 @@ export default function RemitoPage() {
     draftSaveTimer.current = window.setTimeout(() => saveDraft(currentItems, currentClient, currentPriceList, uid), 800)
   }, [saveDraft])
 
-  useEffect(() => { createClient().auth.getUser().then(({ data }) => setUserId(data.user?.id ?? "")) }, [])
+  useEffect(() => { supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? "")) }, [supabase])
 
   useEffect(() => {
     if (!userId) return
     const load = async () => {
       try {
-        const supabase = createClient()
-        const { data: profile } = await supabase.from("profiles").select("next_remito_number, selected_price_list").eq("id", userId).single()
+        const { data: profile } = await supabase.from("profiles").select("next_remito_number, selected_price_list, empresa").eq("id", userId).single()
         if (profile?.next_remito_number && Number(profile.next_remito_number) > 0) setNextNumber(Number(profile.next_remito_number))
+        if (profile?.empresa) setEmpresa(profile.empresa)
         const sel = profile?.selected_price_list
         if (sel === "minorista" || sel === "mayorista" || sel === "oferta") setPriceListId(sel)
         const raw = localStorage.getItem(k(LS_BASE_KEYS.productsCache, userId))
@@ -163,9 +176,9 @@ export default function RemitoPage() {
 
   useEffect(() => {
     if (!userId) return
-    Promise.resolve(
-  createClient().from("profiles").update({ selected_price_list: priceListId }).eq("id", userId)
-).then(() => {}).catch(() => {})
+    // supabase es estable (memoizado), no se agrega a deps para evitar warning de TS
+    void supabase.from("profiles").update({ selected_price_list: priceListId }).eq("id", userId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priceListId, userId])
 
   const saveProductsCache = useCallback((cache: Record<PriceListId, ProductsCacheEntry>) => {
@@ -175,9 +188,11 @@ export default function RemitoPage() {
 
   useEffect(() => {
     const controller = new AbortController()
+    const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutos
     const loadProducts = async () => {
       const cached = productsCacheRef.current[priceListId]
-      if (cached?.products?.length > 0) { setProducts(cached.products); return }
+      const isStale = !cached.loadedAt || (Date.now() - cached.loadedAt) > CACHE_TTL_MS
+      if (cached?.products?.length > 0 && !isStale) { setProducts(cached.products); return }
       try {
         setIsLoadingProducts(true)
         const res = await fetch(`/api/products-csv?list=${priceListId}`, { cache: "force-cache", signal: controller.signal })
@@ -221,25 +236,29 @@ export default function RemitoPage() {
   const persistRemito = useCallback(async (): Promise<{ nextNumber: number; remitoId: string } | null> => {
     if (!isOnline) { showToast("Sin internet"); return null }
     if (!userId) { showToast("Falta sesión"); return null }
-    if (items.filter(i => i.cantidad > 0).length === 0) { showToast("No hay productos"); return null }
+    // Leer valores actuales desde refs — no recrear el callback en cada cambio
+    const currentItems = itemsRef.current
+    const currentClient = clientRef.current
+    const currentPriceListId = priceListIdRef.current
+    const currentTotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
+    if (currentItems.filter(i => i.cantidad > 0).length === 0) { showToast("No hay productos"); return null }
     try {
       setIsSaving(true)
-      const supabase = createClient()
       const { data: consumedNumber, error: consumeError } = await supabase.rpc("consume_next_remito_number")
       if (consumeError || typeof consumedNumber !== "number") { showToast("Error al generar número"); return null }
       const { data: remitoInserted, error: remitoError } = await supabase.from("remitos").insert({
         user_id: userId, numero_remito: formatRemitoNumber(consumedNumber), fecha: getTodayISODate(),
-        cliente_nombre: client.nombre?.trim() || null, estado: "pendiente", observaciones: null, price_list_id: priceListId, total,
+        cliente_nombre: currentClient.nombre?.trim() || null, estado: "pendiente", observaciones: null, price_list_id: currentPriceListId, total: currentTotal,
       }).select("id").single()
       if (remitoError || !remitoInserted) { showToast("Error al guardar"); return null }
       const { error: itemsError } = await supabase.from("remito_items").insert(
-        items.filter(i => i.cantidad > 0).map((item) => ({ remito_id: remitoInserted.id, descripcion: item.product.descripcion, cantidad: item.cantidad, precio_unitario: item.product.precio, subtotal: item.subtotal, opcion: item.opcion || null }))
+        currentItems.filter(i => i.cantidad > 0).map((item) => ({ remito_id: remitoInserted.id, descripcion: item.product.descripcion, cantidad: item.cantidad, precio_unitario: item.product.precio, subtotal: item.subtotal, opcion: item.opcion || null }))
       )
       if (itemsError) { showToast("Error al guardar items"); return null }
       return { nextNumber: consumedNumber + 1, remitoId: remitoInserted.id }
     } catch { showToast("Error al guardar"); return null }
     finally { setIsSaving(false) }
-  }, [isOnline, userId, items, client.nombre, priceListId, total, showToast])
+  }, [isOnline, userId, supabase, showToast])
 
   const buildPrintHtml = useCallback(() => {
     const printable = document.getElementById("printable-remito")
@@ -258,11 +277,12 @@ export default function RemitoPage() {
     if (!isOnline || !canPrint || isSaving || isPrintingBluetooth) return
     const successData = { numero: remitoNumero, cliente: client.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     setShowPreview(false)
-    const printWindow = isIOS() ? openPrintWindowImmediate() : null
-    if (isIOS() && !printWindow) { showToast("No se pudo abrir impresión"); return }
+    // Fix: primero persistir, luego imprimir — evita ticket impreso sin guardar si falla Supabase
     if (!isIOS()) window.print()
     const result = await persistRemito()
     if (!result) return
+    const printWindow = isIOS() ? openPrintWindowImmediate() : null
+    if (isIOS() && !printWindow) { showToast("No se pudo abrir impresión"); return }
     advanceAndReset(result.nextNumber, { ...successData, remitoId: result.remitoId })
   }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, client.nombre, total, totalUnits, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
 
@@ -519,7 +539,7 @@ export default function RemitoPage() {
           </div>
           <div className="flex-1 overflow-y-auto bg-gray-300 px-4 py-4">
             <div className="mx-auto w-fit overflow-hidden rounded-xl bg-white shadow-sm">
-              <RemitoPrint data={remitoData} />
+              <RemitoPrint data={remitoData} empresa={empresa} />
             </div>
           </div>
           <div className="border-t border-gray-200 bg-white px-4 py-2.5">
@@ -547,7 +567,7 @@ export default function RemitoPage() {
       </Dialog>
 
       <div className="hidden" aria-hidden="true">
-        <div id="printable-remito"><RemitoPrint data={remitoData} /></div>
+        <div id="printable-remito"><RemitoPrint data={remitoData} empresa={empresa} /></div>
       </div>
     </>
   )

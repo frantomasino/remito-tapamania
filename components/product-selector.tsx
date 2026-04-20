@@ -1,6 +1,6 @@
 "use client"
 
-import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
+import React, { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { Plus, Trash2, Search, Package2, X, ChevronDown, ChevronUp, RotateCcw, Check } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
@@ -439,14 +439,13 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
   const prevLengthRef = useRef(0)
   const scrollRef = useRef(0)
-  useEffect(() => {
-    // Guardar scroll ANTES del cambio
+  // Fix: useLayoutEffect con dep explícita — evita leer window.scrollY en cada render
+  useLayoutEffect(() => {
     scrollRef.current = window.scrollY
-  })
+  }, [items.length])
   useEffect(() => {
     if (prevLengthRef.current !== items.length) {
       prevLengthRef.current = items.length
-      // Restaurar scroll en el próximo frame
       const saved = scrollRef.current
       requestAnimationFrame(() => {
         window.scrollTo({ top: saved, behavior: "instant" as ScrollBehavior })
