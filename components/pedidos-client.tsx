@@ -2,21 +2,22 @@
 
 import { useMemo, useState, useCallback } from "react"
 import Link from "next/link"
-import { Plus, ClipboardList, Loader2, Printer, Trash2 } from "lucide-react"
+import { Plus, ClipboardList, Loader2, Printer, Trash2, ChevronRight } from "lucide-react"
 import { type SaleRecord, formatCurrency } from "@/lib/remito-types"
 import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
 import { buildDailySummaryEscPos } from "@/lib/daily-summary-ticket-escpos"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
 
-type Filter = "hoy" | "semana" | "mes" | "año" | "todo"
+type GroupBy = "dia" | "semana" | "mes" | "año"
 
-const FILTER_LABELS: { id: Filter; label: string }[] = [
-  { id: "hoy", label: "Hoy" },
+const GROUP_LABELS: { id: GroupBy; label: string }[] = [
+  { id: "dia", label: "Día" },
   { id: "semana", label: "Semana" },
   { id: "mes", label: "Mes" },
   { id: "año", label: "Año" },
-  { id: "todo", label: "Todo" },
 ]
 
 function getTodayISO() { return new Date().toISOString().slice(0, 10) }
@@ -24,27 +25,44 @@ function getTodayLabel() {
   return new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
 
-function getMondayISO() {
-  const d = new Date()
-  const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  d.setDate(d.getDate() + diff)
-  return d.toISOString().slice(0, 10)
+// Obtener clave de grupo según agrupación
+function getGroupKey(isoDate: string, groupBy: GroupBy): string {
+  const d = new Date(`${isoDate}T00:00:00`)
+  if (groupBy === "dia") return isoDate
+  if (groupBy === "mes") return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+  if (groupBy === "año") return String(d.getFullYear())
+  if (groupBy === "semana") {
+    // Lunes de la semana
+    const day = d.getDay()
+    const diff = day === 0 ? -6 : 1 - day
+    const monday = new Date(d)
+    monday.setDate(d.getDate() + diff)
+    return monday.toISOString().slice(0, 10)
+  }
+  return isoDate
 }
 
-function getFirstDayOfMonthISO() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`
-}
-
-function getFirstDayOfYearISO() {
-  return `${new Date().getFullYear()}-01-01`
-}
-
-function formatDateLabel(isoDate: string) {
-  return new Date(`${isoDate}T00:00:00`).toLocaleDateString("es-AR", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-  })
+// Etiqueta legible del grupo
+function getGroupLabel(key: string, groupBy: GroupBy): string {
+  if (groupBy === "dia") {
+    const d = new Date(`${key}T00:00:00`)
+    return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
+  }
+  if (groupBy === "mes") {
+    const [year, month] = key.split("-")
+    const d = new Date(Number(year), Number(month) - 1, 1)
+    return d.toLocaleDateString("es-AR", { month: "long", year: "numeric" })
+  }
+  if (groupBy === "año") return key
+  if (groupBy === "semana") {
+    const d = new Date(`${key}T00:00:00`)
+    const end = new Date(d)
+    end.setDate(d.getDate() + 6)
+    const from = d.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })
+    const to = end.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
+    return `${from} – ${to}`
+  }
+  return key
 }
 
 interface PedidosClientProps {
@@ -53,179 +71,251 @@ interface PedidosClientProps {
 }
 
 export function PedidosClient({ records, userId }: PedidosClientProps) {
-  const [filter, setFilter] = useState<Filter>("hoy")
+  const [groupBy, setGroupBy] = useState<GroupBy>("dia")
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [isPrinting, setIsPrinting] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
+  const [showConfirmClear, setShowConfirmClear] = useState(false)
+  const [clearTarget, setClearTarget] = useState<{ key: string; label: string; ids: string[] } | null>(null)
   const router = useRouter()
 
-  const filtered = useMemo(() => {
-    if (filter === "todo") return records
-    const today = getTodayISO()
-    const monday = getMondayISO()
-    const firstMonth = getFirstDayOfMonthISO()
-    const firstYear = getFirstDayOfYearISO()
-    return records.filter((r) => {
-      if (filter === "hoy") return r.fecha === today
-      if (filter === "semana") return r.fecha >= monday
-      if (filter === "mes") return r.fecha >= firstMonth
-      if (filter === "año") return r.fecha >= firstYear
-      return true
-    })
-  }, [records, filter])
-
-  const totalFiltrado = useMemo(() => filtered.reduce((s, r) => s + (r.total || 0), 0), [filtered])
-
-  // Agrupar por fecha para mostrar separadores
-  const groupedByDate = useMemo(() => {
-    const groups = new Map<string, SaleRecord[]>()
-    for (const r of filtered) {
-      const existing = groups.get(r.fecha) ?? []
+  // Agrupar todos los records
+  const groups = useMemo(() => {
+    const map = new Map<string, SaleRecord[]>()
+    for (const r of records) {
+      const key = getGroupKey(r.fecha, groupBy)
+      const existing = map.get(key) ?? []
       existing.push(r)
-      groups.set(r.fecha, existing)
+      map.set(key, existing)
     }
-    return Array.from(groups.entries()).sort((a, b) => b[0].localeCompare(a[0]))
-  }, [filtered])
+    return Array.from(map.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([key, items]) => ({
+        key,
+        label: getGroupLabel(key, groupBy),
+        items,
+        total: items.reduce((s, r) => s + (r.total || 0), 0),
+      }))
+  }, [records, groupBy])
 
-  const handlePrintDay = useCallback(async () => {
-    if (isPrinting || filtered.length === 0) return
+  const totalGeneral = useMemo(() => records.reduce((s, r) => s + (r.total || 0), 0), [records])
+
+  // Stats del período actual (hoy para "dia", esta semana para "semana", etc.)
+  const statsPeriodo = useMemo(() => {
+    const today = getTodayISO()
+    const d = new Date()
+    let desde = today
+    if (groupBy === "semana") {
+      const day = d.getDay()
+      const diff = day === 0 ? -6 : 1 - day
+      const monday = new Date(d)
+      monday.setDate(d.getDate() + diff)
+      desde = monday.toISOString().slice(0, 10)
+    } else if (groupBy === "mes") {
+      desde = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`
+    } else if (groupBy === "año") {
+      desde = `${d.getFullYear()}-01-01`
+    }
+    const filtered = groupBy === "dia"
+      ? records.filter(r => r.fecha === today)
+      : records.filter(r => r.fecha >= desde)
+    return {
+      count: filtered.length,
+      total: filtered.reduce((s, r) => s + (r.total || 0), 0),
+    }
+  }, [records, groupBy])
+
+  const toggleGroup = useCallback((key: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
+  // Cambiar agrupación colapsa todos los grupos
+  const handleGroupBy = useCallback((g: GroupBy) => {
+    setGroupBy(g)
+    setExpandedGroups(new Set())
+  }, [])
+
+  const handlePrintGroup = useCallback(async (group: { label: string; items: SaleRecord[]; total: number }) => {
+    if (isPrinting) return
     try {
       setIsPrinting(true)
-      const pedidos = filtered.map(r => ({ numero: r.numero, cliente: r.cliente, total: r.total }))
+      const pedidos = group.items.map(r => ({ numero: r.numero, cliente: r.cliente, total: r.total, priceList: r.formaPago || "minorista" }))
       const payload = buildDailySummaryEscPos({
-        fecha: getTodayLabel(),
-        cantidadPedidos: filtered.length,
-        totalDia: totalFiltrado,
+        fecha: group.label,
+        cantidadPedidos: group.items.length,
+        totalDia: group.total,
         pedidos,
       })
       const { device, characteristic } = await connectBlePrinter()
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
     } catch (error) {
       console.error("Error imprimiendo", error)
-      alert(error instanceof Error ? error.message : "No se pudo imprimir")
     } finally { setIsPrinting(false) }
-  }, [isPrinting, filtered, totalFiltrado])
+  }, [isPrinting])
 
-  const handleClearToday = useCallback(async () => {
-    const todayRecords = records.filter(r => r.fecha === getTodayISO())
-    if (isClearing || todayRecords.length === 0) return
-    if (!confirm(`¿Eliminar ${todayRecords.length} pedidos de hoy?`)) return
+  const handleClear = useCallback(async () => {
+    if (!clearTarget || isClearing) return
     try {
       setIsClearing(true)
+      setShowConfirmClear(false)
       const supabase = createClient()
-      const ids = todayRecords.map(r => r.id)
-      await supabase.from("remitos").delete().in("id", ids).eq("user_id", userId)
+      await supabase.from("remitos").delete().in("id", clearTarget.ids).eq("user_id", userId)
       router.refresh()
     } catch (error) {
-      console.error("Error eliminando pedidos", error)
-    } finally { setIsClearing(false) }
-  }, [isClearing, records, userId, router])
+      console.error("Error eliminando", error)
+    } finally {
+      setIsClearing(false)
+      setClearTarget(null)
+    }
+  }, [clearTarget, isClearing, userId, router])
 
-  const todayCount = useMemo(() => records.filter(r => r.fecha === getTodayISO()).length, [records])
+  const openClearConfirm = useCallback((group: { key: string; label: string; items: SaleRecord[] }) => {
+    setClearTarget({ key: group.key, label: group.label, ids: group.items.map(r => r.id) })
+    setShowConfirmClear(true)
+  }, [])
 
   return (
-    <div className="mx-auto max-w-md px-4 pb-6 pt-3">
-      <div className="flex flex-col gap-3">
-
-        {/* ── HEADER ── */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{getTodayLabel()}</p>
-            <h1 className="text-[18px] font-semibold leading-tight text-gray-900">Pedidos</h1>
-          </div>
-          <Link href="/dashboard/nuevo"
-            className="flex h-8 items-center gap-1.5 rounded-xl bg-[#1565c0] px-3 text-[13px] font-semibold text-white active:opacity-80 shadow-sm">
-            <Plus className="size-3.5" />Nuevo
-          </Link>
-        </div>
-
-        {/* ── FILTROS ── */}
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-          {FILTER_LABELS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setFilter(f.id)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors border ${
-                filter === f.id
-                  ? "bg-[#1565c0] text-white border-[#1565c0]"
-                  : "bg-white text-gray-600 border-gray-300"
-              }`}
-            >
-              {f.label}
+    <>
+      {/* ── MODAL CONFIRMAR LIMPIAR ── */}
+      <Dialog open={showConfirmClear} onOpenChange={setShowConfirmClear}>
+        <DialogContent className="max-w-sm rounded-2xl border-gray-200 bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-[14px] font-semibold text-gray-900">Eliminar pedidos</DialogTitle>
+          </DialogHeader>
+          <p className="text-[13px] text-gray-500">
+            Se eliminan <span className="font-semibold text-gray-900">{clearTarget?.ids.length ?? 0}</span> {(clearTarget?.ids.length ?? 0) === 1 ? "pedido" : "pedidos"} de <span className="font-semibold text-gray-900">{clearTarget?.label}</span>. No se puede deshacer.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" onClick={() => setShowConfirmClear(false)}
+              className="flex h-10 flex-1 items-center justify-center rounded-xl border border-gray-300 bg-white text-[13px] font-medium text-gray-700 active:opacity-60">
+              Cancelar
             </button>
-          ))}
-        </div>
+            <button type="button" onClick={handleClear}
+              className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-[13px] font-semibold text-white active:opacity-80">
+              {isClearing ? <Loader2 className="size-3.5 animate-spin" /> : "Eliminar"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-        {/* ── STATS ── */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Pedidos</p>
-            <p className="mt-0.5 text-[22px] font-semibold leading-none text-gray-900 tabular-nums">{filtered.length}</p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Total</p>
-            <p className="mt-0.5 truncate text-[18px] font-semibold leading-none text-gray-900 tabular-nums">
-              {formatCurrency(totalFiltrado)}
-            </p>
-          </div>
-        </div>
+      <div className="mx-auto max-w-md px-4 pb-6 pt-3">
+        <div className="flex flex-col gap-3">
 
-        {/* ── LISTA ── */}
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white py-8 text-center shadow-sm">
-            <ClipboardList className="size-5 text-gray-300" />
-            <p className="text-[13px] text-gray-400">Sin pedidos en este período</p>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Historial</p>
-              <p className="text-[11px] text-gray-400">{filtered.length} pedidos</p>
+          {/* ── HEADER ── */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{getTodayLabel()}</p>
+              <h1 className="text-[18px] font-semibold leading-tight text-gray-900">Pedidos</h1>
             </div>
-            <div className="divide-y divide-gray-100">
-              {groupedByDate.map(([fecha, pedidos]) => (
-                <div key={fecha}>
-                  {/* Separador de fecha — solo cuando no es filtro "hoy" */}
-                  {filter !== "hoy" && (
-                    <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
-                      <p className="text-[11px] font-medium text-gray-400">{formatDateLabel(fecha)}</p>
-                    </div>
-                  )}
-                  {pedidos.map((record) => (
-                    <Link key={record.id} href={`/dashboard/${record.id}`}
-                      className="flex items-center justify-between gap-3 px-3 py-2.5 active:bg-gray-50">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-semibold text-gray-900 truncate">
-                          {record.cliente || "Sin cliente"}
-                        </p>
-                        <p className="text-[11px] text-gray-400 tabular-nums">{record.numero}</p>
-                      </div>
-                      <p className="text-[13px] font-semibold text-gray-900 tabular-nums shrink-0">
-                        {formatCurrency(record.total ?? 0)}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
+            <Link href="/dashboard/nuevo"
+              className="flex h-8 items-center gap-1.5 rounded-xl bg-[#1565c0] px-3 text-[13px] font-semibold text-white active:opacity-80 shadow-sm">
+              <Plus className="size-3.5" />Nuevo
+            </Link>
+          </div>
+
+          {/* ── AGRUPAR POR ── */}
+          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400 mb-2">Agrupar por</p>
+            <div className="flex gap-1.5">
+              {GROUP_LABELS.map((g) => (
+                <button key={g.id} type="button" onClick={() => handleGroupBy(g.id)}
+                  className={cn(
+                    "flex-1 rounded-lg py-1.5 text-[12px] font-medium transition-colors border",
+                    groupBy === g.id
+                      ? "bg-[#1565c0] text-white border-[#1565c0]"
+                      : "bg-gray-50 text-gray-600 border-gray-200"
+                  )}>
+                  {g.label}
+                </button>
               ))}
             </div>
           </div>
-        )}
 
-        {/* ── ACCIONES ── */}
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={handlePrintDay} disabled={filtered.length === 0 || isPrinting}
-            className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white text-[13px] font-medium text-gray-600 shadow-sm active:opacity-60 disabled:opacity-40">
-            {isPrinting ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
-            {isPrinting ? "Imprimiendo..." : "Imprimir"}
-          </button>
-          <button type="button" onClick={handleClearToday} disabled={todayCount === 0 || isClearing}
-            className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white text-[13px] font-medium text-red-500 shadow-sm active:opacity-60 disabled:opacity-40">
-            {isClearing ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-            {isClearing ? "Limpiando..." : "Limpiar hoy"}
-          </button>
+          {/* ── STATS ── */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Pedidos</p>
+              <p className="mt-0.5 text-[22px] font-semibold leading-none text-gray-900 tabular-nums">{statsPeriodo.count}</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Total</p>
+              <p className="mt-0.5 truncate text-[18px] font-semibold leading-none text-gray-900 tabular-nums">
+                {formatCurrency(statsPeriodo.total)}
+              </p>
+            </div>
+          </div>
+
+          {/* ── GRUPOS ── */}
+          {groups.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white py-8 text-center shadow-sm">
+              <ClipboardList className="size-5 text-gray-300" />
+              <p className="text-[13px] text-gray-400">Sin pedidos</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {groups.map((group) => {
+                const isExpanded = expandedGroups.has(group.key)
+                return (
+                  <div key={group.key} className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                    {/* ── CABECERA DEL GRUPO ── */}
+                    <button type="button" onClick={() => toggleGroup(group.key)}
+                      className="flex w-full items-center gap-2 px-3 py-3 text-left active:opacity-70 bg-white">
+                      <ChevronRight className={cn(
+                        "size-4 shrink-0 text-gray-400 transition-transform duration-150",
+                        isExpanded && "rotate-90"
+                      )} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-semibold text-gray-900">
+                          {group.label}
+                          <span className="ml-1.5 text-[12px] font-normal text-gray-400">({group.items.length})</span>
+                        </p>
+                        <p className="text-[12px] text-gray-500 tabular-nums">{formatCurrency(group.total)}</p>
+                      </div>
+                      {/* Acciones del grupo */}
+                      <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" onClick={() => handlePrintGroup(group)} disabled={isPrinting}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-500 active:opacity-60 disabled:opacity-40">
+                          <Printer className="size-3.5" />
+                        </button>
+                        <button type="button" onClick={() => openClearConfirm(group)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-red-50 text-red-400 active:opacity-60">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </button>
+
+                    {/* ── PEDIDOS DEL GRUPO ── */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-100 divide-y divide-gray-100">
+                        {group.items.map((record) => (
+                          <Link key={record.id} href={`/dashboard/${record.id}`}
+                            className="flex items-center justify-between gap-3 px-3 py-2.5 active:bg-gray-50">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[13px] font-semibold text-gray-900 truncate">
+                                {record.cliente || "Sin cliente"}
+                              </p>
+                              <p className="text-[11px] text-gray-400 tabular-nums">{record.numero}</p>
+                            </div>
+                            <p className="text-[13px] font-semibold text-gray-900 tabular-nums shrink-0">
+                              {formatCurrency(record.total ?? 0)}
+                            </p>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
         </div>
-
       </div>
-    </div>
+    </>
   )
 }

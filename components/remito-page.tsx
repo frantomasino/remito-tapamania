@@ -266,11 +266,10 @@ export default function RemitoPage() {
     if (!isOnline || !canPrint || isSaving || isPrintingBluetooth) return
     const successData = { numero: remitoNumero, cliente: clientRef.current.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     setShowPreview(false)
-    if (!isIOS()) window.print()
+    const printWindow = openPrintWindowImmediate()
+    if (!printWindow) { showToast("No se pudo abrir impresión"); return }
     const result = await persistRemito()
     if (!result) return
-    const printWindow = isIOS() ? openPrintWindowImmediate() : null
-    if (isIOS() && !printWindow) { showToast("No se pudo abrir impresión"); return }
     advanceAndReset(result.nextNumber, { ...successData, remitoId: result.remitoId })
   }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, total, totalUnits, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
 
