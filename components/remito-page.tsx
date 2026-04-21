@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client"
 import type React from "react"
 import { useState, useRef, useCallback, useEffect, useMemo, startTransition, useLayoutEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import dynamic from "next/dynamic"
 import {
   Printer, FileText, CheckCircle2, Loader2, Eye,
   Bluetooth, ChevronDown, ChevronUp, Plus, WifiOff,
@@ -12,7 +12,6 @@ import {
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ProductSelector } from "@/components/product-selector"
 import { RemitoPrint } from "@/components/remito-print"
 import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
 import { buildRemitoEscPos } from "@/lib/remito-ticket-escpos"
@@ -21,6 +20,11 @@ import {
   type Product, type LineItem, type ClientData, type RemitoData,
   formatRemitoNumber, formatCurrency, parseCSV,
 } from "@/lib/remito-types"
+
+const ProductSelector = dynamic(
+  () => import("@/components/product-selector").then(m => ({ default: m.ProductSelector })),
+  { ssr: false }
+)
 
 type PriceListId = "minorista" | "mayorista" | "oferta"
 
@@ -54,12 +58,6 @@ type ProductsCacheEntry = { loadedAt: number; products: Product[] }
 type DraftData = { items: LineItem[]; clientNombre: string; priceListId: PriceListId; savedAt: number }
 type SuccessState = { remitoId: string; numero: string; cliente: string; total: number; unidades: number } | null
 
-function buildAddedToast(product: Product, opcion?: string) {
-  const base = product.descripcion.replace(/\([^)]*\)/g, "").replace(/#\S+/g, "").replace(/\bTapas\s+para\s+/gi, "Tapas ").replace(/\s{2,}/g, " ").trim()
-  const short = base.length > 28 ? `${base.slice(0, 28).trim()}…` : base
-  return opcion ? `${short} · ${opcion}` : short
-}
-
 export default function RemitoPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -71,7 +69,6 @@ export default function RemitoPage() {
   const [nextNumber, setNextNumber] = useState(1)
   const [showPreview, setShowPreview] = useState(false)
   const [showConfirmNew, setShowConfirmNew] = useState(false)
-  const [showDraftBanner, setShowDraftBanner] = useState(false)
   const [successState, setSuccessState] = useState<SuccessState>(null)
   const [priceListId, setPriceListId] = useState<PriceListId>("minorista")
   const [mounted, setMounted] = useState(false)
@@ -80,30 +77,27 @@ export default function RemitoPage() {
   const [isPrintingBluetooth, setIsPrintingBluetooth] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
   const [actionBarCollapsed, setActionBarCollapsed] = useState(true)
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastText, setToastText] = useState("")
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
   const toastTimer = useRef<number | null>(null)
   const draftSaveTimer = useRef<number | null>(null)
   const draftRestoredRef = useRef(false)
-  const [toast, setToast] = useState<{ open: boolean; text: string }>({ open: false, text: "" })
+
+  const supabase = useMemo(() => createClient(), [])
+  const itemsRef = useRef(items)
+  const clientRef = useRef(client)
+  const priceListIdRef = useRef(priceListId)
+  useLayoutEffect(() => { itemsRef.current = items }, [items])
+  useLayoutEffect(() => { clientRef.current = client }, [client])
+  useLayoutEffect(() => { priceListIdRef.current = priceListId }, [priceListId])
 
   const productsCacheRef = useRef<Record<PriceListId, ProductsCacheEntry>>({
     minorista: { loadedAt: 0, products: [] },
     mayorista: { loadedAt: 0, products: [] },
     oferta: { loadedAt: 0, products: [] },
   })
-
-  // Fix: cliente Supabase memoizado — evita crear una instancia nueva en cada render
-  const supabase = useMemo(() => createClient(), [])
-
-  // Fix: refs para leer valores actuales en persistRemito sin agregarlos como dependencias del useCallback
-  const itemsRef = useRef(items)
-  const clientRef = useRef(client)
-  const priceListIdRef = useRef(priceListId)
-  const totalRef = useRef(0)
-  useLayoutEffect(() => { itemsRef.current = items }, [items])
-  useLayoutEffect(() => { clientRef.current = client }, [client])
-  useLayoutEffect(() => { priceListIdRef.current = priceListId }, [priceListId])
 
   useEffect(() => setMounted(true), [])
 
@@ -117,9 +111,10 @@ export default function RemitoPage() {
   }, [])
 
   const showToast = useCallback((text: string) => {
-    setToast({ open: true, text })
+    setToastText(text)
+    setToastVisible(true)
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
-    toastTimer.current = window.setTimeout(() => setToast({ open: false, text: "" }), 1900)
+    toastTimer.current = window.setTimeout(() => setToastVisible(false), 1900)
   }, [])
 
   const saveDraft = useCallback((currentItems: LineItem[], currentClient: ClientData, currentPriceList: PriceListId, uid: string) => {
@@ -163,20 +158,18 @@ export default function RemitoPage() {
               setItems(draft.items)
               setClient((prev) => ({ ...prev, nombre: draft.clientNombre || "" }))
               if (draft.priceListId) setPriceListId(draft.priceListId)
-              setShowDraftBanner(true)
             } else { localStorage.removeItem(k(LS_BASE_KEYS.draft, userId)) }
           }
         }
       } catch {}
     }
     load()
-  }, [userId])
+  }, [userId, supabase])
 
   useEffect(() => { if (!userId || !draftRestoredRef.current) return; scheduleDraftSave(items, client, priceListId, userId) }, [items, client, priceListId, userId, scheduleDraftSave])
 
   useEffect(() => {
     if (!userId) return
-    // supabase es estable (memoizado), no se agrega a deps para evitar warning de TS
     void supabase.from("profiles").update({ selected_price_list: priceListId }).eq("id", userId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priceListId, userId])
@@ -188,7 +181,7 @@ export default function RemitoPage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutos
+    const CACHE_TTL_MS = 30 * 60 * 1000
     const loadProducts = async () => {
       const cached = productsCacheRef.current[priceListId]
       const isStale = !cached.loadedAt || (Date.now() - cached.loadedAt) > CACHE_TTL_MS
@@ -222,21 +215,17 @@ export default function RemitoPage() {
   const fixedBottomPx = BOTTOM_NAV_PX + (canPrint ? (actionBarCollapsed ? 0 : ACTION_BAR_PX) : 0)
 
   const handleItemsChange = useCallback<React.Dispatch<React.SetStateAction<LineItem[]>>>((updater) => {
-    setItems((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater
-      return next
-    })
+    setItems((prev) => typeof updater === "function" ? updater(prev) : updater)
   }, [])
 
   const advanceAndReset = useCallback((nextVisibleNumber: number, successData: SuccessState) => {
     setSuccessState(successData); setNextNumber(nextVisibleNumber); setClient(defaultClient); setItems([])
-    setActionBarCollapsed(false); setShowDraftBanner(false); clearDraft(userId); remitoDateRef.current = getTodayDateSafe()
+    setActionBarCollapsed(true); clearDraft(userId); remitoDateRef.current = getTodayDateSafe()
   }, [userId, clearDraft])
 
   const persistRemito = useCallback(async (): Promise<{ nextNumber: number; remitoId: string } | null> => {
     if (!isOnline) { showToast("Sin internet"); return null }
     if (!userId) { showToast("Falta sesión"); return null }
-    // Leer valores actuales desde refs — no recrear el callback en cada cambio
     const currentItems = itemsRef.current
     const currentClient = clientRef.current
     const currentPriceListId = priceListIdRef.current
@@ -275,20 +264,19 @@ export default function RemitoPage() {
 
   const handlePreviewPrint = useCallback(async () => {
     if (!isOnline || !canPrint || isSaving || isPrintingBluetooth) return
-    const successData = { numero: remitoNumero, cliente: client.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
+    const successData = { numero: remitoNumero, cliente: clientRef.current.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     setShowPreview(false)
-    // Fix: primero persistir, luego imprimir — evita ticket impreso sin guardar si falla Supabase
     if (!isIOS()) window.print()
     const result = await persistRemito()
     if (!result) return
     const printWindow = isIOS() ? openPrintWindowImmediate() : null
     if (isIOS() && !printWindow) { showToast("No se pudo abrir impresión"); return }
     advanceAndReset(result.nextNumber, { ...successData, remitoId: result.remitoId })
-  }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, client.nombre, total, totalUnits, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
+  }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, total, totalUnits, openPrintWindowImmediate, persistRemito, advanceAndReset, showToast])
 
   const handleBluetoothPrint = useCallback(async () => {
     if (!isOnline || !canPrint || isSaving || isPrintingBluetooth) return
-    const successData = { numero: remitoNumero, cliente: client.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
+    const successData = { numero: remitoNumero, cliente: clientRef.current.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     try {
       setIsPrintingBluetooth(true); showToast("Buscando impresora...")
       const payload = buildRemitoEscPos(remitoData)
@@ -305,11 +293,11 @@ export default function RemitoPage() {
       if (/no parece compatible/i.test(msg)) { showToast("La impresora no es compatible"); return }
       showToast("No se pudo conectar con la impresora")
     } finally { setIsPrintingBluetooth(false) }
-  }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, client.nombre, total, totalUnits, remitoData, persistRemito, advanceAndReset, showToast])
+  }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, total, totalUnits, remitoData, persistRemito, advanceAndReset, showToast])
 
   const confirmNewRemito = useCallback(() => {
-    setClient(defaultClient); setItems([]); setShowConfirmNew(false); setShowDraftBanner(false)
-    setActionBarCollapsed(false); clearDraft(userId); showToast("Nuevo remito listo")
+    setClient(defaultClient); setItems([]); setShowConfirmNew(false)
+    setActionBarCollapsed(true); clearDraft(userId); showToast("Nuevo remito listo")
   }, [showToast, userId, clearDraft])
 
   if (!mounted) {
@@ -328,7 +316,7 @@ export default function RemitoPage() {
   if (successState) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-6">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.2, ease: "easeOut" }} className="w-full max-w-sm text-center">
+        <div className="w-full max-w-sm text-center animate-in fade-in zoom-in-95 duration-200">
           <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-green-100">
             <CheckCircle2 className="size-8 text-green-600" />
           </div>
@@ -356,7 +344,7 @@ export default function RemitoPage() {
               <Plus className="size-4" />Nuevo pedido
             </button>
           </div>
-        </motion.div>
+        </div>
       </div>
     )
   }
@@ -384,18 +372,15 @@ export default function RemitoPage() {
             </button>
           </div>
 
-          <AnimatePresence>
-            {!isOnline && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15 }} className="overflow-hidden">
-                <div className="flex items-center gap-2 border-t border-red-200 bg-red-50 px-4 py-2.5">
-                  <WifiOff className="size-3.5 shrink-0 text-red-500" />
-                  <p className="text-[12px] font-semibold text-red-600">Sin internet — no podés imprimir hasta recuperar señal</p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-         
+          <div className={cn(
+            "overflow-hidden transition-all duration-150",
+            isOnline ? "max-h-0" : "max-h-20"
+          )}>
+            <div className="flex items-center gap-2 border-t border-red-200 bg-red-50 px-4 py-2.5">
+              <WifiOff className="size-3.5 shrink-0 text-red-500" />
+              <p className="text-[12px] font-semibold text-red-600">Sin internet — no podés imprimir hasta recuperar señal</p>
+            </div>
+          </div>
         </header>
 
         {/* ── CONTENIDO ── */}
@@ -415,60 +400,48 @@ export default function RemitoPage() {
 
         {/* ── BLOQUE FIJO INFERIOR ── */}
         <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
-
-          {/* Barra de acción */}
           {canPrint && (
             <div className="border-b border-gray-100">
-              <AnimatePresence initial={false}>
-                {!actionBarCollapsed && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div
-                      className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-3 cursor-pointer select-none"
-                      onClick={() => setActionBarCollapsed(true)}
-                    >
-                      <ChevronDown className="size-4 shrink-0 text-gray-300" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                          {totalUnits} unid.
-                          {totalDev > 0 && <span className="ml-1.5 text-orange-500">{totalDev} dev.</span>}
-                        </p>
-                      </div>
-                      <button type="button"
-                        onClick={(e) => { e.stopPropagation(); setShowPreview(true) }}
-                        className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
-                        <Eye className="size-3.5" />Ver
-                      </button>
-                      {!isOnline ? (
-                        <div className="flex h-10 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-[12px] font-medium text-red-500"
-                          onClick={(e) => e.stopPropagation()}>
-                          <WifiOff className="size-3.5" />Sin señal
-                        </div>
-                      ) : (
-                        <button type="button"
-                          onClick={(e) => { e.stopPropagation(); handleBluetoothPrint() }}
-                          disabled={isSaving || isPrintingBluetooth}
-                          className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
-                          {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
-                          {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Cuando está colapsado — tira pequeña para re-abrir */}
-              {actionBarCollapsed && (
-                <button
-                  type="button"
-                  onClick={() => setActionBarCollapsed(false)}
-                  className="flex w-full items-center justify-center gap-2 py-1.5 active:opacity-60"
+              <div className={cn(
+                "overflow-hidden transition-all duration-150",
+                actionBarCollapsed ? "max-h-0" : "max-h-24"
+              )}>
+                <div
+                  className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-3 cursor-pointer select-none"
+                  onClick={() => setActionBarCollapsed(true)}
                 >
+                  <ChevronDown className="size-4 shrink-0 text-gray-300" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {totalUnits} unid.
+                      {totalDev > 0 && <span className="ml-1.5 text-orange-500">{totalDev} dev.</span>}
+                    </p>
+                  </div>
+                  <button type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowPreview(true) }}
+                    className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
+                    <Eye className="size-3.5" />Ver
+                  </button>
+                  {!isOnline ? (
+                    <div className="flex h-10 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-[12px] font-medium text-red-500"
+                      onClick={(e) => e.stopPropagation()}>
+                      <WifiOff className="size-3.5" />Sin señal
+                    </div>
+                  ) : (
+                    <button type="button"
+                      onClick={(e) => { e.stopPropagation(); handleBluetoothPrint() }}
+                      disabled={isSaving || isPrintingBluetooth}
+                      className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
+                      {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
+                      {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {actionBarCollapsed && (
+                <button type="button" onClick={() => setActionBarCollapsed(false)}
+                  className="flex w-full items-center justify-center gap-2 py-1.5 active:opacity-60">
                   <div className="h-0.5 w-8 rounded-full bg-gray-200" />
                   <ChevronUp className="size-3.5 text-gray-300" />
                   <div className="h-0.5 w-8 rounded-full bg-gray-200" />
@@ -477,7 +450,6 @@ export default function RemitoPage() {
             </div>
           )}
 
-          {/* Bottom nav */}
           <nav>
             <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5">
               {navItems.map((item) => {
@@ -513,21 +485,21 @@ export default function RemitoPage() {
         </div>
 
         {/* ── TOAST ── */}
-        <AnimatePresence>
-          {toast.open && (
-            <motion.div initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.98 }} transition={{ duration: 0.18 }}
-              className="fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2"
-              style={{ bottom: `calc(${fixedBottomPx}px + env(safe-area-inset-bottom) + 10px)` }}
-              role="alert">
-              <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-lg">
-                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#1565c0] text-white">
-                  <CheckCircle2 className="size-3" />
-                </div>
-                <p className="text-[13px] font-medium text-gray-800">{toast.text}</p>
-              </div>
-            </motion.div>
+        <div
+          className={cn(
+            "fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 transition-all duration-200",
+            toastVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
           )}
-        </AnimatePresence>
+          style={{ bottom: `calc(${fixedBottomPx}px + env(safe-area-inset-bottom) + 10px)` }}
+          role="alert"
+        >
+          <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-lg">
+            <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#1565c0] text-white">
+              <CheckCircle2 className="size-3" />
+            </div>
+            <p className="text-[13px] font-medium text-gray-800">{toastText}</p>
+          </div>
+        </div>
       </div>
 
       {/* ── MODAL: Ver ticket ── */}
