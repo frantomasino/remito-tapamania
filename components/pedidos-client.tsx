@@ -11,9 +11,10 @@ import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
-type GroupBy = "dia" | "semana" | "mes" | "año"
+type GroupBy = "hoy" | "dia" | "semana" | "mes" | "año"
 
 const GROUP_LABELS: { id: GroupBy; label: string }[] = [
+  { id: "hoy", label: "Hoy" },
   { id: "dia", label: "Día" },
   { id: "semana", label: "Semana" },
   { id: "mes", label: "Mes" },
@@ -27,6 +28,7 @@ function getTodayLabel() {
 
 function getGroupKey(isoDate: string, groupBy: GroupBy): string {
   const d = new Date(`${isoDate}T00:00:00`)
+  if (groupBy === "hoy") return isoDate
   if (groupBy === "dia") return isoDate
   if (groupBy === "mes") return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
   if (groupBy === "año") return String(d.getFullYear())
@@ -87,8 +89,10 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
   useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current) }, [])
 
   const groups = useMemo(() => {
+    const today = getTodayISO()
+    const filtered = groupBy === "hoy" ? records.filter(r => r.fecha === today) : records
     const map = new Map<string, SaleRecord[]>()
-    for (const r of records) {
+    for (const r of filtered) {
       const key = getGroupKey(r.fecha, groupBy)
       const existing = map.get(key) ?? []
       existing.push(r)
@@ -108,6 +112,10 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
     const today = getTodayISO()
     const d = new Date()
     let desde = today
+    if (groupBy === "hoy") {
+      const filtered = records.filter(r => r.fecha === today)
+      return { count: filtered.length, total: filtered.reduce((s, r) => s + (r.total || 0), 0) }
+    }
     if (groupBy === "semana") {
       const day = d.getDay()
       const diff = day === 0 ? -6 : 1 - day
