@@ -7,6 +7,8 @@ import { PedidosDayActions } from "@/components/pedidos-day-actions"
 import type { SaleRecord } from "@/lib/remito-types"
 import { createClient } from "@/lib/supabase/server"
 
+export const revalidate = 30 // revalida cada 30 segundos
+
 function getTodayDateSafe(): string {
   return new Date().toLocaleDateString("es-AR", {
     day: "2-digit", month: "2-digit", year: "numeric",
@@ -85,7 +87,6 @@ export default async function PedidosPage() {
     <div className="mx-auto max-w-md px-4 pb-6 pt-3">
       <div className="flex flex-col gap-3">
 
-        {/* ── HEADER ── */}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">
@@ -104,7 +105,6 @@ export default async function PedidosPage() {
           </Link>
         </div>
 
-        {/* ── STATS ── */}
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
             <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Pedidos</p>
@@ -120,10 +120,8 @@ export default async function PedidosPage() {
           </div>
         </div>
 
-        {/* ── LISTA ── */}
         <SalesHistory title="Pedidos" records={records} />
 
-        {/* ── ACCIONES ── */}
         <PedidosDayActions
           fecha={todayLabel}
           totalDia={totalHoy}

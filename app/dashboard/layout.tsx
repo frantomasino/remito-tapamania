@@ -1,5 +1,3 @@
-import { createClient } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
 import { BottomNav } from "@/components/bottom-nav"
 import { headers } from "next/headers"
 
@@ -8,13 +6,6 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-
-  if (!data.user) {
-    redirect("/auth/login")
-  }
-
   const headersList = await headers()
   const pathname = headersList.get("x-pathname") ?? ""
   const isNuevo = pathname.includes("/dashboard/nuevo")
