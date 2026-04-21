@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
   try {
     const res = await fetch(url, {
-      next: { revalidate: 1800 },
+      next: { revalidate: 300 }, // 5 minutos
     })
 
     if (!res.ok) {
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=86400",
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
       },
     })
   } catch {

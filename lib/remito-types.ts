@@ -34,6 +34,7 @@ export interface SaleRecord {
   fecha: string
   cliente: string
   formaPago?: string
+  formaPagoCliente?: string | null
   total: number
   itemCount: number
 }

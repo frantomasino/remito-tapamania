@@ -12,6 +12,7 @@ type RemitoRow = {
   cliente_nombre: string | null
   total: number
   price_list_id: string | null
+  forma_pago: string | null
 }
 
 export default async function PedidosPage() {
@@ -21,7 +22,7 @@ export default async function PedidosPage() {
 
   const { data, error } = await supabase
     .from("remitos")
-    .select("id, numero_remito, fecha, cliente_nombre, total, price_list_id")
+    .select("id, numero_remito, fecha, cliente_nombre, total, price_list_id, forma_pago")
     .eq("user_id", user.id)
     .order("fecha", { ascending: false })
     .order("created_at", { ascending: false })
@@ -36,6 +37,7 @@ export default async function PedidosPage() {
       fecha: row.fecha,
       cliente: row.cliente_nombre || "Sin cliente",
       formaPago: row.price_list_id || "minorista",
+      formaPagoCliente: row.forma_pago || null,
       total: Number(row.total || 0),
       itemCount: 0,
     })) ?? []

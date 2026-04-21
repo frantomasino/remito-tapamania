@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import type { RemitoWithItems } from "@/lib/remito-types"
+import { FormaPagoSelector } from "@/components/forma-pago-selector"
 
 function formatDate(dateStr: string) {
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString("es-AR", {
@@ -33,7 +34,7 @@ export default async function RemitoDetailPage({
 
   if (error || !data) notFound()
 
-  const remito = data as RemitoWithItems
+  const remito = data as RemitoWithItems & { forma_pago?: string | null }
   const total = Number(remito.total || 0)
   const itemCount = remito.remito_items.length
 
@@ -43,11 +44,9 @@ export default async function RemitoDetailPage({
 
         {/* ── HEADER ── */}
         <div className="flex items-center gap-3">
-          <Link
-            href="/dashboard/pedidos"
+          <Link href="/dashboard/pedidos"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-500 active:opacity-60 shadow-sm"
-            aria-label="Volver"
-          >
+            aria-label="Volver">
             <ArrowLeft className="size-3.5" />
           </Link>
           <div>
@@ -72,13 +71,15 @@ export default async function RemitoDetailPage({
           </div>
         </div>
 
+        {/* ── FORMA DE PAGO ── */}
+        <FormaPagoSelector remitoId={id} initialFormaPago={remito.forma_pago ?? null} initialCliente={remito.cliente_nombre ?? null} />
+
         {/* ── PRODUCTOS ── */}
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-200 bg-gray-50">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Productos</p>
             <p className="text-[11px] text-gray-400">{itemCount} {itemCount === 1 ? "ítem" : "ítems"}</p>
           </div>
-
           <div className="divide-y divide-gray-100">
             {remito.remito_items.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
@@ -94,7 +95,6 @@ export default async function RemitoDetailPage({
               </div>
             ))}
           </div>
-
           <div className="flex items-center justify-between px-3 py-2.5 border-t border-gray-200 bg-gray-50">
             <p className="text-[12px] font-semibold text-gray-500">Total</p>
             <p className="text-[15px] font-semibold text-gray-900 tabular-nums">{formatCurrency(total)}</p>

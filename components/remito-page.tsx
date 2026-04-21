@@ -188,7 +188,7 @@ export default function RemitoPage() {
       if (cached?.products?.length > 0 && !isStale) { setProducts(cached.products); return }
       try {
         setIsLoadingProducts(true)
-        const res = await fetch(`/api/products-csv?list=${priceListId}`, { cache: "force-cache", signal: controller.signal })
+        const res = await fetch(`/api/products-csv?list=${priceListId}`, { cache: "no-store", signal: controller.signal })
         if (!res.ok) throw new Error()
         const parsed = parseCSV(await res.text())
         const nextCache = { ...productsCacheRef.current, [priceListId]: { loadedAt: Date.now(), products: parsed } }

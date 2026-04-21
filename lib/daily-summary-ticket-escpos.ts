@@ -5,6 +5,7 @@ export type DailySummaryItem = {
   cliente: string
   total: number
   priceList?: string
+  formaPagoCliente?: string | null
 }
 
 export type DailySummaryData = {
@@ -115,10 +116,36 @@ export function buildDailySummaryEscPos(data: DailySummaryData) {
     }
   }
 
+  // ── DESGLOSE POR FORMA DE PAGO ──
+  const efectivo = data.pedidos.filter(p => p.formaPagoCliente === "efectivo")
+  const mp = data.pedidos.filter(p => p.formaPagoCliente === "mercadopago")
+  const sinRegistrar = data.pedidos.filter(p => !p.formaPagoCliente)
+
+  if (efectivo.length > 0 || mp.length > 0) {
+    parts.push(text(line()))
+    parts.push(lf())
+    parts.push(escPosBold(true))
+    parts.push(text("Forma de pago:"))
+    parts.push(lf())
+    parts.push(escPosBold(false))
+    if (efectivo.length > 0) {
+      const totalEfectivo = efectivo.reduce((s, p) => s + p.total, 0)
+      parts.push(text(fitRight(`Efectivo (${efectivo.length})`, formatCurrency(totalEfectivo))))
+      parts.push(lf())
+    }
+    if (mp.length > 0) {
+      const totalMp = mp.reduce((s, p) => s + p.total, 0)
+      parts.push(text(fitRight(`Mercado Pago (${mp.length})`, formatCurrency(totalMp))))
+      parts.push(lf())
+    }
+    if (sinRegistrar.length > 0) {
+      parts.push(text(fitRight(`Sin registrar (${sinRegistrar.length})`, "")))
+      parts.push(lf())
+    }
+  }
+
   parts.push(text(line()))
   parts.push(lf())
-
-  // ── DETALLE DE PEDIDOS ──
   for (const pedido of data.pedidos) {
     parts.push(escPosBold(true))
     parts.push(text(clean(pedido.numero)))
