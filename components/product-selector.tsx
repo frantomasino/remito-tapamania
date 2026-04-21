@@ -1,6 +1,6 @@
 "use client"
 
-import React, { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import { Plus, Trash2, Search, Package2, X, ChevronDown, ChevronUp, RotateCcw, Check } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
@@ -121,7 +121,6 @@ const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) 
   const openEdit = () => {
     setVal(count > 0 ? String(count) : "")
     setEditing(true)
-    setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select() }, 30)
   }
 
   const confirm = () => {
@@ -136,12 +135,14 @@ const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) 
       <div className="flex items-center gap-1">
         <input
           ref={inputRef}
+          autoFocus
           type="number"
           inputMode="numeric"
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") confirm(); if (e.key === "Escape") setEditing(false) }}
           onBlur={confirm}
+          onFocus={(e) => e.target.select()}
           className="h-10 w-14 rounded-xl border-2 border-[#1565c0] bg-white text-center text-[15px] font-bold text-gray-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <button
@@ -439,13 +440,14 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
   const prevLengthRef = useRef(0)
   const scrollRef = useRef(0)
-  // Fix: useLayoutEffect con dep explícita — evita leer window.scrollY en cada render
-  useLayoutEffect(() => {
+  useEffect(() => {
+    // Guardar scroll ANTES del cambio
     scrollRef.current = window.scrollY
-  }, [items.length])
+  })
   useEffect(() => {
     if (prevLengthRef.current !== items.length) {
       prevLengthRef.current = items.length
+      // Restaurar scroll en el próximo frame
       const saved = scrollRef.current
       requestAnimationFrame(() => {
         window.scrollTo({ top: saved, behavior: "instant" as ScrollBehavior })
