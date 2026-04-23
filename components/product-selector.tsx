@@ -123,6 +123,16 @@ const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) 
     setEditing(true)
   }
 
+  useEffect(() => {
+    if (editing) {
+      const t = setTimeout(() => {
+        inputRef.current?.focus()
+        inputRef.current?.select()
+      }, 50)
+      return () => clearTimeout(t)
+    }
+  }, [editing])
+
   const confirm = () => {
     const n = parseInt(val, 10)
     if (!isNaN(n) && n >= 0) onConfirm(n)
@@ -135,7 +145,6 @@ const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) 
       <div className="flex items-center gap-1">
         <input
           ref={inputRef}
-          autoFocus
           type="number"
           inputMode="numeric"
           value={val}
