@@ -121,16 +121,15 @@ const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) 
   const openEdit = () => {
     setVal(count > 0 ? String(count) : "")
     setEditing(true)
+    // Focus directo en el mismo tick del click — requerido por Android
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    })
   }
 
   useEffect(() => {
-    if (editing) {
-      const t = setTimeout(() => {
-        inputRef.current?.focus()
-        inputRef.current?.select()
-      }, 50)
-      return () => clearTimeout(t)
-    }
+    if (editing) inputRef.current?.focus()
   }, [editing])
 
   const confirm = () => {
