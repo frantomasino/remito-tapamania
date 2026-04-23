@@ -188,7 +188,7 @@ export default function RemitoPage() {
       if (cached?.products?.length > 0 && !isStale) { setProducts(cached.products); return }
       try {
         setIsLoadingProducts(true)
-        const res = await fetch(`/api/products-csv?list=${priceListId}`, { cache: "no-store", signal: controller.signal })
+        const res = await fetch(`/api/products-csv?list=${priceListId}`, { cache: "force-cache", signal: controller.signal })
         if (!res.ok) throw new Error()
         const parsed = parseCSV(await res.text())
         const nextCache = { ...productsCacheRef.current, [priceListId]: { loadedAt: Date.now(), products: parsed } }
@@ -440,6 +440,7 @@ export default function RemitoPage() {
               </div>
               {actionBarCollapsed && (
                 <button type="button" onClick={() => setActionBarCollapsed(false)}
+                  data-onboarding="action-bar-trigger"
                   className="flex w-full items-center justify-center gap-2 py-1.5 active:opacity-60">
                   <div className="h-0.5 w-8 rounded-full bg-gray-200" />
                   <ChevronUp className="size-3.5 text-gray-300" />
@@ -466,7 +467,9 @@ export default function RemitoPage() {
                   )
                 }
                 return (
-                  <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
+                  <Link key={item.href} href={item.href} prefetch
+                    {...(item.href === "/dashboard/pedidos" ? { "data-onboarding": "nav-pedidos" } : {})}
+                    className="flex items-center justify-center">
                     <div className={cn(
                       "flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl transition-colors",
                       isActive ? "text-[#1565c0]" : "text-gray-400"

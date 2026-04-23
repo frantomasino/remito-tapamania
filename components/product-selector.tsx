@@ -183,13 +183,14 @@ interface ProductRowProps {
   options: string[]
   selectedOpt: string
   selectedCount: number
+  isFirst?: boolean
   onSelectOption: (desc: string, opt: string) => void
   onSetQuantity: (product: Product, opcion: string | undefined, qty: number) => void
   onAddDevolucion: (product: Product, opcion?: string) => void
 }
 
 const ProductRow = memo(function ProductRow({
-  product, title, infoTags, options, selectedOpt, selectedCount, onSelectOption, onSetQuantity, onAddDevolucion,
+  product, title, infoTags, options, selectedOpt, selectedCount, isFirst, onSelectOption, onSetQuantity, onAddDevolucion,
 }: ProductRowProps) {
   return (
     <article className="border-b border-gray-200 py-3 last:border-b-0">
@@ -240,16 +241,19 @@ const ProductRow = memo(function ProductRow({
         <button
           type="button"
           onClick={() => onAddDevolucion(product, selectedOpt || undefined)}
+          {...(isFirst ? { "data-onboarding": "devolucion" } : {})}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-orange-300 bg-white text-orange-400 transition-colors active:opacity-60"
         >
           <RotateCcw className="size-4" />
         </button>
 
         {/* Botón cantidad con input inline */}
-        <QtyButton
-          count={selectedCount}
-          onConfirm={(qty) => onSetQuantity(product, selectedOpt || undefined, qty)}
-        />
+        <div {...(isFirst ? { "data-onboarding": "add-qty" } : {})}>
+          <QtyButton
+            count={selectedCount}
+            onConfirm={(qty) => onSetQuantity(product, selectedOpt || undefined, qty)}
+          />
+        </div>
       </div>
     </article>
   )
@@ -673,7 +677,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
             </div>
           ) : (
             <div className="px-3">
-              {visibleProducts.map((p) => {
+              {visibleProducts.map((p, idx) => {
                 const d = derivedByDesc.get(p.descripcion)
                 const title = d?.title ?? shortDesc(p.descripcion)
                 const options = d?.options ?? productOptions(p.descripcion)
@@ -692,6 +696,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
                     options={options}
                     selectedOpt={selectedOpt}
                     selectedCount={selectedCount}
+                    isFirst={idx === 0}
                     onSelectOption={setSelectedOpt}
                     onSetQuantity={setQuantity}
                     onAddDevolucion={addDevolucion}
