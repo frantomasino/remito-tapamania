@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useRef, useCallback, useEffect, useMemo, startTransition, useLayoutEffect } from "react"
 import dynamic from "next/dynamic"
 import {
-  Printer, CheckCircle2, Loader2, Eye,
+  Printer, FileText, CheckCircle2, Loader2, Eye,
   Bluetooth, ChevronDown, ChevronUp, Plus, WifiOff,
   ClipboardList, PlusCircle, Settings2,
 } from "lucide-react"
@@ -188,7 +188,7 @@ export default function RemitoPage() {
       if (cached?.products?.length > 0 && !isStale) { setProducts(cached.products); return }
       try {
         setIsLoadingProducts(true)
-        const res = await fetch(`/api/products-csv?list=${priceListId}`, { cache: "force-cache", signal: controller.signal })
+        const res = await fetch(`/api/products-csv?list=${priceListId}`, { cache: "no-store", signal: controller.signal })
         if (!res.ok) throw new Error()
         const parsed = parseCSV(await res.text())
         const nextCache = { ...productsCacheRef.current, [priceListId]: { loadedAt: Date.now(), products: parsed } }
@@ -278,7 +278,7 @@ export default function RemitoPage() {
     const successData = { numero: remitoNumero, cliente: clientRef.current.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     try {
       setIsPrintingBluetooth(true); showToast("Buscando impresora...")
-      const payload = buildRemitoEscPos(remitoData, empresa)
+      const payload = buildRemitoEscPos(remitoData)
       const { device, characteristic } = await connectBlePrinter()
       showToast(`Conectado a ${device.name?.trim() || "impresora"}. Enviando...`)
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
@@ -301,48 +301,12 @@ export default function RemitoPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gray-100">
-        {/* Header skeleton */}
-        <div className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm px-4 py-2.5">
-          <div className="mx-auto flex w-full max-w-md items-center gap-2">
-            <div className="flex-1 h-4 w-32 animate-pulse rounded-lg bg-gray-200" />
-            <div className="h-8 w-24 animate-pulse rounded-lg bg-gray-200" />
-            <div className="h-8 w-16 animate-pulse rounded-lg bg-gray-200" />
+      <div className="flex min-h-screen items-center justify-center bg-gray-100">
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-[#1565c0] text-white">
+            <FileText className="size-4" />
           </div>
-        </div>
-        {/* Content skeleton */}
-        <div className="mx-auto w-full max-w-md px-4 pt-3 space-y-3">
-          <div className="h-11 w-full animate-pulse rounded-xl bg-gray-200" />
-          <div className="h-11 w-full animate-pulse rounded-xl bg-gray-200" />
-          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-            <div className="h-10 bg-gray-50 border-b border-gray-200 px-3 flex items-center justify-between">
-              <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
-              <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
-            </div>
-            <div className="px-3 divide-y divide-gray-100">
-              {[1,2,3,4,5].map(i => (
-                <div key={i} className="py-3 flex items-center gap-2">
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3.5 w-40 animate-pulse rounded bg-gray-200" />
-                    <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
-                  </div>
-                  <div className="h-10 w-10 animate-pulse rounded-xl bg-gray-200" />
-                  <div className="h-10 w-10 animate-pulse rounded-xl bg-gray-200" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        {/* Bottom nav skeleton */}
-        <div className="fixed inset-x-0 bottom-0 bg-white border-t border-gray-200 shadow-sm">
-          <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 py-2">
-            {[1,2,3].map(i => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
-                <div className="h-2.5 w-10 animate-pulse rounded bg-gray-200" />
-              </div>
-            ))}
-          </div>
+          <p className="text-sm font-medium text-gray-600">Cargando...</p>
         </div>
       </div>
     )
@@ -476,7 +440,6 @@ export default function RemitoPage() {
               </div>
               {actionBarCollapsed && (
                 <button type="button" onClick={() => setActionBarCollapsed(false)}
-                  data-onboarding="action-bar-trigger"
                   className="flex w-full items-center justify-center gap-2 py-1.5 active:opacity-60">
                   <div className="h-0.5 w-8 rounded-full bg-gray-200" />
                   <ChevronUp className="size-3.5 text-gray-300" />
@@ -503,9 +466,7 @@ export default function RemitoPage() {
                   )
                 }
                 return (
-                  <Link key={item.href} href={item.href} prefetch
-                    {...(item.href === "/dashboard/pedidos" ? { "data-onboarding": "nav-pedidos" } : {})}
-                    className="flex items-center justify-center">
+                  <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
                     <div className={cn(
                       "flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl transition-colors",
                       isActive ? "text-[#1565c0]" : "text-gray-400"
