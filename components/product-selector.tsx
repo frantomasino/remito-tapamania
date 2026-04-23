@@ -121,16 +121,7 @@ const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) 
   const openEdit = () => {
     setVal(count > 0 ? String(count) : "")
     setEditing(true)
-    // Focus directo en el mismo tick del click — requerido por Android
-    requestAnimationFrame(() => {
-      inputRef.current?.focus()
-      inputRef.current?.select()
-    })
   }
-
-  useEffect(() => {
-    if (editing) inputRef.current?.focus()
-  }, [editing])
 
   const confirm = () => {
     const n = parseInt(val, 10)
@@ -144,6 +135,7 @@ const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) 
       <div className="flex items-center gap-1">
         <input
           ref={inputRef}
+          autoFocus
           type="number"
           inputMode="numeric"
           value={val}
@@ -256,12 +248,10 @@ const ProductRow = memo(function ProductRow({
         </button>
 
         {/* Botón cantidad con input inline */}
-        <div {...(isFirst ? { "data-onboarding": "add-qty" } : {})}>
-          <QtyButton
-            count={selectedCount}
-            onConfirm={(qty) => onSetQuantity(product, selectedOpt || undefined, qty)}
-          />
-        </div>
+        <QtyButton
+          count={selectedCount}
+          onConfirm={(qty) => onSetQuantity(product, selectedOpt || undefined, qty)}
+        />
       </div>
     </article>
   )
