@@ -56,7 +56,7 @@ export default function LoginPage() {
               <rect x="2" y="12" width="12" height="2" rx="1" fill="white"/>
             </svg>
           </div>
-          <h1 className="text-[22px] font-semibold text-gray-900">Remitos</h1>
+          <h1 className="text-[22px] font-semibold text-gray-900">Rutix</h1>
           <p className="mt-1 text-[13px] text-gray-500">Ingresá para continuar</p>
         </div>
 

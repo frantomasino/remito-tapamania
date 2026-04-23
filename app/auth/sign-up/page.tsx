@@ -63,7 +63,7 @@ export default function SignUpPage() {
             </svg>
           </div>
           <h1 className="text-[22px] font-semibold text-gray-900">Crear cuenta</h1>
-          <p className="mt-1 text-[13px] text-gray-500">Tapamanía · Sistema de remitos</p>
+          <p className="mt-1 text-[13px] text-gray-500">Rutix · Sistema de remitos</p>
         </div>
 
         {/* ── FORMULARIO ── */}

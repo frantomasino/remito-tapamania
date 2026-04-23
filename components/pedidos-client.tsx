@@ -251,7 +251,7 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{getTodayLabel()}</p>
-              <h1 className="text-[18px] font-semibold leading-tight text-gray-900">Pedidos</h1>
+              <h1 className="text-[18px] font-semibold leading-tight text-gray-900">Historial</h1>
             </div>
             <Link href="/dashboard/nuevo"
               className="flex h-8 items-center gap-1.5 rounded-xl bg-[#1565c0] px-3 text-[13px] font-semibold text-white active:opacity-80 shadow-sm">

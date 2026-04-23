@@ -9,7 +9,7 @@ const geistSans = Geist({
 })
 
 export const metadata: Metadata = {
-  title: "APP Remitos",
+  title: "Rutix",
   description: "Cargá pedidos, generá remitos e imprimí comprobantes desde el celular.",
   manifest: "/manifest.webmanifest",
 }

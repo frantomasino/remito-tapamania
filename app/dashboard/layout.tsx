@@ -13,7 +13,9 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-dvh bg-gray-100 text-gray-900">
       <div className="mx-auto w-full max-w-md">
-        <main className="min-h-dvh pb-[calc(72px+env(safe-area-inset-bottom))]">
+        <main
+          className="min-h-dvh pb-[calc(72px+env(safe-area-inset-bottom))] animate-in fade-in duration-200"
+        >
           {children}
         </main>
       </div>

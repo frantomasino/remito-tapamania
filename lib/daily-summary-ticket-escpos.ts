@@ -117,32 +117,32 @@ export function buildDailySummaryEscPos(data: DailySummaryData) {
   }
 
   // ── DESGLOSE POR FORMA DE PAGO ──
-  const efectivo = data.pedidos.filter(p => p.formaPagoCliente === "efectivo")
+  // Sin forma de pago registrada → se cuenta como Efectivo
+  const efectivo = data.pedidos.filter(p => p.formaPagoCliente === "efectivo" || !p.formaPagoCliente)
   const mp = data.pedidos.filter(p => p.formaPagoCliente === "mercadopago")
-  const sinRegistrar = data.pedidos.filter(p => !p.formaPagoCliente)
 
-  if (efectivo.length > 0 || mp.length > 0) {
-    parts.push(text(line()))
+  parts.push(text(line()))
+  parts.push(lf())
+  parts.push(escPosBold(true))
+  parts.push(text("Forma de pago:"))
+  parts.push(lf())
+  parts.push(escPosBold(false))
+
+  const totalEfectivo = efectivo.reduce((s, p) => s + p.total, 0)
+  const totalMp = mp.reduce((s, p) => s + p.total, 0)
+
+  parts.push(text(fitRight(`Efectivo (${efectivo.length})`, formatCurrency(totalEfectivo))))
+  parts.push(lf())
+  if (mp.length > 0) {
+    parts.push(text(fitRight(`Mercado Pago (${mp.length})`, formatCurrency(totalMp))))
     parts.push(lf())
-    parts.push(escPosBold(true))
-    parts.push(text("Forma de pago:"))
-    parts.push(lf())
-    parts.push(escPosBold(false))
-    if (efectivo.length > 0) {
-      const totalEfectivo = efectivo.reduce((s, p) => s + p.total, 0)
-      parts.push(text(fitRight(`Efectivo (${efectivo.length})`, formatCurrency(totalEfectivo))))
-      parts.push(lf())
-    }
-    if (mp.length > 0) {
-      const totalMp = mp.reduce((s, p) => s + p.total, 0)
-      parts.push(text(fitRight(`Mercado Pago (${mp.length})`, formatCurrency(totalMp))))
-      parts.push(lf())
-    }
-    if (sinRegistrar.length > 0) {
-      parts.push(text(fitRight(`Sin registrar (${sinRegistrar.length})`, "")))
-      parts.push(lf())
-    }
   }
+  parts.push(text(line()))
+  parts.push(lf())
+  parts.push(escPosBold(true))
+  parts.push(text(fitRight("TOTAL DIA", formatCurrency(totalEfectivo + totalMp))))
+  parts.push(lf())
+  parts.push(escPosBold(false))
 
   parts.push(text(line()))
   parts.push(lf())

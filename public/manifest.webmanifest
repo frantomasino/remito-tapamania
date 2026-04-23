@@ -1,6 +1,6 @@
 {
-  "name": "Remitos Fran",
-  "short_name": "Remitos",
+  "name": "Rutix",
+"short_name": "Rutix",
   "start_url": "/dashboard/nuevo",
   "scope": "/",
   "display": "standalone",

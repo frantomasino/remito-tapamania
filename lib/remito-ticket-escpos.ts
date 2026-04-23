@@ -47,7 +47,7 @@ function groupItems(items: LineItem[]): PrintGroup[] {
   return Array.from(groups.values())
 }
 
-export function buildRemitoEscPos(data: RemitoData) {
+export function buildRemitoEscPos(data: RemitoData, empresa = "Remito") {
   const total = data.items.reduce((sum, item) => sum + item.subtotal, 0)
   const totalUnidades = data.items.reduce((sum, item) => sum + item.cantidad, 0)
   const totalDevolucion = data.items.reduce((sum, item) => sum + (item.devolucion ?? 0), 0)
@@ -61,7 +61,7 @@ export function buildRemitoEscPos(data: RemitoData) {
   chunks.push(align("center"))
   chunks.push(bold(true))
   chunks.push(size(1, 1))
-  chunks.push(line("TAPAMANIA"))
+  chunks.push(line(empresa.toUpperCase() || "REMITO"))
   chunks.push(size(0, 0))
   chunks.push(bold(false))
   chunks.push(line("Remito / Comprobante"))
@@ -117,6 +117,7 @@ export function buildRemitoEscPos(data: RemitoData) {
 
   if (totalDevolucion > 0) {
     chunks.push(hr())
+    chunks.push(twoCols("Devoluciones:", `${totalDevolucion} u.`, 32))
   }
 
   chunks.push(feed(2))

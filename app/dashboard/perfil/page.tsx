@@ -1,4 +1,4 @@
-import { LogOut, Mail, Tags, Info } from "lucide-react"
+import { LogOut, Mail, Tags, Info, MessageCircle } from "lucide-react"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { PerfilEditor } from "@/components/perfil-editor"
@@ -84,6 +84,16 @@ export default async function PerfilPage() {
             <p className="text-[13px] font-semibold text-gray-900">{appVersion}</p>
           </div>
         </div>
+
+        {/* ── SOPORTE ── */}
+        <a
+          href="https://wa.me/5491131256510?text=Hola%2C%20necesito%20ayuda%20con%20la%20app%20de%20remitos"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-green-200 bg-white py-2.5 text-[13px] font-medium text-green-600 active:opacity-60 shadow-sm">
+          <MessageCircle className="size-3.5" />
+          Soporte por WhatsApp
+        </a>
 
         {/* ── CERRAR SESIÓN ── */}
         <form action="/auth/signout" method="post" className="mt-1">
