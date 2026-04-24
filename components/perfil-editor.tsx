@@ -73,7 +73,7 @@ export function PerfilEditor({ userId, initialEmpresa, initialVendedor, initialT
     { key: "empresa" as const, label: "Empresa", icon: Building2, placeholder: "Ej: Tapamanía", type: "text" },
     { key: "vendedor" as const, label: "Vendedor", icon: User, placeholder: "Ej: Juan García", type: "text" },
     { key: "telefono" as const, label: "Teléfono", icon: Phone, placeholder: "Ej: +54 11 1234-5678", type: "tel" },
-    { key: "alias" as const, label: "Alias", icon: Fingerprint, placeholder: "Ej: juancito_ventas", type: "text" },
+    { key: "alias" as const, label: "Alias-Mercado Pago", icon: Fingerprint, placeholder: "Ej: juancito_ventas", type: "text" },
   ]
 
   return (
