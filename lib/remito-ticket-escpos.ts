@@ -47,7 +47,13 @@ function groupItems(items: LineItem[]): PrintGroup[] {
   return Array.from(groups.values())
 }
 
-export function buildRemitoEscPos(data: RemitoData, empresa = "Remito") {
+export function buildRemitoEscPos(
+  data: RemitoData, 
+  empresa = "Remito", 
+  vendedor = "", 
+  telefono = "", 
+  alias = "" 
+) {
   const total = data.items.reduce((sum, item) => sum + item.subtotal, 0)
   const totalUnidades = data.items.reduce((sum, item) => sum + item.cantidad, 0)
   const totalDevolucion = data.items.reduce((sum, item) => sum + (item.devolucion ?? 0), 0)
@@ -58,19 +64,35 @@ export function buildRemitoEscPos(data: RemitoData, empresa = "Remito") {
 
   chunks.push(initPrinter())
 
+  // --- HEADER ---
   chunks.push(align("center"))
   chunks.push(bold(true))
-  chunks.push(size(1, 1))
+  chunks.push(size(1, 1)) // Grande para la empresa
   chunks.push(line(empresa.toUpperCase() || "REMITO"))
-  chunks.push(size(0, 0))
+  
+  chunks.push(size(0, 0)) // Volver a tamaño normal
   chunks.push(bold(false))
+  
+  if (telefono) chunks.push(line(telefono))
+  
+  // --- ALIAS AGRANDADO ---
+ if (alias) {
+    chunks.push(bold(true))
+    chunks.push(size(1, 1)) // <--- CAMBIÁ (1, 0) POR (1, 1) PARA MÁXIMO TAMAÑO
+    chunks.push(line(`ALIAS: ${alias.toUpperCase()}`))
+    chunks.push(size(0, 0)) // RESET PARA VOLVER A TAMAÑO NORMAL
+    chunks.push(bold(false))
+  }
+
   chunks.push(line("Remito / Comprobante"))
   chunks.push(line(`N° ${data.numero}`))
   chunks.push(line(data.fecha))
   chunks.push(hr())
 
+  // --- INFO CLIENTE / VENDEDOR ---
   chunks.push(align("left"))
   chunks.push(twoCols("Comercio:", comercio, 32))
+  if (vendedor) chunks.push(twoCols("Vendedor:", vendedor, 32))
   chunks.push(twoCols("Items:", String(grouped.length), 32))
   chunks.push(twoCols("Unidades:", String(totalUnidades), 32))
   if (totalDevolucion > 0) {
@@ -78,6 +100,7 @@ export function buildRemitoEscPos(data: RemitoData, empresa = "Remito") {
   }
   chunks.push(hr())
 
+  // --- TABLA PRODUCTOS ---
   chunks.push(bold(true))
   chunks.push(twoCols("Producto", "Subtotal", 32))
   chunks.push(bold(false))
@@ -88,7 +111,6 @@ export function buildRemitoEscPos(data: RemitoData, empresa = "Remito") {
     const titleLines = wrapText(titleWithQty, 32)
     for (const l of titleLines) chunks.push(line(l))
 
-    // Desglose venta por opción
     if (group.hasOpciones && group.opciones.length > 0) {
       const detalle = group.opciones.filter(o => o.cantidad > 0).map((o) => `${o.opcion} ${o.cantidad}`).join(", ")
       if (detalle) {
@@ -97,7 +119,6 @@ export function buildRemitoEscPos(data: RemitoData, empresa = "Remito") {
       }
     }
 
-    // Devoluciones
     if (group.totalDevolucion > 0) {
       const devText = group.hasOpciones
         ? group.opciones.filter(o => o.devolucion > 0).map((o) => `${o.devolucion} ${o.opcion}`).join(", ")
@@ -110,9 +131,12 @@ export function buildRemitoEscPos(data: RemitoData, empresa = "Remito") {
     chunks.push(hr("-".charCodeAt(0), 32))
   }
 
+  // --- TOTALES ---
   chunks.push(twoCols("Subtotal", formatCurrency(total), 32))
   chunks.push(bold(true))
-  chunks.push(twoCols("TOTAL", formatCurrency(total), 32))
+  chunks.push(size(1, 0)) // Total en ancho doble para que se vea bien
+  chunks.push(twoCols("TOTAL", formatCurrency(total), 16)) // 16 porque el ancho doble reduce las columnas
+  chunks.push(size(0, 0))
   chunks.push(bold(false))
 
   if (totalDevolucion > 0) {
@@ -120,6 +144,7 @@ export function buildRemitoEscPos(data: RemitoData, empresa = "Remito") {
     chunks.push(twoCols("Devoluciones:", `${totalDevolucion} u.`, 32))
   }
 
+  // --- FOOTER ---
   chunks.push(feed(2))
   chunks.push(align("center"))
   chunks.push(line("Gracias"))

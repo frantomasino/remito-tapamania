@@ -5,8 +5,8 @@ import type React from "react"
 import { useState, useRef, useCallback, useEffect, useMemo, startTransition, useLayoutEffect } from "react"
 import dynamic from "next/dynamic"
 import {
-  Printer, FileText, CheckCircle2, Loader2, Eye,
-  Bluetooth, ChevronDown, ChevronUp, Plus, WifiOff,
+  Printer, CheckCircle2, Loader2, Eye,
+  Bluetooth, ChevronDown, Plus, WifiOff,
   ClipboardList, PlusCircle, Settings2,
 } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
@@ -35,7 +35,7 @@ const PRICE_LISTS: { id: PriceListId; label: string }[] = [
 ]
 
 const navItems = [
-  { href: "/dashboard/pedidos", label: "Pedidos", icon: ClipboardList },
+  { href: "/dashboard/pedidos", label: "Historial", icon: ClipboardList },
   { href: "/dashboard/nuevo", label: "Nuevo", icon: PlusCircle, primary: true },
   { href: "/dashboard/perfil", label: "Cuenta", icon: Settings2 },
 ]
@@ -63,6 +63,9 @@ export default function RemitoPage() {
   const pathname = usePathname()
   const [userId, setUserId] = useState<string>("")
   const [empresa, setEmpresa] = useState<string>("")
+  const [vendedor, setVendedor] = useState<string>("")
+  const [telefono, setTelefono] = useState<string>("")
+  const [alias, setAlias] = useState<string>("") 
   const [products, setProducts] = useState<Product[]>([])
   const [items, setItems] = useState<LineItem[]>([])
   const [client, setClient] = useState<ClientData>(defaultClient)
@@ -76,9 +79,11 @@ export default function RemitoPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isPrintingBluetooth, setIsPrintingBluetooth] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
-  const [actionBarCollapsed, setActionBarCollapsed] = useState(true)
   const [toastVisible, setToastVisible] = useState(false)
   const [toastText, setToastText] = useState("")
+
+  // --- ESTADO PARA OCULTAR BARRA ---
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
   const toastTimer = useRef<number | null>(null)
@@ -138,9 +143,12 @@ export default function RemitoPage() {
     if (!userId) return
     const load = async () => {
       try {
-        const { data: profile } = await supabase.from("profiles").select("next_remito_number, selected_price_list, empresa").eq("id", userId).single()
+        const { data: profile } = await supabase.from("profiles").select("next_remito_number, selected_price_list, empresa, vendedor, telefono, alias").eq("id", userId).single()
         if (profile?.next_remito_number && Number(profile.next_remito_number) > 0) setNextNumber(Number(profile.next_remito_number))
         if (profile?.empresa) setEmpresa(profile.empresa)
+        if (profile?.vendedor) setVendedor(profile.vendedor)
+        if (profile?.telefono) setTelefono(profile.telefono)
+        if (profile?.alias) setAlias(profile.alias)
         const sel = profile?.selected_price_list
         if (sel === "minorista" || sel === "mayorista" || sel === "oferta") setPriceListId(sel)
         const raw = localStorage.getItem(k(LS_BASE_KEYS.productsCache, userId))
@@ -171,8 +179,7 @@ export default function RemitoPage() {
   useEffect(() => {
     if (!userId) return
     void supabase.from("profiles").update({ selected_price_list: priceListId }).eq("id", userId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [priceListId, userId])
+  }, [priceListId, userId, supabase])
 
   const saveProductsCache = useCallback((cache: Record<PriceListId, ProductsCacheEntry>) => {
     if (!userId) return
@@ -212,7 +219,7 @@ export default function RemitoPage() {
 
   const canPrint = items.filter(i => i.cantidad > 0).length > 0
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
-  const fixedBottomPx = BOTTOM_NAV_PX + (canPrint ? (actionBarCollapsed ? 0 : ACTION_BAR_PX) : 0)
+  const fixedBottomPx = isCollapsed ? BOTTOM_NAV_PX : (BOTTOM_NAV_PX + (canPrint ? ACTION_BAR_PX : 0))
 
   const handleItemsChange = useCallback<React.Dispatch<React.SetStateAction<LineItem[]>>>((updater) => {
     setItems((prev) => typeof updater === "function" ? updater(prev) : updater)
@@ -220,7 +227,7 @@ export default function RemitoPage() {
 
   const advanceAndReset = useCallback((nextVisibleNumber: number, successData: SuccessState) => {
     setSuccessState(successData); setNextNumber(nextVisibleNumber); setClient(defaultClient); setItems([])
-    setActionBarCollapsed(true); clearDraft(userId); remitoDateRef.current = getTodayDateSafe()
+    clearDraft(userId); remitoDateRef.current = getTodayDateSafe()
   }, [userId, clearDraft])
 
   const persistRemito = useCallback(async (): Promise<{ nextNumber: number; remitoId: string } | null> => {
@@ -278,7 +285,7 @@ export default function RemitoPage() {
     const successData = { numero: remitoNumero, cliente: clientRef.current.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     try {
       setIsPrintingBluetooth(true); showToast("Buscando impresora...")
-      const payload = buildRemitoEscPos(remitoData)
+      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, alias)
       const { device, characteristic } = await connectBlePrinter()
       showToast(`Conectado a ${device.name?.trim() || "impresora"}. Enviando...`)
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
@@ -292,23 +299,16 @@ export default function RemitoPage() {
       if (/no parece compatible/i.test(msg)) { showToast("La impresora no es compatible"); return }
       showToast("No se pudo conectar con la impresora")
     } finally { setIsPrintingBluetooth(false) }
-  }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, total, totalUnits, remitoData, persistRemito, advanceAndReset, showToast])
+  }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, total, totalUnits, remitoData, empresa, vendedor, telefono, alias, persistRemito, advanceAndReset, showToast])
 
   const confirmNewRemito = useCallback(() => {
     setClient(defaultClient); setItems([]); setShowConfirmNew(false)
-    setActionBarCollapsed(true); clearDraft(userId); showToast("Nuevo remito listo")
+    clearDraft(userId); showToast("Nuevo remito listo")
   }, [showToast, userId, clearDraft])
 
   if (!mounted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-[#1565c0] text-white">
-            <FileText className="size-4" />
-          </div>
-          <p className="text-sm font-medium text-gray-600">Cargando...</p>
-        </div>
-      </div>
+      <div className="min-h-screen bg-gray-100" />
     )
   }
 
@@ -352,6 +352,14 @@ export default function RemitoPage() {
     <>
       <div className="min-h-screen overflow-x-hidden bg-gray-100">
 
+        {/* --- CAPA INVISIBLE PARA CERRAR AL TOCAR EN LOS PRODUCTOS --- */}
+        {!isCollapsed && canPrint && (
+          <div 
+            className="fixed inset-0 z-[49] bg-transparent" 
+            onClick={() => setIsCollapsed(true)} 
+          />
+        )}
+
         {/* ── HEADER ── */}
         <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
           <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
@@ -370,11 +378,7 @@ export default function RemitoPage() {
               <Plus className="size-3" />Nuevo
             </button>
           </div>
-
-          <div className={cn(
-            "overflow-hidden transition-all duration-150",
-            isOnline ? "max-h-0" : "max-h-20"
-          )}>
+          <div className={cn("overflow-hidden transition-all duration-150", isOnline ? "max-h-0" : "max-h-20")}>
             <div className="flex items-center gap-2 border-t border-red-200 bg-red-50 px-4 py-2.5">
               <WifiOff className="size-3.5 shrink-0 text-red-500" />
               <p className="text-[12px] font-semibold text-red-600">Sin internet — no podés imprimir hasta recuperar señal</p>
@@ -397,55 +401,58 @@ export default function RemitoPage() {
           )}
         </main>
 
-        {/* ── BLOQUE FIJO INFERIOR ── */}
-        <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
+        {/* ── BLOQUE FIJO INFERIOR CON PESTAÑA TIRADOR ── */}
+        <div className={cn(
+          "fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)] transition-transform duration-300",
+          isCollapsed && canPrint ? "translate-y-[60px]" : "translate-y-0"
+        )}>
+          
+          {/* TIRADOR ESTILO PESTAÑA (Tal como en tu foto) */}
+          {canPrint && (
+            <div className="absolute -top-6 left-0 right-0 h-6 flex items-center justify-center cursor-pointer" onClick={() => setIsCollapsed(!isCollapsed)}>
+               <div className="w-16 h-4 bg-white rounded-t-xl border-t border-l border-r border-gray-200 flex items-center justify-center">
+                  <div className="w-8 h-1 bg-gray-300 rounded-full" />
+               </div>
+            </div>
+          )}
+
           {canPrint && (
             <div className="border-b border-gray-100">
-              <div className={cn(
-                "overflow-hidden transition-all duration-150",
-                actionBarCollapsed ? "max-h-0" : "max-h-24"
-              )}>
-                <div
-                  className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-3 cursor-pointer select-none"
-                  onClick={() => setActionBarCollapsed(true)}
-                >
-                  <ChevronDown className="size-4 shrink-0 text-gray-300" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
-                      {totalUnits} unid.
-                      {totalDev > 0 && <span className="ml-1.5 text-orange-500">{totalDev} dev.</span>}
-                    </p>
-                  </div>
-                  <button type="button"
-                    onClick={(e) => { e.stopPropagation(); setShowPreview(true) }}
-                    className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
-                    <Eye className="size-3.5" />Ver
-                  </button>
-                  {!isOnline ? (
-                    <div className="flex h-10 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-[12px] font-medium text-red-500"
-                      onClick={(e) => e.stopPropagation()}>
-                      <WifiOff className="size-3.5" />Sin señal
-                    </div>
-                  ) : (
-                    <button type="button"
-                      onClick={(e) => { e.stopPropagation(); handleBluetoothPrint() }}
-                      disabled={isSaving || isPrintingBluetooth}
-                      className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
-                      {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
-                      {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
-                    </button>
-                  )}
+              {/* TODA ESTA ÁREA (LO AMARILLO) CIERRA LA BARRA AL TOCAR */}
+              <div 
+                className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-3 cursor-pointer"
+                onClick={(e) => {
+                  // Si toca la zona blanca de info, colapsa
+                  if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.info-box')) {
+                    setIsCollapsed(true)
+                  }
+                }}
+              >
+                <div className="min-w-0 flex-1 info-box">
+                  <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {totalUnits} unid.
+                    {totalDev > 0 && <span className="ml-1.5 text-orange-500">{totalDev} dev.</span>}
+                  </p>
                 </div>
-              </div>
-              {actionBarCollapsed && (
-                <button type="button" onClick={() => setActionBarCollapsed(false)}
-                  className="flex w-full items-center justify-center gap-2 py-1.5 active:opacity-60">
-                  <div className="h-0.5 w-8 rounded-full bg-gray-200" />
-                  <ChevronUp className="size-3.5 text-gray-300" />
-                  <div className="h-0.5 w-8 rounded-full bg-gray-200" />
+                
+                {/* BOTONES (stopPropagation evita que al tocarlos se colapse la barra) */}
+                <button type="button" onClick={(e) => { e.stopPropagation(); setShowPreview(true) }}
+                  className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
+                  <Eye className="size-3.5" />Ver
                 </button>
-              )}
+                {!isOnline ? (
+                  <div className="flex h-10 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-[12px] font-medium text-red-500">
+                    <WifiOff className="size-3.5" />Sin señal
+                  </div>
+                ) : (
+                  <button type="button" onClick={(e) => { e.stopPropagation(); handleBluetoothPrint() }} disabled={isSaving || isPrintingBluetooth}
+                    className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
+                    {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
+                    {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -455,18 +462,8 @@ export default function RemitoPage() {
                 const isActive = item.href === "/dashboard/pedidos"
                   ? pathname === "/dashboard/pedidos"
                   : pathname.startsWith(item.href)
-                if (item.primary) {
-                  return (
-                    <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
-                      <div className="flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl bg-[#1565c0] text-white">
-                        <item.icon className="size-4" />
-                        <span className="text-[10px] font-semibold leading-none">{item.label}</span>
-                      </div>
-                    </Link>
-                  )
-                }
                 return (
-                  <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
+                  <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center active:opacity-60">
                     <div className={cn(
                       "flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl transition-colors",
                       isActive ? "text-[#1565c0]" : "text-gray-400"
@@ -484,14 +481,12 @@ export default function RemitoPage() {
         </div>
 
         {/* ── TOAST ── */}
-        <div
-          className={cn(
+        <div className={cn(
             "fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 transition-all duration-200",
             toastVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
           )}
           style={{ bottom: `calc(${fixedBottomPx}px + env(safe-area-inset-bottom) + 10px)` }}
-          role="alert"
-        >
+          role="alert">
           <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-lg">
             <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#1565c0] text-white">
               <CheckCircle2 className="size-3" />
@@ -501,7 +496,7 @@ export default function RemitoPage() {
         </div>
       </div>
 
-      {/* ── MODAL: Ver ticket ── */}
+      {/* ── MODALES ── */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent showCloseButton={false} className="fixed left-1/2 top-1/2 z-50 flex h-[100dvh] w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-none border-0 bg-gray-100 p-0 sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-sm sm:rounded-2xl sm:border sm:border-gray-200">
           <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2.5">
@@ -510,7 +505,7 @@ export default function RemitoPage() {
           </div>
           <div className="flex-1 overflow-y-auto bg-gray-300 px-4 py-4">
             <div className="mx-auto w-fit overflow-hidden rounded-xl bg-white shadow-sm">
-              <RemitoPrint data={remitoData} empresa={empresa} />
+              <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={alias} />
             </div>
           </div>
           <div className="border-t border-gray-200 bg-white px-4 py-2.5">
@@ -523,7 +518,6 @@ export default function RemitoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── MODAL: Confirmar nuevo remito ── */}
       <Dialog open={showConfirmNew} onOpenChange={setShowConfirmNew}>
         <DialogContent className="max-w-sm rounded-2xl border-gray-200 bg-white">
           <DialogHeader>
@@ -538,7 +532,7 @@ export default function RemitoPage() {
       </Dialog>
 
       <div className="hidden" aria-hidden="true">
-        <div id="printable-remito"><RemitoPrint data={remitoData} empresa={empresa} /></div>
+        <div id="printable-remito"><RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={alias} /></div>
       </div>
     </>
   )

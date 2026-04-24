@@ -7,6 +7,9 @@ import { formatCurrency } from "@/lib/remito-types"
 interface RemitoPrintProps {
   data: RemitoData
   empresa?: string
+  vendedor?: string
+  telefono?: string
+  alias?: string // <-- Agregamos alias a las props
 }
 
 const cleanDesc = (value: string) =>
@@ -52,7 +55,7 @@ function groupItems(items: LineItem[]): PrintGroup[] {
 }
 
 export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function RemitoPrint(
-  { data, empresa = "Remito" },
+  { data, empresa = "Remito", vendedor = "", telefono = "", alias = "" }, // <-- Recibimos alias aquí
   ref
 ) {
   const total = useMemo(() => data.items.reduce((sum, item) => sum + item.subtotal, 0), [data.items])
@@ -71,6 +74,15 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
         {/* Header */}
         <div className="border-b border-dashed border-black pb-[2mm] text-center">
           <p className="text-[12px] font-bold uppercase">{empresa}</p>
+          {telefono && <p className="text-[9px]">{telefono}</p>}
+          
+         {/* SECCIÓN DEL ALIAS - Actualizada para que sea más grande */}
+{alias && (
+  <p className="text-[11px] font-bold italic text-gray-800">
+    Alias: {alias}
+  </p>
+)}
+
           <p className="mt-1 text-[10px] font-semibold">Remito - Pedido</p>
           <p className="mt-1">N° {data.numero}</p>
           <p>{data.fecha}</p>
@@ -82,6 +94,12 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
             <span className="font-semibold">Comercio:</span>
             <span className="max-w-[26mm] text-right break-words">{comercio || "Sin especificar"}</span>
           </div>
+          {vendedor && (
+            <div className="mt-1 flex justify-between gap-2">
+              <span className="font-semibold">Vendedor:</span>
+              <span className="max-w-[26mm] text-right break-words">{vendedor}</span>
+            </div>
+          )}
           <div className="mt-1 flex justify-between gap-2">
             <span className="font-semibold">Items:</span>
             <span>{grouped.length}</span>
@@ -113,20 +131,15 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
           ) : (
             grouped.map((group, idx) => (
               <div key={`${group.title}-${idx}`} className="border-b border-dashed border-black py-[2mm] last:border-b-0">
-                {/* Nombre + total */}
                 <p className="break-words font-semibold">
                   {group.title}
                   <span className="font-normal"> x{group.totalCantidad}</span>
                 </p>
-
-                {/* Desglose opciones venta */}
                 {group.hasOpciones && group.opciones.length > 0 && (
                   <p className="mt-[0.5mm] text-[9px] text-gray-600 break-words">
                     {group.opciones.filter(o => o.cantidad > 0).map((o) => `${o.opcion} ${o.cantidad}`).join(", ")}
                   </p>
                 )}
-
-                {/* Devoluciones */}
                 {group.totalDevolucion > 0 && (
                   <p className="mt-[0.5mm] text-[9px] break-words">
                     {"Dev: "}
@@ -136,8 +149,6 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
                     }
                   </p>
                 )}
-
-                {/* Precio × cantidad → subtotal */}
                 <div className="mt-[1mm] flex justify-between gap-2 text-[10px]">
                   <span>{group.totalCantidad} x {formatCurrency(group.precio)}</span>
                   <span className="text-right font-semibold">{formatCurrency(group.totalSubtotal)}</span>
@@ -157,7 +168,6 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
             <span>TOTAL</span>
             <span>{formatCurrency(total)}</span>
           </div>
-          
         </div>
 
         <div className="pt-[3mm] text-center text-[9px]">

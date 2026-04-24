@@ -21,7 +21,7 @@ export default async function PerfilPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("selected_price_list, app_version, empresa, vendedor, telefono")
+    .select("selected_price_list, app_version, empresa, vendedor, telefono, alias")
     .eq("id", user.id)
     .single()
 
@@ -30,6 +30,7 @@ export default async function PerfilPage() {
   const empresa = profile?.empresa ?? ""
   const vendedor = profile?.vendedor ?? ""
   const telefono = profile?.telefono ?? ""
+  const alias = profile?.alias ?? ""
 
   return (
     <div className="mx-auto max-w-md px-4 pb-6 pt-3">
@@ -72,6 +73,7 @@ export default async function PerfilPage() {
           initialEmpresa={empresa}
           initialVendedor={vendedor}
           initialTelefono={telefono}
+          initialAlias={alias}
         />
 
         {/* ── VERSIÓN ── */}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Building2, User, Phone, Pencil, Check, X, Loader2 } from "lucide-react"
+import { Building2, User, Phone, Pencil, Check, X, Loader2, Fingerprint } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 interface PerfilEditorProps {
@@ -9,9 +9,10 @@ interface PerfilEditorProps {
   initialEmpresa: string
   initialVendedor: string
   initialTelefono: string
+  initialAlias: string
 }
 
-export function PerfilEditor({ userId, initialEmpresa, initialVendedor, initialTelefono }: PerfilEditorProps) {
+export function PerfilEditor({ userId, initialEmpresa, initialVendedor, initialTelefono, initialAlias }: PerfilEditorProps) {
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -20,6 +21,7 @@ export function PerfilEditor({ userId, initialEmpresa, initialVendedor, initialT
     empresa: initialEmpresa,
     vendedor: initialVendedor,
     telefono: initialTelefono,
+    alias: initialAlias,
   })
   const [form, setForm] = useState(saved)
 
@@ -46,10 +48,19 @@ export function PerfilEditor({ userId, initialEmpresa, initialVendedor, initialT
           empresa: form.empresa.trim() || null,
           vendedor: form.vendedor.trim() || null,
           telefono: form.telefono.trim() || null,
+          alias: form.alias.trim() || null,
         })
         .eq("id", userId)
+
       if (error) { setError("No se pudo guardar"); return }
-      setSaved({ ...form, empresa: form.empresa.trim(), vendedor: form.vendedor.trim(), telefono: form.telefono.trim() })
+      
+      setSaved({ 
+        ...form, 
+        empresa: form.empresa.trim(), 
+        vendedor: form.vendedor.trim(), 
+        telefono: form.telefono.trim(),
+        alias: form.alias.trim() 
+      })
       setEditing(false)
     } catch {
       setError("Error inesperado")
@@ -62,6 +73,7 @@ export function PerfilEditor({ userId, initialEmpresa, initialVendedor, initialT
     { key: "empresa" as const, label: "Empresa", icon: Building2, placeholder: "Ej: Tapamanía", type: "text" },
     { key: "vendedor" as const, label: "Vendedor", icon: User, placeholder: "Ej: Juan García", type: "text" },
     { key: "telefono" as const, label: "Teléfono", icon: Phone, placeholder: "Ej: +54 11 1234-5678", type: "tel" },
+    { key: "alias" as const, label: "Alias", icon: Fingerprint, placeholder: "Ej: juancito_ventas", type: "text" },
   ]
 
   return (
