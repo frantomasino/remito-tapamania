@@ -248,10 +248,12 @@ const ProductRow = memo(function ProductRow({
         </button>
 
         {/* Botón cantidad con input inline */}
-        <QtyButton
-          count={selectedCount}
-          onConfirm={(qty) => onSetQuantity(product, selectedOpt || undefined, qty)}
-        />
+        <div {...(isFirst ? { "data-onboarding": "add-qty" } : {})}>
+  <QtyButton
+    count={selectedCount}
+    onConfirm={(qty) => onSetQuantity(product, selectedOpt || undefined, qty)}
+  />
+</div>
       </div>
     </article>
   )

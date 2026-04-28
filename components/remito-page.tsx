@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useRef, useCallback, useEffect, useMemo, startTransition, useLayoutEffect } from "react"
 import dynamic from "next/dynamic"
 import {
-  Printer, FileText, CheckCircle2, Loader2, Eye,
+  Printer, CheckCircle2, Loader2, Eye,
   Bluetooth, ChevronDown, ChevronUp, Plus, WifiOff,
   ClipboardList, PlusCircle, Settings2,
 } from "lucide-react"
@@ -35,7 +35,7 @@ const PRICE_LISTS: { id: PriceListId; label: string }[] = [
 ]
 
 const navItems = [
-  { href: "/dashboard/pedidos", label: "Pedidos", icon: ClipboardList },
+  { href: "/dashboard/pedidos", label: "Historial", icon: ClipboardList },
   { href: "/dashboard/nuevo", label: "Nuevo", icon: PlusCircle, primary: true },
   { href: "/dashboard/perfil", label: "Cuenta", icon: Settings2 },
 ]
@@ -49,7 +49,6 @@ function getTodayISODate(): string { return new Date().toISOString().slice(0, 10
 
 const LS_BASE_KEYS = { productsCache: "productsCache", draft: "remitoDraft" } as const
 function k(base: string, userId: string) { return `${base}:${userId}` }
-const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
 
 const BOTTOM_NAV_PX = 72
 const ACTION_BAR_PX = 60
@@ -63,6 +62,9 @@ export default function RemitoPage() {
   const pathname = usePathname()
   const [userId, setUserId] = useState<string>("")
   const [empresa, setEmpresa] = useState<string>("")
+  const [vendedor, setVendedor] = useState<string>("")
+  const [telefono, setTelefono] = useState<string>("")
+  const [aliasMP, setAliasMP] = useState<string>("")
   const [products, setProducts] = useState<Product[]>([])
   const [items, setItems] = useState<LineItem[]>([])
   const [client, setClient] = useState<ClientData>(defaultClient)
@@ -76,7 +78,7 @@ export default function RemitoPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isPrintingBluetooth, setIsPrintingBluetooth] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
-  const [actionBarCollapsed, setActionBarCollapsed] = useState(true)
+  const [actionBarCollapsed, setActionBarCollapsed] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
   const [toastText, setToastText] = useState("")
 
@@ -138,11 +140,21 @@ export default function RemitoPage() {
     if (!userId) return
     const load = async () => {
       try {
-        const { data: profile } = await supabase.from("profiles").select("next_remito_number, selected_price_list, empresa").eq("id", userId).single()
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("next_remito_number, selected_price_list, empresa, vendedor, telefono, alias")
+          .eq("id", userId)
+          .single()
+
         if (profile?.next_remito_number && Number(profile.next_remito_number) > 0) setNextNumber(Number(profile.next_remito_number))
         if (profile?.empresa) setEmpresa(profile.empresa)
+        if (profile?.vendedor) setVendedor(profile.vendedor)
+        if (profile?.telefono) setTelefono(profile.telefono)
+        if (profile?.alias) setAliasMP(profile.alias)
+
         const sel = profile?.selected_price_list
         if (sel === "minorista" || sel === "mayorista" || sel === "oferta") setPriceListId(sel)
+
         const raw = localStorage.getItem(k(LS_BASE_KEYS.productsCache, userId))
         if (raw) {
           const parsed = JSON.parse(raw) as Record<PriceListId, ProductsCacheEntry>
@@ -212,7 +224,13 @@ export default function RemitoPage() {
 
   const canPrint = items.filter(i => i.cantidad > 0).length > 0
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
-  const fixedBottomPx = BOTTOM_NAV_PX + (canPrint ? (actionBarCollapsed ? 0 : ACTION_BAR_PX) : 0)
+  const fixedBottomPx = BOTTOM_NAV_PX + (canPrint ? (actionBarCollapsed ? 12 : ACTION_BAR_PX) : 0)
+
+  // Abre automático cuando hay items, cierra cuando se vacía
+  useEffect(() => {
+    if (canPrint) setActionBarCollapsed(false)
+    else setActionBarCollapsed(true)
+  }, [canPrint])
 
   const handleItemsChange = useCallback<React.Dispatch<React.SetStateAction<LineItem[]>>>((updater) => {
     setItems((prev) => typeof updater === "function" ? updater(prev) : updater)
@@ -220,7 +238,7 @@ export default function RemitoPage() {
 
   const advanceAndReset = useCallback((nextVisibleNumber: number, successData: SuccessState) => {
     setSuccessState(successData); setNextNumber(nextVisibleNumber); setClient(defaultClient); setItems([])
-    setActionBarCollapsed(true); clearDraft(userId); remitoDateRef.current = getTodayDateSafe()
+    clearDraft(userId); remitoDateRef.current = getTodayDateSafe()
   }, [userId, clearDraft])
 
   const persistRemito = useCallback(async (): Promise<{ nextNumber: number; remitoId: string } | null> => {
@@ -250,11 +268,88 @@ export default function RemitoPage() {
   }, [isOnline, userId, supabase, showToast])
 
   const buildPrintHtml = useCallback(() => {
-    const printable = document.getElementById("printable-remito")
-    if (!printable) return null
-    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map((el) => el.outerHTML).join("\n")
-    return `<!doctype html><html><head><meta charset="utf-8"/><title>Remito</title>${styles}<style>@page{size:58mm auto;margin:0}html,body{margin:0;padding:0;width:58mm;background:#fff;color:#000;font-family:monospace}.topbar{display:flex;gap:8px;justify-content:flex-end;padding:10px 8px;background:#fff;border-bottom:1px solid #ddd}.btn{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid #d0d0d0;background:#fff;color:#111;font-size:14px;font-weight:600;display:inline-flex;align-items:center}.btn-primary{background:#111;color:#fff;border-color:#111}.sheet{width:48mm;margin:0 auto}@media print{.topbar{display:none!important}}</style></head><body><div class="topbar"><button class="btn" id="btnClose">Cerrar</button><button class="btn btn-primary" id="btnPrint">Imprimir</button></div><div class="sheet">${printable.outerHTML}</div><script>document.getElementById("btnPrint").onclick=()=>window.print();document.getElementById("btnClose").onclick=()=>window.history.length>1?window.history.back():window.close()<\/script></body></html>`
-  }, [])
+    const _empresa = empresa
+    const _vendedor = vendedor
+    const _telefono = telefono
+    const _alias = aliasMP
+    const _numero = remitoNumero
+    const _fecha = remitoDateRef.current
+    const items = itemsRef.current
+    const client = clientRef.current
+    const total = items.reduce((s, i) => s + i.subtotal, 0)
+    const totalUnidades = items.reduce((s, i) => s + i.cantidad, 0)
+    const totalDevolucion = items.reduce((s, i) => s + (i.devolucion ?? 0), 0)
+    const comercio = client.nombre?.trim() || "Sin especificar"
+
+    const groups = new Map<string, { title: string; precio: number; totalCantidad: number; totalSubtotal: number; totalDevolucion: number; opciones: Array<{opcion: string; cantidad: number; devolucion: number}>; hasOpciones: boolean }>()
+    for (const item of items) {
+      const baseDesc = item.product.descripcion
+      const title = baseDesc.replace(/\([^)]*\)/g, "").replace(/\s{2,}/g, " ").trim()
+      if (groups.has(baseDesc)) {
+        const g = groups.get(baseDesc)!
+        g.totalCantidad += item.cantidad; g.totalSubtotal += item.subtotal; g.totalDevolucion += item.devolucion ?? 0
+        if (item.opcion) { g.opciones.push({ opcion: item.opcion, cantidad: item.cantidad, devolucion: item.devolucion ?? 0 }); g.hasOpciones = true }
+      } else {
+        groups.set(baseDesc, { title, precio: item.product.precio, totalCantidad: item.cantidad, totalSubtotal: item.subtotal, totalDevolucion: item.devolucion ?? 0, opciones: item.opcion ? [{ opcion: item.opcion, cantidad: item.cantidad, devolucion: item.devolucion ?? 0 }] : [], hasOpciones: !!item.opcion })
+      }
+    }
+
+    const fmt = (n: number) => n.toLocaleString("es-AR", { style: "currency", currency: "ARS" })
+    const itemsHtml = Array.from(groups.values()).map(g => `
+      <div style="border-bottom:1px dashed #000;padding:3px 0;">
+        <div style="font-weight:bold;">${g.title} <span style="font-weight:normal;">x${g.totalCantidad}</span></div>
+        ${g.hasOpciones ? `<div style="font-size:9px;color:#666;">${g.opciones.filter(o=>o.cantidad>0).map(o=>`${o.opcion} ${o.cantidad}`).join(", ")}</div>` : ""}
+        ${g.totalDevolucion > 0 ? `<div style="font-size:9px;">Dev: ${g.hasOpciones ? g.opciones.filter(o=>o.devolucion>0).map(o=>`${o.devolucion} ${o.opcion}`).join(", ") : g.totalDevolucion}</div>` : ""}
+        <div style="display:flex;justify-content:space-between;"><span>${g.totalCantidad} x ${fmt(g.precio)}</span><span style="font-weight:bold;">${fmt(g.totalSubtotal)}</span></div>
+      </div>`).join("")
+
+    return `<!doctype html><html><head><meta charset="utf-8"/><title>Remito</title>
+    <style>
+      @page{size:58mm auto;margin:0}
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:monospace;font-size:10px;background:#fff;color:#000;width:58mm;}
+      .topbar{display:flex;gap:8px;justify-content:flex-end;padding:10px 8px;background:#fff;border-bottom:1px solid #ddd;}
+      .btn{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid #d0d0d0;background:#fff;color:#111;font-size:14px;font-weight:600;display:inline-flex;align-items:center;cursor:pointer;}
+      .btn-primary{background:#111;color:#fff;border-color:#111;}
+      .sheet{width:48mm;margin:0 auto;padding:2mm;}
+      .center{text-align:center;}
+      .row{display:flex;justify-content:space-between;margin-top:2px;}
+      @media print{.topbar{display:none!important}}
+    </style></head>
+    <body>
+    <div class="topbar">
+      <button class="btn" id="btnClose">Cerrar</button>
+      <button class="btn btn-primary" id="btnPrint">Imprimir</button>
+    </div>
+    <div class="sheet">
+      <div class="center" style="border-bottom:1px dashed #000;padding-bottom:3px;">
+        <div style="font-weight:bold;font-size:12px;text-transform:uppercase;">${_empresa || "Remito"}</div>
+        ${_telefono ? `<div style="font-size:9px;">${_telefono}</div>` : ""}
+        ${_alias ? `<div style="font-weight:bold;font-size:11px;font-style:italic;">Alias: ${_alias}</div>` : ""}
+        <div style="font-weight:bold;margin-top:2px;">Remito - Pedido</div>
+        <div>N° ${_numero}</div>
+        <div>${_fecha}</div>
+      </div>
+      <div style="border-bottom:1px dashed #000;padding:3px 0;">
+        <div class="row"><span style="font-weight:bold;">Comercio:</span><span>${comercio}</span></div>
+        ${_vendedor ? `<div class="row"><span style="font-weight:bold;">Vendedor:</span><span>${_vendedor}</span></div>` : ""}
+        <div class="row"><span style="font-weight:bold;">Items:</span><span>${groups.size}</span></div>
+        <div class="row"><span style="font-weight:bold;">Unidades:</span><span>${totalUnidades}</span></div>
+        ${totalDevolucion > 0 ? `<div class="row"><span style="font-weight:bold;">Devoluciones:</span><span>${totalDevolucion}</span></div>` : ""}
+      </div>
+      <div style="border-bottom:1px dashed #000;padding:3px 0;">
+        <div class="row" style="font-weight:bold;"><span>Producto</span><span>Subtotal</span></div>
+      </div>
+      ${itemsHtml}
+      <div style="border-top:1px dashed #000;padding-top:3px;">
+        <div class="row"><span>Subtotal</span><span>${fmt(total)}</span></div>
+        <div class="row" style="font-weight:bold;font-size:12px;"><span>TOTAL</span><span>${fmt(total)}</span></div>
+      </div>
+      <div class="center" style="padding-top:4px;font-size:9px;">Gracias</div>
+    </div>
+    <script>document.getElementById("btnPrint").onclick=()=>window.print();document.getElementById("btnClose").onclick=()=>window.history.length>1?window.history.back():window.close()<\/script>
+    </body></html>`
+  }, [empresa, vendedor, telefono, aliasMP, remitoNumero])
 
   const openPrintWindowImmediate = useCallback(() => {
     const html = buildPrintHtml(); if (!html) return null
@@ -278,7 +373,7 @@ export default function RemitoPage() {
     const successData = { numero: remitoNumero, cliente: clientRef.current.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     try {
       setIsPrintingBluetooth(true); showToast("Buscando impresora...")
-      const payload = buildRemitoEscPos(remitoData)
+      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, aliasMP)
       const { device, characteristic } = await connectBlePrinter()
       showToast(`Conectado a ${device.name?.trim() || "impresora"}. Enviando...`)
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
@@ -292,21 +387,49 @@ export default function RemitoPage() {
       if (/no parece compatible/i.test(msg)) { showToast("La impresora no es compatible"); return }
       showToast("No se pudo conectar con la impresora")
     } finally { setIsPrintingBluetooth(false) }
-  }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, total, totalUnits, remitoData, persistRemito, advanceAndReset, showToast])
+  }, [isOnline, canPrint, isSaving, isPrintingBluetooth, remitoNumero, total, totalUnits, remitoData, empresa, vendedor, persistRemito, advanceAndReset, showToast])
 
   const confirmNewRemito = useCallback(() => {
     setClient(defaultClient); setItems([]); setShowConfirmNew(false)
-    setActionBarCollapsed(true); clearDraft(userId); showToast("Nuevo remito listo")
+    clearDraft(userId); showToast("Nuevo remito listo")
   }, [showToast, userId, clearDraft])
 
   if (!mounted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-[#1565c0] text-white">
-            <FileText className="size-4" />
+      <div className="min-h-screen bg-gray-100">
+        <div className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm px-4 py-2.5">
+          <div className="mx-auto flex w-full max-w-md items-center gap-2">
+            <div className="flex-1 h-4 w-32 animate-pulse rounded-lg bg-gray-200" />
+            <div className="h-8 w-24 animate-pulse rounded-lg bg-gray-200" />
+            <div className="h-8 w-16 animate-pulse rounded-lg bg-gray-200" />
           </div>
-          <p className="text-sm font-medium text-gray-600">Cargando...</p>
+        </div>
+        <div className="mx-auto w-full max-w-md px-4 pt-3 space-y-3">
+          <div className="h-11 w-full animate-pulse rounded-xl bg-gray-200" />
+          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+            <div className="px-3 divide-y divide-gray-100">
+              {[1,2,3,4,5].map(i => (
+                <div key={i} className="py-3 flex items-center gap-2">
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-40 animate-pulse rounded bg-gray-200" />
+                    <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
+                  </div>
+                  <div className="h-10 w-10 animate-pulse rounded-xl bg-gray-200" />
+                  <div className="h-10 w-10 animate-pulse rounded-xl bg-gray-200" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="fixed inset-x-0 bottom-0 bg-white border-t border-gray-200 shadow-sm">
+          <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 py-2">
+            {[1,2,3].map(i => (
+              <div key={i} className="flex flex-col items-center gap-1">
+                <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                <div className="h-2.5 w-10 animate-pulse rounded bg-gray-200" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -352,7 +475,7 @@ export default function RemitoPage() {
     <>
       <div className="min-h-screen overflow-x-hidden bg-gray-100">
 
-        {/* ── HEADER ── */}
+        {/* HEADER */}
         <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
           <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
             <div className="min-w-0 flex-1">
@@ -370,11 +493,7 @@ export default function RemitoPage() {
               <Plus className="size-3" />Nuevo
             </button>
           </div>
-
-          <div className={cn(
-            "overflow-hidden transition-all duration-150",
-            isOnline ? "max-h-0" : "max-h-20"
-          )}>
+          <div className={cn("overflow-hidden transition-all duration-150", isOnline ? "max-h-0" : "max-h-20")}>
             <div className="flex items-center gap-2 border-t border-red-200 bg-red-50 px-4 py-2.5">
               <WifiOff className="size-3.5 shrink-0 text-red-500" />
               <p className="text-[12px] font-semibold text-red-600">Sin internet — no podés imprimir hasta recuperar señal</p>
@@ -382,7 +501,7 @@ export default function RemitoPage() {
           </div>
         </header>
 
-        {/* ── CONTENIDO ── */}
+        {/* CONTENIDO */}
         <main className="mx-auto w-full max-w-md px-4 pt-3"
           style={{ paddingBottom: `calc(${fixedBottomPx}px + env(safe-area-inset-bottom) + 24px)` }}>
           <div className="mb-3">
@@ -397,19 +516,20 @@ export default function RemitoPage() {
           )}
         </main>
 
-        {/* ── BLOQUE FIJO INFERIOR ── */}
+        {/* BLOQUE FIJO INFERIOR */}
         <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
           {canPrint && (
             <div className="border-b border-gray-100">
-              <div className={cn(
-                "overflow-hidden transition-all duration-150",
-                actionBarCollapsed ? "max-h-0" : "max-h-24"
-              )}>
-                <div
-                  className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-3 cursor-pointer select-none"
-                  onClick={() => setActionBarCollapsed(true)}
-                >
-                  <ChevronDown className="size-4 shrink-0 text-gray-300" />
+
+              {/* Barra completa — tocar cualquier lugar la cierra */}
+              <div
+                className={cn(
+                  "overflow-hidden transition-all duration-200",
+                  actionBarCollapsed ? "max-h-0" : "max-h-24"
+                )}
+                onClick={() => setActionBarCollapsed(true)}
+              >
+                <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pb-3 pt-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
                     <p className="text-[11px] text-gray-400 mt-0.5">
@@ -423,8 +543,8 @@ export default function RemitoPage() {
                     <Eye className="size-3.5" />Ver
                   </button>
                   {!isOnline ? (
-                    <div className="flex h-10 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-[12px] font-medium text-red-500"
-                      onClick={(e) => e.stopPropagation()}>
+                    <div onClick={(e) => e.stopPropagation()}
+                      className="flex h-10 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 text-[12px] font-medium text-red-500">
                       <WifiOff className="size-3.5" />Sin señal
                     </div>
                   ) : (
@@ -438,14 +558,21 @@ export default function RemitoPage() {
                   )}
                 </div>
               </div>
-              {actionBarCollapsed && (
-                <button type="button" onClick={() => setActionBarCollapsed(false)}
-                  className="flex w-full items-center justify-center gap-2 py-1.5 active:opacity-60">
-                  <div className="h-0.5 w-8 rounded-full bg-gray-200" />
-                  <ChevronUp className="size-3.5 text-gray-300" />
-                  <div className="h-0.5 w-8 rounded-full bg-gray-200" />
-                </button>
-              )}
+
+              {/* Handle — toca para abrir/cerrar */}
+              <button
+                type="button"
+                onClick={() => setActionBarCollapsed(v => !v)}
+                className="flex w-full items-center justify-center gap-2 py-1 active:opacity-60"
+              >
+                <div className="h-[2px] w-8 rounded-full bg-gray-200" />
+                {actionBarCollapsed
+                  ? <ChevronUp className="size-3.5 text-gray-400" />
+                  : <ChevronDown className="size-3.5 text-gray-400" />
+                }
+                <div className="h-[2px] w-8 rounded-full bg-gray-200" />
+              </button>
+
             </div>
           )}
 
@@ -466,7 +593,9 @@ export default function RemitoPage() {
                   )
                 }
                 return (
-                  <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
+                  <Link key={item.href} href={item.href} prefetch
+                    {...(item.href === "/dashboard/pedidos" ? { "data-onboarding": "nav-pedidos" } : {})}
+                    className="flex items-center justify-center active:opacity-60">
                     <div className={cn(
                       "flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl transition-colors",
                       isActive ? "text-[#1565c0]" : "text-gray-400"
@@ -483,15 +612,13 @@ export default function RemitoPage() {
           </nav>
         </div>
 
-        {/* ── TOAST ── */}
-        <div
-          className={cn(
+        {/* TOAST */}
+        <div className={cn(
             "fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 transition-all duration-200",
             toastVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
           )}
           style={{ bottom: `calc(${fixedBottomPx}px + env(safe-area-inset-bottom) + 10px)` }}
-          role="alert"
-        >
+          role="alert">
           <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-lg">
             <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#1565c0] text-white">
               <CheckCircle2 className="size-3" />
@@ -501,7 +628,7 @@ export default function RemitoPage() {
         </div>
       </div>
 
-      {/* ── MODAL: Ver ticket ── */}
+      {/* MODAL: Ver ticket */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent showCloseButton={false} className="fixed left-1/2 top-1/2 z-50 flex h-[100dvh] w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-none border-0 bg-gray-100 p-0 sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-sm sm:rounded-2xl sm:border sm:border-gray-200">
           <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2.5">
@@ -510,7 +637,7 @@ export default function RemitoPage() {
           </div>
           <div className="flex-1 overflow-y-auto bg-gray-300 px-4 py-4">
             <div className="mx-auto w-fit overflow-hidden rounded-xl bg-white shadow-sm">
-              <RemitoPrint data={remitoData} empresa={empresa} />
+              <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} />
             </div>
           </div>
           <div className="border-t border-gray-200 bg-white px-4 py-2.5">
@@ -523,7 +650,7 @@ export default function RemitoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── MODAL: Confirmar nuevo remito ── */}
+      {/* MODAL: Confirmar nuevo remito */}
       <Dialog open={showConfirmNew} onOpenChange={setShowConfirmNew}>
         <DialogContent className="max-w-sm rounded-2xl border-gray-200 bg-white">
           <DialogHeader>
@@ -538,7 +665,9 @@ export default function RemitoPage() {
       </Dialog>
 
       <div className="hidden" aria-hidden="true">
-        <div id="printable-remito"><RemitoPrint data={remitoData} empresa={empresa} /></div>
+        <div id="printable-remito">
+          <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} />
+        </div>
       </div>
     </>
   )

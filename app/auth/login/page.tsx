@@ -32,14 +32,15 @@ export default function LoginPage() {
       const userId = signInData.user?.id
       const userEmail = signInData.user?.email ?? email
       if (userId) {
-        await supabase.from("profiles").upsert(
+        // Fire and forget — no bloqueamos el redirect
+        void supabase.from("profiles").upsert(
           { id: userId, email: userEmail, last_login_at: new Date().toISOString() },
           { onConflict: "id" }
         )
       }
     } catch {}
 
-    router.push("/dashboard")
+    router.push("/dashboard/nuevo")
     router.refresh()
   }
 

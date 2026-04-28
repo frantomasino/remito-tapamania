@@ -26,15 +26,15 @@ const STEPS: Step[] = [
   },
   {
     target: "nav-pedidos",
-    title: "Cuando terminás, imprimí",
-    desc: "Al agregar productos aparece abajo el total y el botón Imprimir. Al imprimir se guarda el remito automáticamente en Pedidos.",
+    title: "Revisá tus pedidos",
+    desc: "Al imprimir el remito se guarda automáticamente acá. Podés filtrar por día, semana o mes y ver formas de pago.",
     position: "top",
   },
   {
-    target: "nav-pedidos",
-    title: "Revisá tus pedidos",
-    desc: "Todos los remitos quedan guardados acá. Podés filtrar por día, semana o mes y registrar formas de pago.",
-    position: "top",
+    target: "",
+    title: "Total e Imprimir",
+    desc: "Cuando agregás productos aparece abajo el total, el botón Ver para previsualizar y el botón Imprimir para enviar.",
+    position: "bottom",
   },
 ]
 
@@ -104,12 +104,49 @@ export function Onboarding({ userId }: OnboardingProps) {
   let tooltipLeft = 16
 
   if (rect) {
-   tooltipTop = current.position === "bottom"
-  ? rect.top + rect.height + PAD + 8
-  : rect.top - 220 - PAD
+    tooltipTop = current.position === "bottom"
+      ? rect.top + rect.height + PAD + 8
+      : rect.top - 220 - PAD
     tooltipLeft = Math.max(16, Math.min(rect.left, vw - tooltipW - 16))
     tooltipTop = Math.max(60, Math.min(tooltipTop, vh - 210))
   }
+
+  const tooltipContent = (
+    <>
+      <div className="flex items-center justify-between px-4 pt-3 pb-0">
+        <div className="flex items-center gap-1.5">
+          {STEPS.map((_, i) => (
+            <div key={i} className={cn(
+              "rounded-full transition-all duration-200",
+              i === step ? "w-5 h-2 bg-white" : i < step ? "w-2 h-2 bg-white opacity-30" : "w-2 h-2 bg-white opacity-15"
+            )} />
+          ))}
+        </div>
+        <button type="button" onClick={dismiss}
+          className="flex h-7 w-7 items-center justify-center rounded-full active:opacity-60"
+          style={{ background: "rgba(255,255,255,0.15)" }}>
+          <X className="size-3.5 text-white" />
+        </button>
+      </div>
+      <div className="px-4 pt-3 pb-1">
+        <p className="text-[15px] font-semibold text-white">{current.title}</p>
+        <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "rgba(255,255,255,0.7)" }}>{current.desc}</p>
+      </div>
+      <div className="flex items-center gap-2 px-4 py-3">
+        <button type="button" onClick={dismiss}
+          className="text-[12px] px-1 py-1.5 active:opacity-60"
+          style={{ color: "rgba(255,255,255,0.5)" }}>
+          Omitir
+        </button>
+        <button type="button" onClick={next}
+          className="flex flex-1 items-center justify-center gap-1 h-10 rounded-xl text-[13px] font-semibold active:opacity-80"
+          style={{ background: "#1565c0", color: "#fff" }}>
+          {isLast ? "¡Listo!" : "Siguiente"}
+          {!isLast && <ChevronRight className="size-4" />}
+        </button>
+      </div>
+    </>
+  )
 
   return (
     <div className="fixed inset-0 z-[100]" style={{ pointerEvents: "none" }}>
@@ -131,6 +168,11 @@ export function Onboarding({ userId }: OnboardingProps) {
         </svg>
       )}
 
+      {/* Overlay sin hueco cuando no encuentra el elemento */}
+      {!ready && visible && (
+        <div className="absolute inset-0 bg-black/65" style={{ pointerEvents: "all" }} onClick={next} />
+      )}
+
       {/* Borde highlight */}
       {rect && ready && (
         <div className="absolute rounded-xl pointer-events-none" style={{
@@ -142,7 +184,7 @@ export function Onboarding({ userId }: OnboardingProps) {
         }} />
       )}
 
-      {/* Tooltip oscuro azul */}
+      {/* Tooltip con elemento resaltado */}
       {ready && (
         <div className="absolute rounded-2xl overflow-hidden shadow-2xl"
           style={{
@@ -151,59 +193,15 @@ export function Onboarding({ userId }: OnboardingProps) {
             pointerEvents: "all",
             transition: "top 0.2s ease, left 0.2s ease",
           }}>
-
-          {/* Dots + cerrar */}
-          <div className="flex items-center justify-between px-4 pt-3 pb-0">
-            <div className="flex items-center gap-1.5">
-              {STEPS.map((_, i) => (
-                <div key={i} className={cn(
-                  "rounded-full transition-all duration-200",
-                  i === step ? "w-5 h-2 bg-white" : i < step ? "w-2 h-2 bg-white opacity-30" : "w-2 h-2 bg-white opacity-15"
-                )} />
-              ))}
-            </div>
-            <button type="button" onClick={dismiss}
-              className="flex h-7 w-7 items-center justify-center rounded-full active:opacity-60"
-              style={{ background: "rgba(255,255,255,0.15)" }}>
-              <X className="size-3.5 text-white" />
-            </button>
-          </div>
-
-          <div className="px-4 pt-3 pb-1">
-            <p className="text-[15px] font-semibold text-white">{current.title}</p>
-            <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "rgba(255,255,255,0.7)" }}>{current.desc}</p>
-          </div>
-
-          <div className="flex items-center gap-2 px-4 py-3">
-            <button type="button" onClick={dismiss}
-              className="text-[12px] px-1 py-1.5 active:opacity-60"
-              style={{ color: "rgba(255,255,255,0.5)" }}>
-              Omitir
-            </button>
-            <button type="button" onClick={next}
-              className="flex flex-1 items-center justify-center gap-1 h-10 rounded-xl text-[13px] font-semibold active:opacity-80"
-              style={{ background: "#1565c0", color: "#fff" }}>
-              {isLast ? "¡Listo!" : "Siguiente"}
-              {!isLast && <ChevronRight className="size-4" />}
-            </button>
-          </div>
+          {tooltipContent}
         </div>
       )}
 
-      {/* Fallback */}
-      {!ready && visible && step === 0 && (
+      {/* Fallback centrado cuando no encuentra el elemento */}
+      {!ready && visible && (
         <div className="absolute inset-0 flex items-center justify-center" style={{ pointerEvents: "all" }}>
-          <div className="rounded-2xl shadow-2xl px-5 py-5 mx-4 max-w-sm w-full" style={{ background: "#0d2b5e" }}>
-            <p className="text-[15px] font-semibold text-white">{current.title}</p>
-            <p className="mt-1 text-[13px]" style={{ color: "rgba(255,255,255,0.7)" }}>{current.desc}</p>
-            <div className="flex gap-2 mt-4">
-              <button type="button" onClick={dismiss} className="text-[12px] px-2" style={{ color: "rgba(255,255,255,0.5)" }}>Omitir</button>
-              <button type="button" onClick={next}
-                className="flex flex-1 items-center justify-center gap-1 h-10 rounded-xl text-[13px] font-semibold text-white active:opacity-80"
-                style={{ background: "#1565c0" }}>
-                {isLast ? "¡Listo!" : "Siguiente"}{!isLast && <ChevronRight className="size-4" />}
-              </button>
-            </div>
+          <div className="rounded-2xl shadow-2xl overflow-hidden mx-4 w-full max-w-sm" style={{ background: "#0d2b5e" }}>
+            {tooltipContent}
           </div>
         </div>
       )}
