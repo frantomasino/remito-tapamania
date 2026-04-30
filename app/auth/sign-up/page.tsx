@@ -14,7 +14,24 @@ export default function SignUpPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [loadingGoogle, setLoadingGoogle] = useState(false)
   const router = useRouter()
+
+  async function handleGoogleLogin() {
+    setLoadingGoogle(true)
+    setError(null)
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) {
+      setError("No se pudo iniciar sesión con Google")
+      setLoadingGoogle(false)
+    }
+  }
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
@@ -68,6 +85,37 @@ export default function SignUpPage() {
 
         {/* ── FORMULARIO ── */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+
+          {/* Botón Google */}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loadingGoogle || loading}
+            className="flex h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-gray-300 bg-white text-[14px] font-medium text-gray-700 active:opacity-60 disabled:opacity-40 shadow-sm mb-4"
+          >
+            {loadingGoogle ? (
+              <svg className="size-4 animate-spin text-gray-400" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                <path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+            )}
+            {loadingGoogle ? "Conectando..." : "Registrarse con Google"}
+          </button>
+
+          {/* Divisor */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-[11px] text-gray-400 font-medium">o creá tu cuenta con email</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
           <form onSubmit={handleSignUp} className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="email" className="text-[12px] font-medium text-gray-600">Email</label>
@@ -136,7 +184,7 @@ export default function SignUpPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || loadingGoogle}
               className="mt-1 h-11 w-full rounded-xl bg-[#1565c0] text-[14px] font-semibold text-white active:opacity-80 disabled:opacity-40 shadow-sm"
             >
               {loading ? "Creando cuenta..." : "Crear cuenta"}

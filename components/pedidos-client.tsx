@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useRef, useEffect } from "react"
 import Link from "next/link"
-import { Plus, ClipboardList, Loader2, Printer, Trash2, ChevronRight, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, Minus, BarChart2, X, Banknote, Smartphone } from "lucide-react"
+import { Plus, ClipboardList, Loader2, Printer, Trash2, ChevronRight, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, Minus, X, Banknote, Smartphone } from "lucide-react"
 import { type SaleRecord, formatCurrency } from "@/lib/remito-types"
 import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
 import { buildDailySummaryEscPos } from "@/lib/daily-summary-ticket-escpos"
@@ -164,7 +164,7 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
     return { count: records.length, total: records.reduce((s, r) => s + r.total, 0), compareLabel: null, pctTotal: null, pctCount: null }
   }, [records, groupBy])
 
-  // Resumen del día
+  // Resumen del día — total, efectivo y MP
   const resumenHoy = useMemo(() => {
     const today = getTodayISO()
     const hoy = records.filter(r => r.fecha === today)
@@ -253,10 +253,9 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
           <div className="absolute inset-0 bg-black/40" />
           <div className="relative w-full max-w-md rounded-t-3xl bg-white px-5 pb-8 pt-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}>
-            {/* Handle */}
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-gray-200" />
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-[17px] font-semibold text-gray-900">Resumen de hoy</h2>
+              <h2 className="text-[17px] font-semibold text-gray-900">Cobros de hoy</h2>
               <button type="button" onClick={() => setShowResumen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 active:opacity-60">
                 <X className="size-4" />
@@ -269,28 +268,28 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
               <div className="flex flex-col gap-3">
                 {/* Total grande */}
                 <div className="rounded-2xl bg-[#1565c0] px-5 py-4 text-white">
-                  <p className="text-[12px] font-medium opacity-80">Total del día</p>
+                  <p className="text-[12px] font-medium opacity-80">Total cobrado hoy</p>
                   <p className="text-[32px] font-bold tabular-nums leading-tight">{formatCurrency(resumenHoy.total)}</p>
                   <p className="text-[12px] opacity-70 mt-0.5">{resumenHoy.count} {resumenHoy.count === 1 ? "pedido" : "pedidos"}</p>
                 </div>
 
-                {/* Desglose */}
+                {/* Desglose efectivo vs MP */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
                     <div className="flex items-center gap-1.5 mb-1">
                       <Banknote className="size-3.5 text-green-600" />
                       <p className="text-[11px] font-medium text-green-700">Efectivo</p>
                     </div>
-                    <p className="text-[18px] font-bold text-green-800 tabular-nums">{formatCurrency(resumenHoy.efectivo.total)}</p>
-                    <p className="text-[11px] text-green-600 mt-0.5">{resumenHoy.efectivo.count} pedidos</p>
+                    <p className="text-[20px] font-bold text-green-800 tabular-nums leading-tight">{formatCurrency(resumenHoy.efectivo.total)}</p>
+                    <p className="text-[11px] text-green-600 mt-0.5">{resumenHoy.efectivo.count} {resumenHoy.efectivo.count === 1 ? "pedido" : "pedidos"}</p>
                   </div>
                   <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
                     <div className="flex items-center gap-1.5 mb-1">
                       <Smartphone className="size-3.5 text-blue-600" />
                       <p className="text-[11px] font-medium text-blue-700">Mercado Pago</p>
                     </div>
-                    <p className="text-[18px] font-bold text-blue-800 tabular-nums">{formatCurrency(resumenHoy.mp.total)}</p>
-                    <p className="text-[11px] text-blue-600 mt-0.5">{resumenHoy.mp.count} pedidos</p>
+                    <p className="text-[20px] font-bold text-blue-800 tabular-nums leading-tight">{formatCurrency(resumenHoy.mp.total)}</p>
+                    <p className="text-[11px] text-blue-600 mt-0.5">{resumenHoy.mp.count} {resumenHoy.mp.count === 1 ? "pedido" : "pedidos"}</p>
                   </div>
                 </div>
               </div>
@@ -321,17 +320,37 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
               <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{getTodayLabel()}</p>
               <h1 className="text-[18px] font-semibold leading-tight text-gray-900">Historial</h1>
             </div>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setShowResumen(true)}
-                className="flex h-8 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60 shadow-sm">
-                <BarChart2 className="size-3.5" />Resumen
-              </button>
-              <Link href="/dashboard/nuevo"
-                className="flex h-8 items-center gap-1.5 rounded-xl bg-[#1565c0] px-3 text-[13px] font-semibold text-white active:opacity-80 shadow-sm">
-                <Plus className="size-3.5" />Nuevo
-              </Link>
-            </div>
+            <Link href="/dashboard/nuevo"
+              className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 shadow-sm">
+              <Plus className="size-3.5" />Nuevo
+            </Link>
           </div>
+
+          {/* ── CARD COBROS DE HOY — solo si hay pedidos hoy ── */}
+          {resumenHoy.count > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowResumen(true)}
+              className="flex w-full items-center justify-between rounded-2xl bg-[#1565c0] px-5 py-4 text-white active:opacity-80 shadow-sm"
+            >
+              <div className="text-left">
+                <p className="text-[11px] font-medium opacity-70">Cobros de hoy</p>
+                <p className="text-[24px] font-bold tabular-nums leading-tight">{formatCurrency(resumenHoy.total)}</p>
+                <p className="text-[11px] opacity-60 mt-0.5">{resumenHoy.count} {resumenHoy.count === 1 ? "pedido" : "pedidos"}</p>
+              </div>
+              <div className="text-right flex flex-col gap-1.5">
+                <div className="flex items-center justify-end gap-1.5">
+                  <Banknote className="size-3.5 opacity-80" />
+                  <span className="text-[13px] font-semibold tabular-nums">{formatCurrency(resumenHoy.efectivo.total)}</span>
+                </div>
+                <div className="flex items-center justify-end gap-1.5">
+                  <Smartphone className="size-3.5 opacity-80" />
+                  <span className="text-[13px] font-semibold tabular-nums">{formatCurrency(resumenHoy.mp.total)}</span>
+                </div>
+                <p className="text-[10px] opacity-50 mt-0.5">Ver desglose →</p>
+              </div>
+            </button>
+          )}
 
           {/* ── FILTROS ── */}
           <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
