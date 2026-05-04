@@ -164,7 +164,6 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
     return { count: records.length, total: records.reduce((s, r) => s + r.total, 0), compareLabel: null, pctTotal: null, pctCount: null }
   }, [records, groupBy])
 
-  // Resumen del día — total, efectivo y MP
   const resumenHoy = useMemo(() => {
     const today = getTodayISO()
     const hoy = records.filter(r => r.fecha === today)
@@ -273,24 +272,28 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
                   <p className="text-[12px] opacity-70 mt-0.5">{resumenHoy.count} {resumenHoy.count === 1 ? "pedido" : "pedidos"}</p>
                 </div>
 
-                {/* Desglose efectivo vs MP */}
+                {/* Desglose — solo muestra la card si tiene monto > 0 */}
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Banknote className="size-3.5 text-green-600" />
-                      <p className="text-[11px] font-medium text-green-700">Efectivo</p>
+                  {resumenHoy.efectivo.total > 0 && (
+                    <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Banknote className="size-3.5 text-green-600" />
+                        <p className="text-[11px] font-medium text-green-700">Efectivo</p>
+                      </div>
+                      <p className="text-[20px] font-bold text-green-800 tabular-nums leading-tight">{formatCurrency(resumenHoy.efectivo.total)}</p>
+                      <p className="text-[11px] text-green-600 mt-0.5">{resumenHoy.efectivo.count} {resumenHoy.efectivo.count === 1 ? "pedido" : "pedidos"}</p>
                     </div>
-                    <p className="text-[20px] font-bold text-green-800 tabular-nums leading-tight">{formatCurrency(resumenHoy.efectivo.total)}</p>
-                    <p className="text-[11px] text-green-600 mt-0.5">{resumenHoy.efectivo.count} {resumenHoy.efectivo.count === 1 ? "pedido" : "pedidos"}</p>
-                  </div>
-                  <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Smartphone className="size-3.5 text-blue-600" />
-                      <p className="text-[11px] font-medium text-blue-700">Mercado Pago</p>
+                  )}
+                  {resumenHoy.mp.total > 0 && (
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Smartphone className="size-3.5 text-blue-600" />
+                        <p className="text-[11px] font-medium text-blue-700">Mercado Pago</p>
+                      </div>
+                      <p className="text-[20px] font-bold text-blue-800 tabular-nums leading-tight">{formatCurrency(resumenHoy.mp.total)}</p>
+                      <p className="text-[11px] text-blue-600 mt-0.5">{resumenHoy.mp.count} {resumenHoy.mp.count === 1 ? "pedido" : "pedidos"}</p>
                     </div>
-                    <p className="text-[20px] font-bold text-blue-800 tabular-nums leading-tight">{formatCurrency(resumenHoy.mp.total)}</p>
-                    <p className="text-[11px] text-blue-600 mt-0.5">{resumenHoy.mp.count} {resumenHoy.mp.count === 1 ? "pedido" : "pedidos"}</p>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
@@ -326,7 +329,7 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
             </Link>
           </div>
 
-          {/* ── CARD COBROS DE HOY — solo si hay pedidos hoy ── */}
+          {/* ── CARD COBROS DE HOY ── */}
           {resumenHoy.count > 0 && (
             <button
               type="button"
@@ -339,14 +342,19 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
                 <p className="text-[11px] opacity-60 mt-0.5">{resumenHoy.count} {resumenHoy.count === 1 ? "pedido" : "pedidos"}</p>
               </div>
               <div className="text-right flex flex-col gap-1.5">
-                <div className="flex items-center justify-end gap-1.5">
-                  <Banknote className="size-3.5 opacity-80" />
-                  <span className="text-[13px] font-semibold tabular-nums">{formatCurrency(resumenHoy.efectivo.total)}</span>
-                </div>
-                <div className="flex items-center justify-end gap-1.5">
-                  <Smartphone className="size-3.5 opacity-80" />
-                  <span className="text-[13px] font-semibold tabular-nums">{formatCurrency(resumenHoy.mp.total)}</span>
-                </div>
+                {/* Solo muestra el ícono si tiene monto > 0 */}
+                {resumenHoy.efectivo.total > 0 && (
+                  <div className="flex items-center justify-end gap-1.5">
+                    <Banknote className="size-3.5 opacity-80" />
+                    <span className="text-[13px] font-semibold tabular-nums">{formatCurrency(resumenHoy.efectivo.total)}</span>
+                  </div>
+                )}
+                {resumenHoy.mp.total > 0 && (
+                  <div className="flex items-center justify-end gap-1.5">
+                    <Smartphone className="size-3.5 opacity-80" />
+                    <span className="text-[13px] font-semibold tabular-nums">{formatCurrency(resumenHoy.mp.total)}</span>
+                  </div>
+                )}
                 <p className="text-[10px] opacity-50 mt-0.5">Ver desglose →</p>
               </div>
             </button>

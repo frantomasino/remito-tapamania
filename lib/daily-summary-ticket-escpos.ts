@@ -117,7 +117,6 @@ export function buildDailySummaryEscPos(data: DailySummaryData) {
   }
 
   // ── DESGLOSE POR FORMA DE PAGO ──
-  // Sin forma de pago registrada → se cuenta como Efectivo
   const efectivo = data.pedidos.filter(p => p.formaPagoCliente === "efectivo" || !p.formaPagoCliente)
   const mp = data.pedidos.filter(p => p.formaPagoCliente === "mercadopago")
 
@@ -144,24 +143,29 @@ export function buildDailySummaryEscPos(data: DailySummaryData) {
   parts.push(lf())
   parts.push(escPosBold(false))
 
+  // ── DETALLE POR PEDIDO ──
   parts.push(text(line()))
   parts.push(lf())
+
   for (const pedido of data.pedidos) {
+    // Número de pedido
     parts.push(escPosBold(true))
     parts.push(text(clean(pedido.numero)))
     parts.push(lf())
     parts.push(escPosBold(false))
 
+    // Cliente
     for (const row of wrapText(pedido.cliente || "Sin cliente", 32)) {
       parts.push(text(row))
       parts.push(lf())
     }
 
-    if (pedido.priceList) {
-      parts.push(text(PRICE_LIST_LABELS[pedido.priceList] ?? pedido.priceList))
-      parts.push(lf())
-    }
+    // Forma de pago del cliente
+    const fpLabel = pedido.formaPagoCliente === "mercadopago" ? "Mercado Pago" : "Efectivo"
+    parts.push(text(fpLabel))
+    parts.push(lf())
 
+    // Total
     parts.push(text(fitRight("Total", formatCurrency(pedido.total))))
     parts.push(lf())
     parts.push(text(line(24)))

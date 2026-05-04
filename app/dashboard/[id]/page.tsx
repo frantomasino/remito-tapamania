@@ -3,7 +3,9 @@ import { redirect, notFound } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import type { RemitoWithItems } from "@/lib/remito-types"
+import { formatRemitoNumber } from "@/lib/remito-types"
 import { FormaPagoSelector } from "@/components/forma-pago-selector"
+import { ReimprimirButton } from "@/components/reimprimir-button"
 
 function formatDate(dateStr: string) {
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString("es-AR", {
@@ -25,18 +27,55 @@ export default async function RemitoDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/auth/login")
 
-  const { data, error } = await supabase
-    .from("remitos")
-    .select("*, remito_items(*)")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single()
+  const [{ data, error }, { data: profile }] = await Promise.all([
+    supabase
+      .from("remitos")
+      .select("*, remito_items(*)")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single(),
+    supabase
+      .from("profiles")
+      .select("empresa, vendedor, telefono, alias")
+      .eq("id", user.id)
+      .single(),
+  ])
 
   if (error || !data) notFound()
 
   const remito = data as RemitoWithItems & { forma_pago?: string | null }
   const total = Number(remito.total || 0)
   const itemCount = remito.remito_items.length
+
+  const empresa = profile?.empresa ?? ""
+  const vendedor = profile?.vendedor ?? ""
+  const telefono = profile?.telefono ?? ""
+  const alias = profile?.alias ?? ""
+
+  // Armar remitoData para reimprimir
+  const remitoData = {
+    numero: remito.numero_remito,
+    fecha: formatDate(remito.fecha),
+    client: {
+      nombre: remito.cliente_nombre ?? "",
+      direccion: "",
+      telefono: "",
+      mail: "",
+      formaPago: "",
+    },
+    items: remito.remito_items.map((item) => ({
+      product: {
+        descripcion: item.descripcion,
+        precio: Number(item.precio_unitario ?? 0),
+      },
+      cantidad: item.cantidad,
+      subtotal: Number((item as { subtotal?: number | null }).subtotal ?? 0),
+      opcion: (item as { opcion?: string | null }).opcion ?? null,
+      devolucion: 0,
+    })),
+    subtotal: total,
+    total,
+  }
 
   return (
     <div className="mx-auto max-w-md px-4 pb-6 pt-3">
@@ -84,7 +123,7 @@ export default async function RemitoDetailPage({
             {remito.remito_items.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-gray-900 truncate">{item.descripcion}</p>
+                  <p className="text-[13px] font-semibold text-gray-900 break-words">{item.descripcion}</p>
                   <p className="text-[11px] text-gray-400">
                     {item.cantidad}{item.opcion ? ` · ${item.opcion}` : ""}
                   </p>
@@ -100,6 +139,15 @@ export default async function RemitoDetailPage({
             <p className="text-[15px] font-semibold text-gray-900 tabular-nums">{formatCurrency(total)}</p>
           </div>
         </div>
+
+        {/* ── REIMPRIMIR ── */}
+        <ReimprimirButton
+          remitoData={remitoData}
+          empresa={empresa}
+          vendedor={vendedor}
+          telefono={telefono}
+          alias={alias}
+        />
 
       </div>
     </div>

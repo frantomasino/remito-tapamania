@@ -36,7 +36,15 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-dvh flex-col items-center justify-center bg-gray-100 px-5">
       <div className="w-full max-w-sm">
 
+        {/* ── LOGO + TÍTULO ── */}
         <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-[#1565c0] shadow-sm">
+            <svg width="20" height="20" viewBox="0 0 18 18" fill="none">
+              <rect x="2" y="2" width="14" height="2" rx="1" fill="white"/>
+              <rect x="2" y="7" width="10" height="2" rx="1" fill="white"/>
+              <rect x="2" y="12" width="12" height="2" rx="1" fill="white"/>
+            </svg>
+          </div>
           <h1 className="text-[22px] font-semibold text-gray-900">Recuperar contraseña</h1>
           <p className="mt-1 text-[13px] text-gray-500">
             Te mandamos un link para restablecer el acceso.

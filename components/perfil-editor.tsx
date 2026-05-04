@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Building2, User, Phone, Pencil, Check, X, Loader2, Fingerprint } from "lucide-react"
+import { Building2, User, Phone, Pencil, Check, X, Loader2, Fingerprint, Share2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 
 interface PerfilEditorProps {
   userId: string
@@ -13,6 +14,7 @@ interface PerfilEditorProps {
 }
 
 export function PerfilEditor({ userId, initialEmpresa, initialVendedor, initialTelefono, initialAlias }: PerfilEditorProps) {
+  const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,21 +55,39 @@ export function PerfilEditor({ userId, initialEmpresa, initialVendedor, initialT
         .eq("id", userId)
 
       if (error) { setError("No se pudo guardar"); return }
-      
-      setSaved({ 
-        ...form, 
-        empresa: form.empresa.trim(), 
-        vendedor: form.vendedor.trim(), 
+
+      setSaved({
+        ...form,
+        empresa: form.empresa.trim(),
+        vendedor: form.vendedor.trim(),
         telefono: form.telefono.trim(),
-        alias: form.alias.trim() 
+        alias: form.alias.trim()
       })
       setEditing(false)
+      router.refresh() // refresca el Server Component para mostrar los datos nuevos
     } catch {
       setError("Error inesperado")
     } finally {
       setLoading(false)
     }
-  }, [form, userId])
+  }, [form, userId, router])
+
+  const handleCompartir = useCallback(() => {
+    const lineas: string[] = []
+
+    if (saved.empresa) lineas.push(`*${saved.empresa}*`)
+    if (saved.vendedor) lineas.push(`Vendedor: ${saved.vendedor}`)
+    if (saved.telefono) lineas.push(`Tel: ${saved.telefono}`)
+    if (saved.alias) lineas.push(`Alias MP: *${saved.alias}*`)
+
+    if (lineas.length === 0) return
+
+    const texto = lineas.join("\n")
+    const url = `https://wa.me/?text=${encodeURIComponent(texto)}`
+    window.open(url, "_blank")
+  }, [saved])
+
+  const tieneData = saved.empresa || saved.vendedor || saved.telefono || saved.alias
 
   const fields = [
     { key: "empresa" as const, label: "Empresa", icon: Building2, placeholder: "Ej: Tapamanía", type: "text" },
@@ -78,7 +98,7 @@ export function PerfilEditor({ userId, initialEmpresa, initialVendedor, initialT
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-      {/* Header de la card */}
+      {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 bg-gray-50">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Datos del negocio</p>
         {!editing ? (
@@ -128,6 +148,20 @@ export function PerfilEditor({ userId, initialEmpresa, initialVendedor, initialT
       </div>
 
       {error && <p className="px-3 pb-2 text-[12px] text-red-500">{error}</p>}
+
+      {/* Botón compartir */}
+      {!editing && tieneData && (
+        <div className="border-t border-gray-100 px-3 py-2.5">
+          <button
+            type="button"
+            onClick={handleCompartir}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-green-50 text-[13px] font-semibold text-green-700 active:opacity-70 transition-colors"
+          >
+            <Share2 className="size-4" />
+            Compartir info por WhatsApp
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -36,10 +36,12 @@ export default async function PerfilPage() {
     <div className="mx-auto max-w-md px-4 pb-6 pt-3">
       <div className="flex flex-col gap-3">
 
-        <div className="mb-1">
-          <h1 className="text-[18px] font-semibold text-gray-900">Cuenta</h1>
-          <p className="text-[12px] text-gray-500">Configuración y sesión</p>
-        </div>
+      <div className="mb-1">
+  <h1 className="text-[18px] font-semibold text-gray-900">
+    {vendedor ? `Hola, ${vendedor}` : empresa ? `Hola, ${empresa}` : "Cuenta"}
+  </h1>
+  <p className="text-[12px] text-gray-500">Configuración y sesión</p>
+</div>
 
         {/* ── EMAIL ── */}
         <div className="rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm">
@@ -87,13 +89,13 @@ export default async function PerfilPage() {
           </div>
         </div>
 
-        {/* ── SOPORTE ── */}
+        {/* ── SOPORTE — gris neutro para diferenciarlo del botón compartir verde ── */}
         <a
           href="https://wa.me/5491131256510?text=Hola%2C%20necesito%20ayuda%20con%20la%20app%20de%20remitos"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-green-200 bg-white py-2.5 text-[13px] font-medium text-green-600 active:opacity-60 shadow-sm">
-          <MessageCircle className="size-3.5" />
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2.5 text-[13px] font-medium text-gray-600 active:opacity-60 shadow-sm">
+          <MessageCircle className="size-3.5 text-gray-400" />
           Soporte por WhatsApp
         </a>
 

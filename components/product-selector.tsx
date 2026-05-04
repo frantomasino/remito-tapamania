@@ -209,18 +209,18 @@ const ProductRow = memo(function ProductRow({
                 const active = normalize(o) === normalize(selectedOpt)
                 return (
                   <button
-                    key={o}
-                    type="button"
-                    onClick={() => onSelectOption(product.descripcion, o)}
-                    className={cn(
-                      "rounded-full px-2.5 py-0.5 text-[12px] font-medium transition-colors border",
-                      active
-                        ? "bg-[#1565c0] text-white border-[#1565c0]"
-                        : "bg-white text-gray-600 border-gray-300"
-                    )}
-                  >
-                    {o}
-                  </button>
+  key={o}
+  type="button"
+  onClick={() => onSelectOption(product.descripcion, o)}
+  className={cn(
+    "rounded-full px-3 py-1 text-[13px] font-medium transition-colors border",
+    active
+      ? "bg-[#1565c0] text-white border-[#1565c0]"
+      : "bg-white text-gray-600 border-gray-300"
+  )}
+>
+  {o}
+</button>
                 )
               })}
             </div>
