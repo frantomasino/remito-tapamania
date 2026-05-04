@@ -70,7 +70,8 @@ export default async function RemitoDetailPage({
       },
       cantidad: item.cantidad,
       subtotal: Number((item as { subtotal?: number | null }).subtotal ?? 0),
-      opcion: (item as { opcion?: string | null }).opcion ?? null,
+      opcion: (item as { opcion?: string | null }).opcion ?? undefined,
+
       devolucion: 0,
     })),
     subtotal: total,
