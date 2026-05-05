@@ -209,18 +209,18 @@ const ProductRow = memo(function ProductRow({
                 const active = normalize(o) === normalize(selectedOpt)
                 return (
                   <button
-  key={o}
-  type="button"
-  onClick={() => onSelectOption(product.descripcion, o)}
-  className={cn(
-    "rounded-full px-3 py-1 text-[13px] font-medium transition-colors border",
-    active
-      ? "bg-[#1565c0] text-white border-[#1565c0]"
-      : "bg-white text-gray-600 border-gray-300"
-  )}
->
-  {o}
-</button>
+                    key={o}
+                    type="button"
+                    onClick={() => onSelectOption(product.descripcion, o)}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-[13px] font-medium transition-colors border",
+                      active
+                        ? "bg-[#1565c0] text-white border-[#1565c0]"
+                        : "bg-white text-gray-600 border-gray-300"
+                    )}
+                  >
+                    {o}
+                  </button>
                 )
               })}
             </div>
@@ -249,11 +249,11 @@ const ProductRow = memo(function ProductRow({
 
         {/* Botón cantidad con input inline */}
         <div {...(isFirst ? { "data-onboarding": "add-qty" } : {})}>
-  <QtyButton
-    count={selectedCount}
-    onConfirm={(qty) => onSetQuantity(product, selectedOpt || undefined, qty)}
-  />
-</div>
+          <QtyButton
+            count={selectedCount}
+            onConfirm={(qty) => onSetQuantity(product, selectedOpt || undefined, qty)}
+          />
+        </div>
       </div>
     </article>
   )
@@ -445,13 +445,11 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const prevLengthRef = useRef(0)
   const scrollRef = useRef(0)
   useEffect(() => {
-    // Guardar scroll ANTES del cambio
     scrollRef.current = window.scrollY
   })
   useEffect(() => {
     if (prevLengthRef.current !== items.length) {
       prevLengthRef.current = items.length
-      // Restaurar scroll en el próximo frame
       const saved = scrollRef.current
       requestAnimationFrame(() => {
         window.scrollTo({ top: saved, behavior: "instant" as ScrollBehavior })
@@ -497,7 +495,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const totalDevolucion = useMemo(() => items.reduce((s, i) => s + (i.devolucion ?? 0), 0), [items])
   const cartGroups = useMemo(() => groupCartItems(items, derivedByDesc), [items, derivedByDesc])
 
-  // Setear cantidad directa (desde QtyButton)
   const setQuantity = useCallback((product: Product, opcion: string | undefined, qty: number) => {
     const key = itemKey(product.descripcion, opcion)
     onItemsChange((prev) => {
@@ -622,8 +619,14 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
         {items.length > 0 && (
           <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-            <button type="button" onClick={() => setCartOpen((v) => !v)}
-              className="flex w-full items-center justify-between px-3 py-2.5 text-left active:opacity-70 bg-gray-50">
+            {/* ── FIX: div en vez de button para evitar button anidado ── */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setCartOpen((v) => !v)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setCartOpen((v) => !v) }}
+              className="flex w-full items-center justify-between px-3 py-2.5 text-left active:opacity-70 bg-gray-50 cursor-pointer select-none"
+            >
               <div className="flex items-center gap-2">
                 {cartOpen ? <ChevronUp className="size-3.5 text-gray-400" /> : <ChevronDown className="size-3.5 text-gray-400" />}
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
@@ -635,12 +638,15 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-[13px] font-semibold text-gray-900 tabular-nums">{formatCurrency(total)}</span>
-                <button type="button" onClick={(e) => { e.stopPropagation(); setConfirmClearOpen(true) }}
-                  className="flex items-center text-red-400 active:opacity-60">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setConfirmClearOpen(true) }}
+                  className="flex items-center text-red-400 active:opacity-60"
+                >
                   <Trash2 className="size-3.5" />
                 </button>
               </div>
-            </button>
+            </div>
 
             {cartOpen && (
               <div className="border-t border-gray-200 px-3">
