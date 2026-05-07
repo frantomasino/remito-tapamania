@@ -37,7 +37,7 @@ export function InstallBanner({ userId }: { userId: string }) {
             <Download className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-semibold text-gray-900">Instalá Rutix</p>
+            <p className="text-[14px] font-semibold text-gray-900">Instalá Boleta</p>
             {isIOS ? (
               <p className="mt-0.5 text-[12px] text-gray-500 leading-relaxed">
                 Tocá <span className="font-semibold">Compartir</span> → <span className="font-semibold">Agregar a inicio</span> para tenerla siempre a mano.

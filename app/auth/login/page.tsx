@@ -66,14 +66,20 @@ export default function LoginPage() {
 
         {/* ── LOGO + TÍTULO ── */}
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-[#1565c0] shadow-sm">
-            <svg width="20" height="20" viewBox="0 0 18 18" fill="none">
-              <rect x="2" y="2" width="14" height="2" rx="1" fill="white"/>
-              <rect x="2" y="7" width="10" height="2" rx="1" fill="white"/>
-              <rect x="2" y="12" width="12" height="2" rx="1" fill="white"/>
-            </svg>
-          </div>
-          <h1 className="text-[22px] font-semibold text-gray-900">Rutix</h1>
+          <div className="flex justify-center mb-4">
+  <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+    <rect width="56" height="56" rx="14" fill="#0f172a"/>
+    <rect x="14" y="12" width="22" height="32" rx="4" fill="white"/>
+    <rect x="14" y="12" width="3" height="32" rx="1.5" fill="#1565c0"/>
+    <rect x="19" y="17" width="14" height="3" rx="1.5" fill="#1565c0" opacity="0.9"/>
+    <rect x="19" y="22" width="10" height="2.5" rx="1.25" fill="#e5e7eb"/>
+    <rect x="19" y="27" width="12" height="2.5" rx="1.25" fill="#e5e7eb"/>
+    <rect x="19" y="32" width="9" height="2.5" rx="1.25" fill="#e5e7eb"/>
+    <circle cx="38" cy="22" r="10" fill="#22c55e"/>
+    <polyline points="33,22 37,26 43,17" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</div>
+          <h1 className="text-[22px] font-semibold text-gray-900">Boleta</h1>
           <p className="mt-1 text-[13px] text-gray-500">Ingresá para continuar</p>
         </div>
 

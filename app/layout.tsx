@@ -9,9 +9,13 @@ const geistSans = Geist({
 })
 
 export const metadata: Metadata = {
-  title: "Rutix",
+  title: "Boleta",
   description: "Cargá pedidos, generá remitos e imprimí comprobantes desde el celular.",
   manifest: "/manifest.webmanifest",
+ icons: {
+  icon: "/icons/icon-192.png",
+  apple: "/icons/icon-192.png",
+},
 }
 
 export const viewport: Viewport = {

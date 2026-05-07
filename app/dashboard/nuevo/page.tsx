@@ -621,7 +621,7 @@ export default function RemitoPage() {
                   <rect x="2" y="12" width="12" height="2" rx="1" fill="white"/>
                 </svg>
               </div>
-              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "11px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 14px" }}>Rutix</p>
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "11px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 14px" }}>Boleta</p>
               <div style={{ display: "flex", justifyContent: "center", gap: "6px" }}>
                 {ONBOARDING_STEPS.map((_, i) => (
                   <div key={i} style={{
