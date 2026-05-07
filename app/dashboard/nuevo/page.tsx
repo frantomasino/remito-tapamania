@@ -20,6 +20,7 @@ import {
   type Product, type LineItem, type ClientData, type RemitoData,
   formatRemitoNumber, formatCurrency, parseCSV,
 } from "@/lib/remito-types"
+import { Onboarding } from "@/components/onboarding"
 
 const ProductSelector = dynamic(
   () => import("@/components/product-selector").then(m => ({ default: m.ProductSelector })),
@@ -118,6 +119,8 @@ export default function RemitoPage() {
   const [onboardingStep, setOnboardingStep] = useState(0)
   const [onboardingValues, setOnboardingValues] = useState<OnboardingValues>({ empresa: "", vendedor: "", telefono: "", alias: "" })
   const [isSavingOnboarding, setIsSavingOnboarding] = useState(false)
+  // Tutorial de uso — se muestra después del onboarding de datos
+  const [showTutorial, setShowTutorial] = useState(false)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
   const toastTimer = useRef<number | null>(null)
@@ -155,10 +158,11 @@ export default function RemitoPage() {
     toastTimer.current = window.setTimeout(() => setToastVisible(false), 1900)
   }, [])
 
-  const handleOnboardingSkip = useCallback(() => {
-    if (userId) localStorage.setItem(onboardingKey(userId), "1")
-    setShowOnboarding(false)
-  }, [userId])
+ const handleOnboardingSkip = useCallback(() => {
+  if (userId) localStorage.setItem(onboardingKey(userId), "1")
+  setShowOnboarding(false)
+  setShowTutorial(true)
+}, [userId])
 
   const handleOnboardingNext = useCallback(async () => {
     if (onboardingStep < ONBOARDING_STEPS.length - 1) { setOnboardingStep(prev => prev + 1); return }
@@ -176,6 +180,8 @@ export default function RemitoPage() {
       if (onboardingValues.alias.trim()) setAliasMP(onboardingValues.alias.trim())
       localStorage.setItem(onboardingKey(userId), "1")
       setShowOnboarding(false)
+      // Mostrar tutorial de uso después de completar el onboarding
+      setShowTutorial(true)
       showToast("¡Todo listo! Ya podés crear tu primer remito")
     } catch { showToast("Error al guardar, intentá de nuevo") }
     finally { setIsSavingOnboarding(false) }
@@ -267,7 +273,9 @@ export default function RemitoPage() {
         if (profile?.telefono) setTelefono(profile.telefono)
         if (profile?.alias) setAliasMP(profile.alias)
         const onboardingDone = localStorage.getItem(onboardingKey(userId))
-        if (!profile?.empresa && !onboardingDone) setShowOnboarding(true)
+        if (!profile?.empresa && !onboardingDone) {
+          setShowOnboarding(true)
+        }
         const sel = profile?.selected_price_list
         if (sel === "minorista" || sel === "mayorista" || sel === "oferta") setPriceListId(sel)
         const raw = localStorage.getItem(k(LS_BASE_KEYS.productsCache, userId))
@@ -584,7 +592,7 @@ export default function RemitoPage() {
 
   return (
     <>
-      {/* ── ONBOARDING — centrado con style inline para forzar posición ── */}
+      {/* ── ONBOARDING DATOS ── */}
       {showOnboarding && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
@@ -600,7 +608,6 @@ export default function RemitoPage() {
             borderRadius: "24px", backgroundColor: "white",
             overflow: "hidden", boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
           }}>
-            {/* Header azul con logo y dots */}
             <div style={{ backgroundColor: "#1565c0", padding: "28px 24px 22px", textAlign: "center" }}>
               <div style={{
                 width: "44px", height: "44px", borderRadius: "14px",
@@ -625,15 +632,12 @@ export default function RemitoPage() {
                 ))}
               </div>
             </div>
-
-            {/* Cuerpo */}
             <div style={{ padding: "24px" }}>
               <div style={{ textAlign: "center", marginBottom: "20px" }}>
                 <div style={{ fontSize: "44px", marginBottom: "10px" }}>{currentStep.emoji}</div>
                 <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#111827", margin: "0 0 6px", lineHeight: 1.3 }}>{currentStep.title}</h2>
                 <p style={{ fontSize: "13px", color: "#6b7280", margin: 0 }}>{currentStep.subtitle}</p>
               </div>
-
               <input
                 key={currentStep.key}
                 type={currentStep.type}
@@ -652,7 +656,6 @@ export default function RemitoPage() {
                 onFocus={(e) => { e.target.style.borderColor = "#1565c0"; e.target.style.backgroundColor = "white" }}
                 onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; e.target.style.backgroundColor = "#f9fafb" }}
               />
-
               <button
                 type="button"
                 onClick={handleOnboardingNext}
@@ -668,7 +671,6 @@ export default function RemitoPage() {
               >
                 {isSavingOnboarding ? "Guardando..." : onboardingStep < ONBOARDING_STEPS.length - 1 ? "Continuar →" : "¡Empezar!"}
               </button>
-
               <button
                 type="button"
                 onClick={handleOnboardingSkip}
@@ -683,6 +685,11 @@ export default function RemitoPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── TUTORIAL DE USO — aparece después del onboarding de datos ── */}
+      {!showOnboarding && showTutorial && userId && (
+        <Onboarding userId={userId} />
       )}
 
       <div className="min-h-screen overflow-x-hidden bg-gray-100">
