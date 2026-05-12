@@ -10,6 +10,7 @@ interface ProductSelectorProps {
   products: Product[]
   items: LineItem[]
   onItemsChange: React.Dispatch<React.SetStateAction<LineItem[]>>
+  onAddToast?: (text: string) => void
 }
 
 const MAX_VISIBLE_PRODUCTS = 50
@@ -237,7 +238,6 @@ const ProductRow = memo(function ProductRow({
           )}
         </div>
 
-        {/* Botón devolución */}
         <button
           type="button"
           onClick={() => onAddDevolucion(product, selectedOpt || undefined)}
@@ -247,7 +247,6 @@ const ProductRow = memo(function ProductRow({
           <RotateCcw className="size-4" />
         </button>
 
-        {/* Botón cantidad con input inline */}
         <div {...(isFirst ? { "data-onboarding": "add-qty" } : {})}>
           <QtyButton
             count={selectedCount}
@@ -315,6 +314,7 @@ const CartGroupRow = memo(function CartGroupRow({
   const [localVal, setLocalVal] = useState(String(group.totalCantidad))
   useEffect(() => { setLocalVal(String(group.totalCantidad)) }, [group.totalCantidad])
 
+  // ── Caso con múltiples opciones (Horno / Freír / Criolla) ──
   if (group.hasOpciones && group.options.length > 1) {
     const ventaResumen = group.items.filter((i) => i.cantidad > 0).map((i) => `${i.cantidad} ${i.opcion ?? ""}`).join(", ")
     const devResumen = group.items.filter((i) => (i.devolucion ?? 0) > 0).map((i) => `${i.devolucion} ${i.opcion ?? ""}`).join(", ")
@@ -370,6 +370,7 @@ const CartGroupRow = memo(function CartGroupRow({
     )
   }
 
+  // ── Caso simple — DOS LÍNEAS para mobile ──
   const item = group.items[0]
   const handleBlur = () => {
     const parsed = parseInt(localVal, 10)
@@ -379,22 +380,33 @@ const CartGroupRow = memo(function CartGroupRow({
 
   return (
     <div className="border-b border-gray-200 last:border-b-0 py-2.5">
-      <div className="flex items-center gap-2">
+      {/* Línea 1: nombre + precio + eliminar */}
+      <div className="flex items-center justify-between gap-2 mb-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold text-gray-900 truncate">
+          <p className="text-[13px] font-semibold text-gray-900 leading-snug">
             {group.title}
             {group.totalDevolucion > 0 && (
               <span className="ml-1.5 text-orange-500 font-normal text-[12px]">({group.totalDevolucion} dev.)</span>
             )}
           </p>
-          <p className="text-[11px] text-gray-400 tabular-nums">
+          <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">
             {formatCurrency(group.totalSubtotal)}
             {group.totalCantidad > 1 && (
               <span className="ml-1">({group.totalCantidad} × {formatCurrency(group.precio)})</span>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <button type="button"
+          onClick={() => onRemoveSingle(item.product.descripcion, item.opcion)}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-300 hover:text-red-500 active:opacity-60">
+          <X className="size-3.5" />
+        </button>
+      </div>
+
+      {/* Línea 2: controles cantidad + devolución */}
+      <div className="flex items-center gap-2">
+        {/* Cantidad */}
+        <div className="flex items-center gap-1">
           <button type="button"
             onClick={() => item.cantidad > 1 && onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1)}
             disabled={item.cantidad <= 1}
@@ -413,20 +425,21 @@ const CartGroupRow = memo(function CartGroupRow({
           <button type="button"
             onClick={() => onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-base font-bold text-gray-700 active:opacity-60">+</button>
-          <div className="flex items-center gap-0.5 ml-1">
-            <button type="button"
-              onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, Math.max(0, (item.devolucion ?? 0) - 1))}
-              className="flex h-8 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">−</button>
-            <span className="w-6 text-center text-[12px] font-bold text-orange-500 tabular-nums">{item.devolucion ?? 0}</span>
-            <button type="button"
-              onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, (item.devolucion ?? 0) + 1)}
-              className="flex h-8 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">+</button>
-          </div>
+        </div>
+
+        {/* Separador */}
+        <div className="h-4 w-px bg-gray-200 mx-1" />
+
+        {/* Devolución */}
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] text-orange-500 font-medium mr-0.5">Dev</span>
           <button type="button"
-            onClick={() => onRemoveSingle(item.product.descripcion, item.opcion)}
-            className="flex h-8 w-7 items-center justify-center rounded-lg text-gray-300 hover:text-red-500 active:opacity-60">
-            <X className="size-3.5" />
-          </button>
+            onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, Math.max(0, (item.devolucion ?? 0) - 1))}
+            className="flex h-8 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">−</button>
+          <span className="w-6 text-center text-[12px] font-bold text-orange-500 tabular-nums">{item.devolucion ?? 0}</span>
+          <button type="button"
+            onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, (item.devolucion ?? 0) + 1)}
+            className="flex h-8 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">+</button>
         </div>
       </div>
     </div>
@@ -434,7 +447,7 @@ const CartGroupRow = memo(function CartGroupRow({
 })
 
 // ── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
-export function ProductSelector({ products, items, onItemsChange }: ProductSelectorProps) {
+export function ProductSelector({ products, items, onItemsChange, onAddToast }: ProductSelectorProps) {
   const [search, setSearch] = useState("")
   const deferredSearch = useDeferredValue(search)
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
@@ -442,11 +455,22 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
   const [selectedOptionByDesc, setSelectedOptionByDesc] = useState<Record<string, string>>({})
   const [visibleCount, setVisibleCount] = useState(MAX_VISIBLE_PRODUCTS)
 
+  const [toastText, setToastText] = useState("")
+  const [toastVisible, setToastVisible] = useState(false)
+  const toastTimer = useRef<number | null>(null)
+
+  const showAddToast = useCallback((text: string) => {
+    setToastText(text)
+    setToastVisible(true)
+    if (toastTimer.current) window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToastVisible(false), 1400)
+  }, [])
+
+  useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current) }, [])
+
   const prevLengthRef = useRef(0)
   const scrollRef = useRef(0)
-  useEffect(() => {
-    scrollRef.current = window.scrollY
-  })
+  useEffect(() => { scrollRef.current = window.scrollY })
   useEffect(() => {
     if (prevLengthRef.current !== items.length) {
       prevLengthRef.current = items.length
@@ -509,6 +533,9 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
         }
         return prev.filter((i) => itemKey(i.product.descripcion, i.opcion) !== key)
       }
+      const title = shortDesc(product.descripcion)
+      const label = opcion ? `${title} · ${opcion}` : title
+      showAddToast(`${qty} × ${label}`)
       if (idx >= 0) {
         const next = prev.slice()
         const cur = next[idx]
@@ -517,7 +544,7 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
       }
       return [...prev, { product, cantidad: qty, subtotal: qty * product.precio, opcion }]
     })
-  }, [onItemsChange])
+  }, [onItemsChange, showAddToast])
 
   const addDevolucion = useCallback((product: Product, opcion?: string) => {
     const key = itemKey(product.descripcion, opcion)
@@ -583,6 +610,24 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
   return (
     <>
+      {/* ── TOAST DE CONFIRMACIÓN ── */}
+      <div
+        className={cn(
+          "fixed left-1/2 z-[70] -translate-x-1/2 transition-all duration-200",
+          toastVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
+        )}
+        style={{ bottom: "88px" }}
+        role="status"
+        aria-live="polite"
+      >
+        <div className="flex items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-2.5 shadow-lg">
+          <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-green-500 text-white">
+            <Check className="size-3" />
+          </div>
+          <p className="text-[13px] font-medium text-green-800 whitespace-nowrap">{toastText}</p>
+        </div>
+      </div>
+
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
         <DialogContent className="max-w-sm border-gray-200 bg-white text-gray-900">
           <DialogHeader>
@@ -605,7 +650,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
       </Dialog>
 
       <div className="flex flex-col gap-3">
-
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -619,7 +663,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
 
         {items.length > 0 && (
           <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-            {/* ── FIX: div en vez de button para evitar button anidado ── */}
             <div
               role="button"
               tabIndex={0}
@@ -722,7 +765,6 @@ export function ProductSelector({ products, items, onItemsChange }: ProductSelec
             </div>
           )}
         </div>
-
       </div>
     </>
   )

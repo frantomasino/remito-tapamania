@@ -6,7 +6,7 @@ import { useState, useRef, useCallback, useEffect, useMemo, startTransition, use
 import dynamic from "next/dynamic"
 import {
   Printer, CheckCircle2, Loader2, Eye,
-  Bluetooth, ChevronDown, ChevronUp, Plus, WifiOff,
+  Bluetooth, ChevronDown, Plus, WifiOff,
   ClipboardList, PlusCircle, Settings2, CloudOff,
 } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
@@ -58,7 +58,7 @@ function k(base: string, userId: string) { return `${base}:${userId}` }
 function onboardingKey(userId: string) { return `onboarding_done:${userId}` }
 
 const BOTTOM_NAV_PX = 72
-const ACTION_BAR_PX = 60
+const ACTION_BAR_PX = 52
 
 type ProductsCacheEntry = { loadedAt: number; products: Product[] }
 type DraftData = { items: LineItem[]; clientNombre: string; priceListId: PriceListId; savedAt: number }
@@ -110,7 +110,6 @@ export default function RemitoPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isPrintingBluetooth, setIsPrintingBluetooth] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
-  const [actionBarCollapsed, setActionBarCollapsed] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
   const [toastText, setToastText] = useState("")
   const [pendingCount, setPendingCount] = useState(0)
@@ -119,7 +118,6 @@ export default function RemitoPage() {
   const [onboardingStep, setOnboardingStep] = useState(0)
   const [onboardingValues, setOnboardingValues] = useState<OnboardingValues>({ empresa: "", vendedor: "", telefono: "", alias: "" })
   const [isSavingOnboarding, setIsSavingOnboarding] = useState(false)
-  // Tutorial de uso — se muestra después del onboarding de datos
   const [showTutorial, setShowTutorial] = useState(false)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
@@ -158,11 +156,11 @@ export default function RemitoPage() {
     toastTimer.current = window.setTimeout(() => setToastVisible(false), 1900)
   }, [])
 
- const handleOnboardingSkip = useCallback(() => {
-  if (userId) localStorage.setItem(onboardingKey(userId), "1")
-  setShowOnboarding(false)
-  setShowTutorial(true)
-}, [userId])
+  const handleOnboardingSkip = useCallback(() => {
+    if (userId) localStorage.setItem(onboardingKey(userId), "1")
+    setShowOnboarding(false)
+    setShowTutorial(true)
+  }, [userId])
 
   const handleOnboardingNext = useCallback(async () => {
     if (onboardingStep < ONBOARDING_STEPS.length - 1) { setOnboardingStep(prev => prev + 1); return }
@@ -180,7 +178,6 @@ export default function RemitoPage() {
       if (onboardingValues.alias.trim()) setAliasMP(onboardingValues.alias.trim())
       localStorage.setItem(onboardingKey(userId), "1")
       setShowOnboarding(false)
-      // Mostrar tutorial de uso después de completar el onboarding
       setShowTutorial(true)
       showToast("¡Todo listo! Ya podés crear tu primer remito")
     } catch { showToast("Error al guardar, intentá de nuevo") }
@@ -273,9 +270,7 @@ export default function RemitoPage() {
         if (profile?.telefono) setTelefono(profile.telefono)
         if (profile?.alias) setAliasMP(profile.alias)
         const onboardingDone = localStorage.getItem(onboardingKey(userId))
-        if (!profile?.empresa && !onboardingDone) {
-          setShowOnboarding(true)
-        }
+        if (!profile?.empresa && !onboardingDone) setShowOnboarding(true)
         const sel = profile?.selected_price_list
         if (sel === "minorista" || sel === "mayorista" || sel === "oferta") setPriceListId(sel)
         const raw = localStorage.getItem(k(LS_BASE_KEYS.productsCache, userId))
@@ -347,12 +342,7 @@ export default function RemitoPage() {
 
   const canPrint = items.filter(i => i.cantidad > 0).length > 0
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
-  const fixedBottomPx = BOTTOM_NAV_PX + (canPrint ? (actionBarCollapsed ? 12 : ACTION_BAR_PX) : 0)
-
-  useEffect(() => {
-    if (canPrint) setActionBarCollapsed(false)
-    else setActionBarCollapsed(true)
-  }, [canPrint])
+  const fixedBottomPx = BOTTOM_NAV_PX + (canPrint ? ACTION_BAR_PX : 0)
 
   const handleItemsChange = useCallback<React.Dispatch<React.SetStateAction<LineItem[]>>>((updater) => {
     setItems((prev) => typeof updater === "function" ? updater(prev) : updater)
@@ -687,7 +677,6 @@ export default function RemitoPage() {
         </div>
       )}
 
-      {/* ── TUTORIAL DE USO — aparece después del onboarding de datos ── */}
       {!showOnboarding && showTutorial && userId && (
         <Onboarding userId={userId} />
       )}
@@ -743,38 +732,32 @@ export default function RemitoPage() {
 
         {/* BLOQUE FIJO INFERIOR */}
         <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
+
+          {/* ── ACTION BAR — siempre visible cuando hay productos ── */}
           {canPrint && (
             <div className="border-b border-gray-100">
-              <div className={cn("overflow-hidden transition-all duration-200", actionBarCollapsed ? "max-h-0" : "max-h-24")}
-                onClick={() => setActionBarCollapsed(true)}>
-                <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pb-3 pt-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
-                      {totalUnits} unid.
-                      {totalDev > 0 && <span className="ml-1.5 text-orange-500">{totalDev} dev.</span>}
-                    </p>
-                  </div>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setShowPreview(true) }}
-                    className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
-                    <Eye className="size-3.5" />Ver
-                  </button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); handleBluetoothPrint() }}
-                    disabled={isSaving || isPrintingBluetooth}
-                    className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
-                    {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
-                    {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
-                  </button>
+              <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
+                  {totalDev > 0 && (
+                    <p className="text-[11px] text-orange-500 mt-0.5">{totalDev} dev.</p>
+                  )}
                 </div>
+                <button type="button" onClick={() => setShowPreview(true)}
+                  className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
+                  <Eye className="size-3.5" />Ver
+                </button>
+                <button type="button" onClick={handleBluetoothPrint}
+                  disabled={isSaving || isPrintingBluetooth}
+                  className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
+                  {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
+                  {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
+                </button>
               </div>
-              <button type="button" onClick={() => setActionBarCollapsed(v => !v)}
-                className="flex w-full items-center justify-center gap-2 py-1 active:opacity-60">
-                <div className="h-[2px] w-8 rounded-full bg-gray-200" />
-                {actionBarCollapsed ? <ChevronUp className="size-3.5 text-gray-400" /> : <ChevronDown className="size-3.5 text-gray-400" />}
-                <div className="h-[2px] w-8 rounded-full bg-gray-200" />
-              </button>
             </div>
           )}
+
+          {/* ── NAV ── */}
           <nav>
             <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5">
               {navItems.map((item) => {
