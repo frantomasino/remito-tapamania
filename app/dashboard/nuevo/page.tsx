@@ -119,8 +119,6 @@ export default function RemitoPage() {
   const [onboardingValues, setOnboardingValues] = useState<OnboardingValues>({ empresa: "", vendedor: "", telefono: "", alias: "" })
   const [isSavingOnboarding, setIsSavingOnboarding] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
-  // ── Detectar teclado virtual abierto ──
-  const [keyboardOpen, setKeyboardOpen] = useState(false)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
   const toastTimer = useRef<number | null>(null)
@@ -150,30 +148,6 @@ export default function RemitoPage() {
     window.addEventListener("online", sync)
     window.addEventListener("offline", sync)
     return () => { window.removeEventListener("online", sync); window.removeEventListener("offline", sync) }
-  }, [])
-
-  // ── Detector de teclado virtual ──────────────────────────────────────────
-  useEffect(() => {
-    if (typeof window === "undefined") return
-
-    // Usar Visual Viewport API si está disponible (más confiable en mobile)
-    if (window.visualViewport) {
-      const vv = window.visualViewport
-      const initialHeight = vv.height
-      const handleResize = () => {
-        setKeyboardOpen(vv.height < initialHeight * 0.75)
-      }
-      vv.addEventListener("resize", handleResize)
-      return () => vv.removeEventListener("resize", handleResize)
-    }
-
-    // Fallback: comparar innerHeight
-    const initialHeight = window.innerHeight
-    const handleResize = () => {
-      setKeyboardOpen(window.innerHeight < initialHeight * 0.75)
-    }
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
   }, [])
 
   const showToast = useCallback((text: string) => {
@@ -368,7 +342,7 @@ export default function RemitoPage() {
 
   const canPrint = items.filter(i => i.cantidad > 0).length > 0
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
-  const fixedBottomPx = keyboardOpen ? 0 : BOTTOM_NAV_PX + (canPrint ? ACTION_BAR_PX : 0)
+  const fixedBottomPx = BOTTOM_NAV_PX + (canPrint ? ACTION_BAR_PX : 0)
 
   const handleItemsChange = useCallback<React.Dispatch<React.SetStateAction<LineItem[]>>>((updater) => {
     setItems((prev) => typeof updater === "function" ? updater(prev) : updater)
@@ -753,60 +727,58 @@ export default function RemitoPage() {
           )}
         </main>
 
-        {/* BLOQUE FIJO INFERIOR — se oculta cuando el teclado está abierto */}
-        {!keyboardOpen && (
-          <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
-            {canPrint && (
-              <div className="border-b border-gray-100">
-                <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
-                    {totalDev > 0 && (
-                      <p className="text-[11px] text-orange-500 mt-0.5">{totalDev} dev.</p>
-                    )}
-                  </div>
-                  <button type="button" onClick={() => setShowPreview(true)}
-                    className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
-                    <Eye className="size-3.5" />Ver
-                  </button>
-                  <button type="button" onClick={handleBluetoothPrint}
-                    disabled={isSaving || isPrintingBluetooth}
-                    className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
-                    {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
-                    {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
-                  </button>
+        {/* BLOQUE FIJO INFERIOR */}
+        <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
+          {canPrint && (
+            <div className="border-b border-gray-100">
+              <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
+                  {totalDev > 0 && (
+                    <p className="text-[11px] text-orange-500 mt-0.5">{totalDev} dev.</p>
+                  )}
                 </div>
+                <button type="button" onClick={() => setShowPreview(true)}
+                  className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
+                  <Eye className="size-3.5" />Ver
+                </button>
+                <button type="button" onClick={handleBluetoothPrint}
+                  disabled={isSaving || isPrintingBluetooth}
+                  className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
+                  {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
+                  {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
+                </button>
               </div>
-            )}
-            <nav>
-              <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5">
-                {navItems.map((item) => {
-                  const isActive = item.href === "/dashboard/pedidos" ? pathname === "/dashboard/pedidos" : pathname.startsWith(item.href)
-                  if (item.primary) {
-                    return (
-                      <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
-                        <div className="flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl bg-[#1565c0] text-white">
-                          <item.icon className="size-4" />
-                          <span className="text-[10px] font-semibold leading-none">{item.label}</span>
-                        </div>
-                      </Link>
-                    )
-                  }
+            </div>
+          )}
+          <nav>
+            <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5">
+              {navItems.map((item) => {
+                const isActive = item.href === "/dashboard/pedidos" ? pathname === "/dashboard/pedidos" : pathname.startsWith(item.href)
+                if (item.primary) {
                   return (
-                    <Link key={item.href} href={item.href} prefetch
-                      {...(item.href === "/dashboard/pedidos" ? { "data-onboarding": "nav-pedidos" } : {})}
-                      className="flex items-center justify-center active:opacity-60">
-                      <div className={cn("flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl transition-colors", isActive ? "text-[#1565c0]" : "text-gray-400")}>
+                    <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
+                      <div className="flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl bg-[#1565c0] text-white">
                         <item.icon className="size-4" />
-                        <span className={cn("text-[10px] leading-none", isActive ? "font-semibold" : "font-medium")}>{item.label}</span>
+                        <span className="text-[10px] font-semibold leading-none">{item.label}</span>
                       </div>
                     </Link>
                   )
-                })}
-              </div>
-            </nav>
-          </div>
-        )}
+                }
+                return (
+                  <Link key={item.href} href={item.href} prefetch
+                    {...(item.href === "/dashboard/pedidos" ? { "data-onboarding": "nav-pedidos" } : {})}
+                    className="flex items-center justify-center active:opacity-60">
+                    <div className={cn("flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl transition-colors", isActive ? "text-[#1565c0]" : "text-gray-400")}>
+                      <item.icon className="size-4" />
+                      <span className={cn("text-[10px] leading-none", isActive ? "font-semibold" : "font-medium")}>{item.label}</span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </nav>
+        </div>
 
         <div className={cn(
             "fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 transition-all duration-200",
