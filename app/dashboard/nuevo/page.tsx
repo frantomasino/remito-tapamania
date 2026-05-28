@@ -21,6 +21,7 @@ import {
   formatRemitoNumber, formatCurrency, parseCSV,
 } from "@/lib/remito-types"
 import { Onboarding } from "@/components/onboarding"
+import { InstallBanner } from "@/components/install-banner"
 
 const ProductSelector = dynamic(
   () => import("@/components/product-selector").then(m => ({ default: m.ProductSelector })),
@@ -828,7 +829,7 @@ export default function RemitoPage() {
           </div>
         </DialogContent>
       </Dialog>
-
+{userId && <InstallBanner userId={userId} />}
       <div className="hidden" aria-hidden="true">
         <div id="printable-remito">
           <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} />
