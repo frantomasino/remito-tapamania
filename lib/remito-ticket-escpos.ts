@@ -1,8 +1,13 @@
 import type { RemitoData, LineItem } from "@/lib/remito-types"
-import { formatCurrency } from "@/lib/remito-types"
 import {
   align, bold, cut, feed, hr, initPrinter, joinBytes, line, size, twoCols, wrapText,
 } from "@/lib/escpos"
+
+// Formato seguro para impresora térmica (sin Intl, sin Unicode)
+function fmt(value: number): string {
+  const [int, dec] = (Math.round(value * 100) / 100).toFixed(2).split(".")
+  return `$${int.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}${dec ? "," + dec : ""}`
+}
 
 function cleanDesc(value: string) {
   return value.replace(/\([^)]*\)/g, "").replace(/\s{2,}/g, " ").trim()
@@ -48,11 +53,11 @@ function groupItems(items: LineItem[]): PrintGroup[] {
 }
 
 export function buildRemitoEscPos(
-  data: RemitoData, 
-  empresa = "Remito", 
-  vendedor = "", 
-  telefono = "", 
-  alias = "" 
+  data: RemitoData,
+  empresa = "Remito",
+  vendedor = "",
+  telefono = "",
+  alias = ""
 ) {
   const total = data.items.reduce((sum, item) => sum + item.subtotal, 0)
   const totalUnidades = data.items.reduce((sum, item) => sum + item.cantidad, 0)
@@ -67,29 +72,27 @@ export function buildRemitoEscPos(
   // --- HEADER ---
   chunks.push(align("center"))
   chunks.push(bold(true))
-  chunks.push(size(1, 1)) // Grande para la empresa
+  chunks.push(size(1, 1))
   chunks.push(line(empresa.toUpperCase() || "REMITO"))
-  
-  chunks.push(size(0, 0)) // Volver a tamaño normal
+  chunks.push(size(0, 0))
   chunks.push(bold(false))
-  
+
   if (telefono) chunks.push(line(telefono))
-  
-  // --- ALIAS AGRANDADO ---
- if (alias) {
+
+  if (alias) {
     chunks.push(bold(true))
-    chunks.push(size(1, 1)) // <--- CAMBIÁ (1, 0) POR (1, 1) PARA MÁXIMO TAMAÑO
+    chunks.push(size(1, 1))
     chunks.push(line(`ALIAS: ${alias.toUpperCase()}`))
-    chunks.push(size(0, 0)) // RESET PARA VOLVER A TAMAÑO NORMAL
+    chunks.push(size(0, 0))
     chunks.push(bold(false))
   }
 
   chunks.push(line("Remito / Comprobante"))
-  chunks.push(line(`N° ${data.numero}`))
+  chunks.push(line(`N ${data.numero}`))
   chunks.push(line(data.fecha))
   chunks.push(hr())
 
-  // --- INFO CLIENTE / VENDEDOR ---
+  // --- INFO ---
   chunks.push(align("left"))
   chunks.push(twoCols("Comercio:", comercio, 32))
   if (vendedor) chunks.push(twoCols("Vendedor:", vendedor, 32))
@@ -100,42 +103,39 @@ export function buildRemitoEscPos(
   }
   chunks.push(hr())
 
-  // --- TABLA PRODUCTOS ---
+  // --- PRODUCTOS ---
   chunks.push(bold(true))
   chunks.push(twoCols("Producto", "Subtotal", 32))
   chunks.push(bold(false))
   chunks.push(hr())
 
   for (const group of grouped) {
-    const titleWithQty = `${group.title} x${group.totalCantidad}`
-    const titleLines = wrapText(titleWithQty, 32)
+    const titleLines = wrapText(`${group.title} x${group.totalCantidad}`, 32)
     for (const l of titleLines) chunks.push(line(l))
 
     if (group.hasOpciones && group.opciones.length > 0) {
-      const detalle = group.opciones.filter(o => o.cantidad > 0).map((o) => `${o.opcion} ${o.cantidad}`).join(", ")
+      const detalle = group.opciones.filter(o => o.cantidad > 0).map(o => `${o.opcion} ${o.cantidad}`).join(", ")
       if (detalle) {
-        const detalleLines = wrapText(detalle, 30)
-        for (const l of detalleLines) chunks.push(line(`  ${l}`))
+        for (const l of wrapText(detalle, 30)) chunks.push(line(`  ${l}`))
       }
     }
 
     if (group.totalDevolucion > 0) {
       const devText = group.hasOpciones
-        ? group.opciones.filter(o => o.devolucion > 0).map((o) => `${o.devolucion} ${o.opcion}`).join(", ")
+        ? group.opciones.filter(o => o.devolucion > 0).map(o => `${o.devolucion} ${o.opcion}`).join(", ")
         : String(group.totalDevolucion)
-      const devLines = wrapText(`Dev: ${devText}`, 30)
-      for (const l of devLines) chunks.push(line(`  ${l}`))
+      for (const l of wrapText(`Dev: ${devText}`, 30)) chunks.push(line(`  ${l}`))
     }
 
-    chunks.push(twoCols(`${group.totalCantidad} x ${formatCurrency(group.precio)}`, formatCurrency(group.totalSubtotal), 32))
+    chunks.push(twoCols(`${group.totalCantidad} x ${fmt(group.precio)}`, fmt(group.totalSubtotal), 32))
     chunks.push(hr("-".charCodeAt(0), 32))
   }
 
   // --- TOTALES ---
-  chunks.push(twoCols("Subtotal", formatCurrency(total), 32))
+  chunks.push(twoCols("Subtotal", fmt(total), 32))
   chunks.push(bold(true))
-  chunks.push(size(1, 0)) // Total en ancho doble para que se vea bien
-  chunks.push(twoCols("TOTAL", formatCurrency(total), 16)) // 16 porque el ancho doble reduce las columnas
+  chunks.push(size(1, 0))
+  chunks.push(twoCols("TOTAL", fmt(total), 16))
   chunks.push(size(0, 0))
   chunks.push(bold(false))
 
