@@ -11,9 +11,9 @@ interface PriceListSelectorProps {
 }
 
 const OPTIONS: Array<{ value: PriceListKey; label: string }> = [
-  { value: "minorista", label: "Minorista" },
+  { value: "minorista", label: "Base" },
   { value: "mayorista", label: "Mayorista" },
-  { value: "oferta", label: "Oferta" },
+  { value: "oferta", label: "No usar" },
 ]
 
 export function PriceListSelector({
