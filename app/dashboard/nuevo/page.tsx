@@ -28,10 +28,10 @@ const ProductSelector = dynamic(
   { ssr: false }
 )
 
-type PriceListId = "minorista" | "mayorista" | "oferta"
+type PriceListId = "base" | "mayorista" | "oferta"
 
 const PRICE_LISTS: { id: PriceListId; label: string }[] = [
-  { id: "minorista", label: "Minorista" },
+  { id: "base", label: "Base" },
   { id: "mayorista", label: "Mayorista" },
   { id: "oferta", label: "Oferta" },
 ]
@@ -105,7 +105,7 @@ export default function RemitoPage() {
   const [showPreview, setShowPreview] = useState(false)
   const [showConfirmNew, setShowConfirmNew] = useState(false)
   const [successState, setSuccessState] = useState<SuccessState>(null)
-  const [priceListId, setPriceListId] = useState<PriceListId>("minorista")
+  const [priceListId, setPriceListId] = useState<PriceListId>("base")
   const [mounted, setMounted] = useState(false)
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -135,7 +135,7 @@ export default function RemitoPage() {
   useLayoutEffect(() => { priceListIdRef.current = priceListId }, [priceListId])
 
   const productsCacheRef = useRef<Record<PriceListId, ProductsCacheEntry>>({
-    minorista: { loadedAt: 0, products: [] },
+    base: { loadedAt: 0, products: [] },
     mayorista: { loadedAt: 0, products: [] },
     oferta: { loadedAt: 0, products: [] },
   })
@@ -273,11 +273,11 @@ export default function RemitoPage() {
         const onboardingDone = localStorage.getItem(onboardingKey(userId))
         if (!profile?.empresa && !onboardingDone) setShowOnboarding(true)
         const sel = profile?.selected_price_list
-        if (sel === "minorista" || sel === "mayorista" || sel === "oferta") setPriceListId(sel)
+        if (sel === "base" || sel === "mayorista" || sel === "oferta") setPriceListId(sel)
         const raw = localStorage.getItem(k(LS_BASE_KEYS.productsCache, userId))
         if (raw) {
           const parsed = JSON.parse(raw) as Record<PriceListId, ProductsCacheEntry>
-          if (parsed?.minorista && parsed?.mayorista && parsed?.oferta) productsCacheRef.current = parsed
+          if (parsed?.base && parsed?.mayorista && parsed?.oferta) productsCacheRef.current = parsed
         }
         if (!draftRestoredRef.current) {
           draftRestoredRef.current = true
