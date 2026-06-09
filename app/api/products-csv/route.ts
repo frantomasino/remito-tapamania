@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 const PRICE_LIST_URLS = {
-  minorista: process.env.NEXT_PUBLIC_LISTA_MINORISTA_URL,
+  base: process.env.NEXT_PUBLIC_LISTA_BASE_URL,
   mayorista: process.env.NEXT_PUBLIC_LISTA_MAYORISTA_URL,
   oferta: process.env.NEXT_PUBLIC_LISTA_OFERTA_URL,
 } as const
@@ -9,7 +9,7 @@ const PRICE_LIST_URLS = {
 type PriceListKey = keyof typeof PRICE_LIST_URLS
 
 function isValidList(value: string | null): value is PriceListKey {
-  return value === "minorista" || value === "mayorista" || value === "oferta"
+  return value === "base" || value === "mayorista" || value === "oferta"
 }
 
 export async function GET(req: Request) {
