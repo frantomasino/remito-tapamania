@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 
-export type PriceListKey = "Base" | "mayorista" | "oferta"
+export type PriceListKey = "base" | "mayorista" | "oferta"
 
 interface PriceListSelectorProps {
   value: PriceListKey
@@ -11,7 +11,7 @@ interface PriceListSelectorProps {
 }
 
 const OPTIONS: Array<{ value: PriceListKey; label: string }> = [
-  { value: "Base", label: "Base" },
+  { value: "base", label: "Base" },
   { value: "mayorista", label: "Mayorista" },
   { value: "oferta", label: "No usar" },
 ]
