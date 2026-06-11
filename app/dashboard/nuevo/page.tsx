@@ -22,6 +22,7 @@ import {
 } from "@/lib/remito-types"
 import { Onboarding } from "@/components/onboarding"
 import { InstallBanner } from "@/components/install-banner"
+import { checkAppVersion } from "@/lib/version-check"
 
 const ProductSelector = dynamic(
   () => import("@/components/product-selector").then(m => ({ default: m.ProductSelector })),
@@ -139,6 +140,11 @@ export default function RemitoPage() {
     mayorista: { loadedAt: 0, products: [] },
     oferta: { loadedAt: 0, products: [] },
   })
+
+  // ✅ CHEQUEO DE VERSIÓN — se ejecuta al montar la app
+  useEffect(() => {
+    checkAppVersion()
+  }, [])
 
   useEffect(() => setMounted(true), [])
 
@@ -728,7 +734,6 @@ export default function RemitoPage() {
           )}
         </main>
 
-        {/* BLOQUE FIJO INFERIOR */}
         <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
           {canPrint && (
             <div className="border-b border-gray-100">
@@ -829,7 +834,8 @@ export default function RemitoPage() {
           </div>
         </DialogContent>
       </Dialog>
-{userId && <InstallBanner userId={userId} />}
+
+      {userId && <InstallBanner userId={userId} />}
       <div className="hidden" aria-hidden="true">
         <div id="printable-remito">
           <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} />
