@@ -66,6 +66,7 @@ const detailTags = (s: string) => {
   return out.slice(0, 3)
 }
 
+
 const productOptions = (s: string) => {
   const tokens = extractParenParts(s)
     .flatMap((p) => p.split(","))
