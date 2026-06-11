@@ -69,13 +69,9 @@ const detailTags = (s: string) => {
 const productOptions = (s: string) => {
   const tokens = extractParenParts(s)
     .flatMap((p) => p.split(","))
-    .map((x) => x.trim())
+    .map((x) => x.trim().replace(/\.+$/, ""))
     .filter(Boolean)
-    .map((t) => t.replace(/\.+$/, ""))
-  const allow = new Set([
-    "horno", "freir", "criolla", "ricota", "verdura", "pollo",
-    "r/v", "r/j", "p/v", "4 quesos", "cuatro quesos", "mozzarella", "jamon", "nuez",
-  ])
+
   const normalizeLabel = (t: string) => {
     const n = normalize(t)
     if (n === "freir") return "Freír"
@@ -93,18 +89,27 @@ const productOptions = (s: string) => {
     if (n === "p/v") return "P/V"
     return t
   }
-  const opts = tokens.filter((t) => allow.has(normalize(t))).map(normalizeLabel)
+
+  const ignore = new Set([
+    "consultar", "super crocantes", "fuente de fibras",
+    "reducida en grasas", "mas gruesas", "2u", "2u.",
+  ])
+
   const seen = new Set<string>()
   const out: string[] = []
-  for (const o of opts) {
-    const k = normalize(o)
-    if (seen.has(k)) continue
-    seen.add(k)
-    out.push(o)
-  }
-  return out
-}
 
+  for (const t of tokens) {
+    const n = normalize(t)
+    if (ignore.has(n)) continue
+    const label = normalizeLabel(t)
+    const key = normalize(label)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(label)
+  }
+
+  return out.length > 1 ? out : []
+}
 const itemKey = (desc: string, opcion?: string) => `${desc}||${opcion ?? ""}`
 type Derived = { title: string; tags: string[]; options: string[]; haystack: string }
 
