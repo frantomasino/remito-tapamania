@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { PerfilEditor } from "@/components/perfil-editor"
 import { StockScanner } from "@/components/stock-scanner"
 
-type PriceListId = "minorista" | "mayorista" | "oferta"
+type PriceListId = "base" | "mayorista" | "oferta"
 
 function getPriceListLabel(value?: string | null) {
   switch (value as PriceListId) {
