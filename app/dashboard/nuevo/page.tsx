@@ -29,13 +29,8 @@ const ProductSelector = dynamic(
   { ssr: false }
 )
 
-type PriceListId = "base" | "mayorista" | "oferta"
-
-const PRICE_LISTS: { id: PriceListId; label: string }[] = [
-  { id: "base", label: "Base" },
-  { id: "mayorista", label: "Mayorista" },
-  { id: "oferta", label: "Oferta" },
-]
+// ── Lista de precios dinámica desde Supabase ──
+type PriceList = { id: string; nombre: string }
 
 const navItems = [
   { href: "/dashboard/pedidos", label: "Historial", icon: ClipboardList },
@@ -54,6 +49,7 @@ const LS_BASE_KEYS = {
   productsCache: "productsCache",
   draft: "remitoDraft",
   pendingRemitos: "pendingRemitos",
+  selectedList: "selectedListId",
 } as const
 
 function k(base: string, userId: string) { return `${base}:${userId}` }
@@ -63,7 +59,7 @@ const BOTTOM_NAV_PX = 72
 const ACTION_BAR_PX = 52
 
 type ProductsCacheEntry = { loadedAt: number; products: Product[] }
-type DraftData = { items: LineItem[]; clientNombre: string; priceListId: PriceListId; savedAt: number }
+type DraftData = { items: LineItem[]; clientNombre: string; listId: string; savedAt: number }
 type SuccessState = { remitoId: string | null; numero: string; cliente: string; total: number; unidades: number } | null
 
 type PendingRemito = {
@@ -72,7 +68,7 @@ type PendingRemito = {
   numeroRemito: string
   fecha: string
   clienteNombre: string | null
-  priceListId: PriceListId
+  listId: string
   total: number
   items: Array<{ descripcion: string; cantidad: number; precio_unitario: number; subtotal: number; opcion: string | null }>
   savedAt: number
@@ -106,7 +102,9 @@ export default function RemitoPage() {
   const [showPreview, setShowPreview] = useState(false)
   const [showConfirmNew, setShowConfirmNew] = useState(false)
   const [successState, setSuccessState] = useState<SuccessState>(null)
-  const [priceListId, setPriceListId] = useState<PriceListId>("base")
+  // ── Listas dinámicas ──
+  const [priceLists, setPriceLists] = useState<PriceList[]>([])
+  const [selectedListId, setSelectedListId] = useState<string>("")
   const [mounted, setMounted] = useState(false)
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -135,16 +133,13 @@ export default function RemitoPage() {
   const supabase = useMemo(() => createClient(), [])
   const itemsRef = useRef(items)
   const clientRef = useRef(client)
-  const priceListIdRef = useRef(priceListId)
+  const selectedListIdRef = useRef(selectedListId)
   useLayoutEffect(() => { itemsRef.current = items }, [items])
   useLayoutEffect(() => { clientRef.current = client }, [client])
-  useLayoutEffect(() => { priceListIdRef.current = priceListId }, [priceListId])
+  useLayoutEffect(() => { selectedListIdRef.current = selectedListId }, [selectedListId])
 
-  const productsCacheRef = useRef<Record<PriceListId, ProductsCacheEntry>>({
-    base: { loadedAt: 0, products: [] },
-    mayorista: { loadedAt: 0, products: [] },
-    oferta: { loadedAt: 0, products: [] },
-  })
+  // Cache de productos por listId
+  const productsCacheRef = useRef<Record<string, ProductsCacheEntry>>({})
 
   useEffect(() => { checkAppVersion() }, [])
   useEffect(() => setMounted(true), [])
@@ -167,11 +162,8 @@ export default function RemitoPage() {
 
   const confirmarDescuento = useCallback(() => {
     const val = parseFloat(descuentoInput)
-    if (!isNaN(val) && val >= 0 && val <= 100) {
-      setDescuentoPct(val)
-    } else {
-      setDescuentoPct(0)
-    }
+    if (!isNaN(val) && val >= 0 && val <= 100) setDescuentoPct(val)
+    else setDescuentoPct(0)
     setShowDescuento(false)
   }, [descuentoInput])
 
@@ -243,7 +235,7 @@ export default function RemitoPage() {
           const { data: remitoInserted, error: remitoError } = await supabase.from("remitos").insert({
             user_id: uid, numero_remito: formatRemitoNumber(consumedNumber), fecha: remito.fecha,
             cliente_nombre: remito.clienteNombre, estado: "pendiente", observaciones: null,
-            price_list_id: remito.priceListId, total: remito.total,
+            price_list_id: remito.listId, total: remito.total,
           }).select("id").single()
           if (remitoError || !remitoInserted) continue
           const { error: itemsError } = await supabase.from("remito_items").insert(
@@ -263,19 +255,19 @@ export default function RemitoPage() {
 
   useEffect(() => { if (isOnline && userId) syncPendingRemitos(userId) }, [isOnline, userId, syncPendingRemitos])
 
-  const saveDraft = useCallback((currentItems: LineItem[], currentClient: ClientData, currentPriceList: PriceListId, uid: string) => {
+  const saveDraft = useCallback((currentItems: LineItem[], currentClient: ClientData, currentListId: string, uid: string) => {
     if (!uid) return
     try {
       if (currentItems.length === 0 && !currentClient.nombre.trim()) { localStorage.removeItem(k(LS_BASE_KEYS.draft, uid)); return }
-      localStorage.setItem(k(LS_BASE_KEYS.draft, uid), JSON.stringify({ items: currentItems, clientNombre: currentClient.nombre, priceListId: currentPriceList, savedAt: Date.now() }))
+      localStorage.setItem(k(LS_BASE_KEYS.draft, uid), JSON.stringify({ items: currentItems, clientNombre: currentClient.nombre, listId: currentListId, savedAt: Date.now() }))
     } catch {}
   }, [])
 
   const clearDraft = useCallback((uid: string) => { try { localStorage.removeItem(k(LS_BASE_KEYS.draft, uid)) } catch {} }, [])
 
-  const scheduleDraftSave = useCallback((currentItems: LineItem[], currentClient: ClientData, currentPriceList: PriceListId, uid: string) => {
+  const scheduleDraftSave = useCallback((currentItems: LineItem[], currentClient: ClientData, currentListId: string, uid: string) => {
     if (draftSaveTimer.current) window.clearTimeout(draftSaveTimer.current)
-    draftSaveTimer.current = window.setTimeout(() => saveDraft(currentItems, currentClient, currentPriceList, uid), 800)
+    draftSaveTimer.current = window.setTimeout(() => saveDraft(currentItems, currentClient, currentListId, uid), 800)
   }, [saveDraft])
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? "")) }, [supabase])
@@ -287,7 +279,7 @@ export default function RemitoPage() {
       try {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("next_remito_number, selected_price_list, empresa, vendedor, telefono, alias")
+          .select("next_remito_number, empresa, vendedor, telefono, alias")
           .eq("id", userId).single()
         if (profile?.next_remito_number && Number(profile.next_remito_number) > 0) setNextNumber(Number(profile.next_remito_number))
         if (profile?.empresa) setEmpresa(profile.empresa)
@@ -296,13 +288,22 @@ export default function RemitoPage() {
         if (profile?.alias) setAliasMP(profile.alias)
         const onboardingDone = localStorage.getItem(onboardingKey(userId))
         if (!profile?.empresa && !onboardingDone) setShowOnboarding(true)
-        const sel = profile?.selected_price_list
-        if (sel === "base" || sel === "mayorista" || sel === "oferta") setPriceListId(sel)
-        const raw = localStorage.getItem(k(LS_BASE_KEYS.productsCache, userId))
-        if (raw) {
-          const parsed = JSON.parse(raw) as Record<PriceListId, ProductsCacheEntry>
-          if (parsed?.base && parsed?.mayorista && parsed?.oferta) productsCacheRef.current = parsed
+
+        // ── Cargar listas del usuario desde Supabase ──
+        const { data: lists } = await supabase
+          .from("price_lists")
+          .select("id, nombre")
+          .eq("user_id", userId)
+          .order("orden", { ascending: true })
+
+        if (lists && lists.length > 0) {
+          setPriceLists(lists)
+          // Restaurar lista seleccionada desde localStorage
+          const savedListId = localStorage.getItem(k(LS_BASE_KEYS.selectedList, userId))
+          const validId = lists.find(l => l.id === savedListId)?.id ?? lists[0].id
+          setSelectedListId(validId)
         }
+
         if (!draftRestoredRef.current) {
           draftRestoredRef.current = true
           const rawDraft = localStorage.getItem(k(LS_BASE_KEYS.draft, userId))
@@ -312,52 +313,46 @@ export default function RemitoPage() {
             if (draft.items?.length > 0 && draftDate === getTodayISODate()) {
               setItems(draft.items)
               setClient((prev) => ({ ...prev, nombre: draft.clientNombre || "" }))
-              if (draft.priceListId) setPriceListId(draft.priceListId)
-            } else { localStorage.removeItem(k(LS_BASE_KEYS.draft, userId)) }
-          }
+              if (draft.listId) setSelectedListId(draft.listId)
+               } else { localStorage.removeItem(k(LS_BASE_KEYS.draft, userId)) }          }
         }
       } catch {}
     }
     load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, supabase, loadPendingCount])
 
-  useEffect(() => { if (!userId || !draftRestoredRef.current) return; scheduleDraftSave(items, client, priceListId, userId) }, [items, client, priceListId, userId, scheduleDraftSave])
+  useEffect(() => { if (!userId || !draftRestoredRef.current) return; scheduleDraftSave(items, client, selectedListId, userId) }, [items, client, selectedListId, userId, scheduleDraftSave])
+
+  // Guardar lista seleccionada en localStorage
+  useEffect(() => {
+    if (!userId || !selectedListId) return
+    localStorage.setItem(k(LS_BASE_KEYS.selectedList, userId), selectedListId)
+  }, [selectedListId, userId])
 
   useEffect(() => {
-    if (!userId) return
-    void supabase.from("profiles").update({ selected_price_list: priceListId }).eq("id", userId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [priceListId, userId])
-
-  const saveProductsCache = useCallback((cache: Record<PriceListId, ProductsCacheEntry>) => {
-    if (!userId) return
-    try { localStorage.setItem(k(LS_BASE_KEYS.productsCache, userId), JSON.stringify(cache)) } catch {}
-  }, [userId])
-
-  useEffect(() => {
+    if (!selectedListId) return
     const controller = new AbortController()
     const CACHE_TTL_MS = 30 * 60 * 1000
     const loadProducts = async () => {
-      const cached = productsCacheRef.current[priceListId]
-      const isStale = !cached.loadedAt || (Date.now() - cached.loadedAt) > CACHE_TTL_MS
+      const cached = productsCacheRef.current[selectedListId]
+      const isStale = !cached?.loadedAt || (Date.now() - cached.loadedAt) > CACHE_TTL_MS
       if (cached?.products?.length > 0 && !isStale) { setProducts(cached.products); return }
       try {
         setIsLoadingProducts(true)
-        const res = await fetch(`/api/products-csv?list=${priceListId}`, { cache: "no-store", signal: controller.signal })
+        const res = await fetch(`/api/products-csv?listId=${selectedListId}`, { cache: "no-store", signal: controller.signal })
         if (!res.ok) throw new Error()
         const parsed = parseCSV(await res.text())
-        const nextCache = { ...productsCacheRef.current, [priceListId]: { loadedAt: Date.now(), products: parsed } }
-        productsCacheRef.current = nextCache
-        saveProductsCache(nextCache)
+        productsCacheRef.current[selectedListId] = { loadedAt: Date.now(), products: parsed }
         startTransition(() => setProducts(parsed))
       } catch (e) {
         if ((e as { name?: string })?.name === "AbortError") return
-        if (!productsCacheRef.current[priceListId]?.products?.length) startTransition(() => setProducts([]))
+        if (!productsCacheRef.current[selectedListId]?.products?.length) startTransition(() => setProducts([]))
       } finally { setIsLoadingProducts(false) }
     }
     loadProducts()
     return () => controller.abort()
-  }, [priceListId, saveProductsCache])
+  }, [selectedListId])
 
   const remitoNumero = useMemo(() => formatRemitoNumber(nextNumber), [nextNumber])
   const subtotal = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
@@ -384,7 +379,7 @@ export default function RemitoPage() {
     if (!isOnline) { showToast("Sin internet"); return null }
     if (!userId) { showToast("Falta sesión"); return null }
     const currentItems = itemsRef.current; const currentClient = clientRef.current
-    const currentPriceListId = priceListIdRef.current
+    const currentListId = selectedListIdRef.current
     const currentSubtotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
     const currentDescuento = Math.round(currentSubtotal * descuentoPct / 100)
     const currentTotal = currentSubtotal - currentDescuento
@@ -395,7 +390,8 @@ export default function RemitoPage() {
       if (consumeError || typeof consumedNumber !== "number") { showToast("Error al generar número"); return null }
       const { data: remitoInserted, error: remitoError } = await supabase.from("remitos").insert({
         user_id: userId, numero_remito: formatRemitoNumber(consumedNumber), fecha: getTodayISODate(),
-        cliente_nombre: currentClient.nombre?.trim() || null, estado: "pendiente", observaciones: null, price_list_id: currentPriceListId, total: currentTotal,
+        cliente_nombre: currentClient.nombre?.trim() || null, estado: "pendiente", observaciones: null,
+        price_list_id: currentListId, total: currentTotal,
       }).select("id").single()
       if (remitoError || !remitoInserted) { showToast("Error al guardar"); return null }
       const { error: itemsError } = await supabase.from("remito_items").insert(
@@ -410,13 +406,13 @@ export default function RemitoPage() {
   const persistRemitoOffline = useCallback(() => {
     if (!userId) return null
     const currentItems = itemsRef.current; const currentClient = clientRef.current
-    const currentPriceListId = priceListIdRef.current
+    const currentListId = selectedListIdRef.current
     const currentSubtotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
     const currentDescuento = Math.round(currentSubtotal * descuentoPct / 100)
     const currentTotal = currentSubtotal - currentDescuento
     const pending: PendingRemito = {
       id: generateLocalId(), userId, numeroRemito: remitoNumero, fecha: getTodayISODate(),
-      clienteNombre: currentClient.nombre?.trim() || null, priceListId: currentPriceListId, total: currentTotal,
+      clienteNombre: currentClient.nombre?.trim() || null, listId: currentListId, total: currentTotal,
       items: currentItems.filter(i => i.cantidad > 0).map(item => ({
         descripcion: item.product.descripcion, cantidad: item.cantidad,
         precio_unitario: item.product.precio, subtotal: item.subtotal, opcion: item.opcion || null,
@@ -730,13 +726,16 @@ export default function RemitoPage() {
                 {pendingCount} pendiente{pendingCount > 1 ? "s" : ""}
               </button>
             )}
-            <div className="relative shrink-0">
-              <select value={priceListId} onChange={(e) => setPriceListId(e.target.value as PriceListId)}
-                className="h-8 appearance-none rounded-lg border border-gray-300 bg-gray-50 px-2.5 pr-6 text-[13px] font-medium text-gray-700 outline-none focus:border-[#1565c0]">
-                {PRICE_LISTS.map((l) => (<option key={l.id} value={l.id}>{l.label}</option>))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-gray-400" />
-            </div>
+            {/* Selector de lista dinámico */}
+            {priceLists.length > 1 && (
+              <div className="relative shrink-0">
+                <select value={selectedListId} onChange={(e) => setSelectedListId(e.target.value)}
+                  className="h-8 appearance-none rounded-lg border border-gray-300 bg-gray-50 px-2.5 pr-6 text-[13px] font-medium text-gray-700 outline-none focus:border-[#1565c0]">
+                  {priceLists.map((l) => (<option key={l.id} value={l.id}>{l.nombre}</option>))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-gray-400" />
+              </div>
+            )}
             <button type="button" onClick={() => hasDraft ? setShowConfirmNew(true) : confirmNewRemito()}
               className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-gray-300 bg-gray-50 px-2.5 text-[12px] font-medium text-gray-600 active:opacity-60">
               <Plus className="size-3" />Nuevo
@@ -871,7 +870,6 @@ export default function RemitoPage() {
         </div>
       </div>
 
-      {/* MODAL: Ver ticket */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent showCloseButton={false} className="fixed left-1/2 top-1/2 z-50 flex h-[100dvh] w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-none border-0 bg-gray-100 p-0 sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-sm sm:rounded-2xl sm:border sm:border-gray-200">
           <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2.5">
@@ -893,7 +891,6 @@ export default function RemitoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL: Confirmar nuevo remito */}
       <Dialog open={showConfirmNew} onOpenChange={setShowConfirmNew}>
         <DialogContent className="max-w-sm rounded-2xl border-gray-200 bg-white">
           <DialogHeader>

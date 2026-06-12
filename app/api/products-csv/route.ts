@@ -1,34 +1,29 @@
 import { NextResponse } from "next/server"
-
-const PRICE_LIST_URLS = {
-  base: process.env.NEXT_PUBLIC_LISTA_BASE_URL,
-  mayorista: process.env.NEXT_PUBLIC_LISTA_MAYORISTA_URL,
-  oferta: process.env.NEXT_PUBLIC_LISTA_OFERTA_URL,
-} as const
-
-type PriceListKey = keyof typeof PRICE_LIST_URLS
-
-function isValidList(value: string | null): value is PriceListKey {
-  return value === "base" || value === "mayorista" || value === "oferta"
-}
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
-  const list = searchParams.get("list")
+  const listId = searchParams.get("listId")
 
-  if (!isValidList(list)) {
-    return NextResponse.json({ error: "Invalid list" }, { status: 400 })
-  }
-
-  const url = PRICE_LIST_URLS[list]
-
-  if (!url) {
-    return NextResponse.json({ error: "Price list not configured" }, { status: 500 })
+  if (!listId) {
+    return NextResponse.json({ error: "Missing listId" }, { status: 400 })
   }
 
   try {
-    const res = await fetch(url, {
-      next: { revalidate: 300 }, // 5 minutos
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from("price_lists")
+      .select("url")
+      .eq("id", listId)
+      .single()
+
+    if (error || !data?.url) {
+      return NextResponse.json({ error: "Lista no encontrada" }, { status: 404 })
+    }
+
+    const res = await fetch(data.url, {
+      next: { revalidate: 300 },
     })
 
     if (!res.ok) {
