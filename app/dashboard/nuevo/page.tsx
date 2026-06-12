@@ -7,7 +7,7 @@ import dynamic from "next/dynamic"
 import {
   Printer, CheckCircle2, Loader2, Eye,
   Bluetooth, ChevronDown, Plus, WifiOff,
-  ClipboardList, PlusCircle, Settings2, CloudOff,
+  ClipboardList, PlusCircle, Settings2, CloudOff, Tag, X,
 } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
@@ -121,6 +121,11 @@ export default function RemitoPage() {
   const [onboardingValues, setOnboardingValues] = useState<OnboardingValues>({ empresa: "", vendedor: "", telefono: "", alias: "" })
   const [isSavingOnboarding, setIsSavingOnboarding] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
+  // ── Descuento ──
+  const [descuentoPct, setDescuentoPct] = useState(0)
+  const [showDescuento, setShowDescuento] = useState(false)
+  const [descuentoInput, setDescuentoInput] = useState("")
+  const descuentoRef = useRef<HTMLInputElement>(null)
 
   const remitoDateRef = useRef<string>(getTodayDateSafe())
   const toastTimer = useRef<number | null>(null)
@@ -141,11 +146,7 @@ export default function RemitoPage() {
     oferta: { loadedAt: 0, products: [] },
   })
 
-  // ✅ CHEQUEO DE VERSIÓN — se ejecuta al montar la app
-  useEffect(() => {
-    checkAppVersion()
-  }, [])
-
+  useEffect(() => { checkAppVersion() }, [])
   useEffect(() => setMounted(true), [])
 
   useEffect(() => {
@@ -156,6 +157,23 @@ export default function RemitoPage() {
     window.addEventListener("offline", sync)
     return () => { window.removeEventListener("online", sync); window.removeEventListener("offline", sync) }
   }, [])
+
+  useEffect(() => {
+    if (showDescuento) {
+      setDescuentoInput(descuentoPct > 0 ? String(descuentoPct) : "")
+      setTimeout(() => descuentoRef.current?.focus(), 50)
+    }
+  }, [showDescuento, descuentoPct])
+
+  const confirmarDescuento = useCallback(() => {
+    const val = parseFloat(descuentoInput)
+    if (!isNaN(val) && val >= 0 && val <= 100) {
+      setDescuentoPct(val)
+    } else {
+      setDescuentoPct(0)
+    }
+    setShowDescuento(false)
+  }, [descuentoInput])
 
   const showToast = useCallback((text: string) => {
     setToastText(text); setToastVisible(true)
@@ -342,10 +360,12 @@ export default function RemitoPage() {
   }, [priceListId, saveProductsCache])
 
   const remitoNumero = useMemo(() => formatRemitoNumber(nextNumber), [nextNumber])
-  const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
+  const subtotal = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
+  const montoDescuento = useMemo(() => descuentoPct > 0 ? Math.round(subtotal * descuentoPct / 100) : 0, [subtotal, descuentoPct])
+  const total = useMemo(() => subtotal - montoDescuento, [subtotal, montoDescuento])
   const totalUnits = useMemo(() => items.reduce((s, i) => s + i.cantidad, 0), [items])
   const totalDev = useMemo(() => items.reduce((s, i) => s + (i.devolucion ?? 0), 0), [items])
-  const remitoData: RemitoData = useMemo(() => ({ numero: remitoNumero, fecha: remitoDateRef.current, client, items, subtotal: total, total }), [remitoNumero, client, items, total])
+  const remitoData: RemitoData = useMemo(() => ({ numero: remitoNumero, fecha: remitoDateRef.current, client, items, subtotal, total }), [remitoNumero, client, items, subtotal, total])
 
   const canPrint = items.filter(i => i.cantidad > 0).length > 0
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
@@ -357,7 +377,7 @@ export default function RemitoPage() {
 
   const advanceAndReset = useCallback((nextVisibleNumber: number, successData: SuccessState) => {
     setSuccessState(successData); setNextNumber(nextVisibleNumber); setClient(defaultClient); setItems([])
-    clearDraft(userId); remitoDateRef.current = getTodayDateSafe()
+    setDescuentoPct(0); clearDraft(userId); remitoDateRef.current = getTodayDateSafe()
   }, [userId, clearDraft])
 
   const persistRemito = useCallback(async (): Promise<{ nextNumber: number; remitoId: string } | null> => {
@@ -365,7 +385,9 @@ export default function RemitoPage() {
     if (!userId) { showToast("Falta sesión"); return null }
     const currentItems = itemsRef.current; const currentClient = clientRef.current
     const currentPriceListId = priceListIdRef.current
-    const currentTotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
+    const currentSubtotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
+    const currentDescuento = Math.round(currentSubtotal * descuentoPct / 100)
+    const currentTotal = currentSubtotal - currentDescuento
     if (currentItems.filter(i => i.cantidad > 0).length === 0) { showToast("No hay productos"); return null }
     try {
       setIsSaving(true)
@@ -383,13 +405,15 @@ export default function RemitoPage() {
       return { nextNumber: consumedNumber + 1, remitoId: remitoInserted.id }
     } catch { showToast("Error al guardar"); return null }
     finally { setIsSaving(false) }
-  }, [isOnline, userId, supabase, showToast])
+  }, [isOnline, userId, supabase, showToast, descuentoPct])
 
   const persistRemitoOffline = useCallback(() => {
     if (!userId) return null
     const currentItems = itemsRef.current; const currentClient = clientRef.current
     const currentPriceListId = priceListIdRef.current
-    const currentTotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
+    const currentSubtotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
+    const currentDescuento = Math.round(currentSubtotal * descuentoPct / 100)
+    const currentTotal = currentSubtotal - currentDescuento
     const pending: PendingRemito = {
       id: generateLocalId(), userId, numeroRemito: remitoNumero, fecha: getTodayISODate(),
       clienteNombre: currentClient.nombre?.trim() || null, priceListId: currentPriceListId, total: currentTotal,
@@ -401,13 +425,15 @@ export default function RemitoPage() {
     }
     savePendingRemito(pending, userId)
     return { numero: remitoNumero, localId: pending.id }
-  }, [userId, remitoNumero, savePendingRemito])
+  }, [userId, remitoNumero, savePendingRemito, descuentoPct])
 
   const buildPrintHtml = useCallback(() => {
     const _empresa = empresa; const _vendedor = vendedor; const _telefono = telefono
     const _alias = aliasMP; const _numero = remitoNumero; const _fecha = remitoDateRef.current
     const items = itemsRef.current; const client = clientRef.current
-    const total = items.reduce((s, i) => s + i.subtotal, 0)
+    const subtotalVal = items.reduce((s, i) => s + i.subtotal, 0)
+    const descuentoVal = Math.round(subtotalVal * descuentoPct / 100)
+    const totalVal = subtotalVal - descuentoVal
     const totalUnidades = items.reduce((s, i) => s + i.cantidad, 0)
     const totalDevolucion = items.reduce((s, i) => s + (i.devolucion ?? 0), 0)
     const comercio = client.nombre?.trim() || "Sin especificar"
@@ -431,6 +457,10 @@ export default function RemitoPage() {
         ${g.totalDevolucion > 0 ? `<div style="font-size:9px;">Dev: ${g.hasOpciones ? g.opciones.filter(o=>o.devolucion>0).map(o=>`${o.devolucion} ${o.opcion}`).join(", ") : g.totalDevolucion}</div>` : ""}
         <div style="display:flex;justify-content:space-between;"><span>${g.totalCantidad} x ${fmt(g.precio)}</span><span style="font-weight:bold;">${fmt(g.totalSubtotal)}</span></div>
       </div>`).join("")
+    const descuentoHtml = descuentoVal > 0 ? `
+      <div class="row"><span>Subtotal</span><span>${fmt(subtotalVal)}</span></div>
+      <div class="row"><span>Descuento (${descuentoPct}%)</span><span>-${fmt(descuentoVal)}</span></div>` : `
+      <div class="row"><span>Subtotal</span><span>${fmt(subtotalVal)}</span></div>`
     return `<!doctype html><html><head><meta charset="utf-8"/><title>Remito</title>
     <style>@page{size:58mm auto;margin:0}*{box-sizing:border-box;margin:0;padding:0}body{font-family:monospace;font-size:10px;background:#fff;color:#000;width:58mm;}.topbar{display:flex;gap:8px;justify-content:flex-end;padding:10px 8px;background:#fff;border-bottom:1px solid #ddd;}.btn{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid #d0d0d0;background:#fff;color:#111;font-size:14px;font-weight:600;display:inline-flex;align-items:center;cursor:pointer;}.btn-primary{background:#111;color:#fff;border-color:#111;}.sheet{width:48mm;margin:0 auto;padding:2mm;}.center{text-align:center;}.row{display:flex;justify-content:space-between;margin-top:2px;}@media print{.topbar{display:none!important}}</style></head>
     <body><div class="topbar"><button class="btn" id="btnClose">Cerrar</button><button class="btn btn-primary" id="btnPrint">Imprimir</button></div>
@@ -452,14 +482,14 @@ export default function RemitoPage() {
       <div style="border-bottom:1px dashed #000;padding:3px 0;"><div class="row" style="font-weight:bold;"><span>Producto</span><span>Subtotal</span></div></div>
       ${itemsHtml}
       <div style="border-top:1px dashed #000;padding-top:3px;">
-        <div class="row"><span>Subtotal</span><span>${fmt(total)}</span></div>
-        <div class="row" style="font-weight:bold;font-size:12px;"><span>TOTAL</span><span>${fmt(total)}</span></div>
+        ${descuentoHtml}
+        <div class="row" style="font-weight:bold;font-size:12px;"><span>TOTAL</span><span>${fmt(totalVal)}</span></div>
       </div>
       <div class="center" style="padding-top:4px;font-size:9px;">Gracias</div>
     </div>
     <script>document.getElementById("btnPrint").onclick=()=>window.print();document.getElementById("btnClose").onclick=()=>window.history.length>1?window.history.back():window.close()<\/script>
     </body></html>`
-  }, [empresa, vendedor, telefono, aliasMP, remitoNumero])
+  }, [empresa, vendedor, telefono, aliasMP, remitoNumero, descuentoPct])
 
   const openPrintWindowImmediate = useCallback(() => {
     const html = buildPrintHtml(); if (!html) return null
@@ -507,7 +537,7 @@ export default function RemitoPage() {
 
   const confirmNewRemito = useCallback(() => {
     setClient(defaultClient); setItems([]); setShowConfirmNew(false)
-    clearDraft(userId); showToast("Nuevo remito listo")
+    setDescuentoPct(0); clearDraft(userId); showToast("Nuevo remito listo")
   }, [showToast, userId, clearDraft])
 
   if (!mounted) {
@@ -734,16 +764,56 @@ export default function RemitoPage() {
           )}
         </main>
 
+        {/* BLOQUE FIJO INFERIOR */}
         <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
           {canPrint && (
             <div className="border-b border-gray-100">
+              {showDescuento && (
+                <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pt-2.5 pb-2">
+                  <Tag className="size-3.5 shrink-0 text-gray-400" />
+                  <span className="text-[13px] text-gray-500">Descuento</span>
+                  <input
+                    ref={descuentoRef}
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={descuentoInput}
+                    onChange={(e) => setDescuentoInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") confirmarDescuento() }}
+                    className="h-9 w-20 rounded-lg border border-gray-300 bg-white text-center text-[15px] font-bold text-gray-900 outline-none focus:border-[#1565c0] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-[13px] text-gray-500">%</span>
+                  <div className="flex-1" />
+                  <button type="button" onClick={confirmarDescuento}
+                    className="flex h-9 items-center gap-1 rounded-lg bg-[#1565c0] px-3 text-[13px] font-medium text-white active:opacity-80">
+                    Aplicar
+                  </button>
+                  <button type="button" onClick={() => { setShowDescuento(false); setDescuentoPct(0) }}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-400 active:opacity-60">
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              )}
               <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
+                  {descuentoPct > 0 && (
+                    <p className="text-[11px] text-green-600 mt-0.5">{descuentoPct}% desc. · -{formatCurrency(montoDescuento)}</p>
+                  )}
                   {totalDev > 0 && (
                     <p className="text-[11px] text-orange-500 mt-0.5">{totalDev} dev.</p>
                   )}
                 </div>
+                <button type="button" onClick={() => setShowDescuento(v => !v)}
+                  className={cn(
+                    "flex h-10 items-center gap-1 rounded-xl border px-2.5 text-[12px] font-medium active:opacity-60",
+                    descuentoPct > 0
+                      ? "border-green-300 bg-green-50 text-green-700"
+                      : "border-gray-300 bg-white text-gray-600"
+                  )}>
+                  <Tag className="size-3.5" />
+                  {descuentoPct > 0 ? `${descuentoPct}%` : "Desc."}
+                </button>
                 <button type="button" onClick={() => setShowPreview(true)}
                   className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
                   <Eye className="size-3.5" />Ver
@@ -801,6 +871,7 @@ export default function RemitoPage() {
         </div>
       </div>
 
+      {/* MODAL: Ver ticket */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent showCloseButton={false} className="fixed left-1/2 top-1/2 z-50 flex h-[100dvh] w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-none border-0 bg-gray-100 p-0 sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-sm sm:rounded-2xl sm:border sm:border-gray-200">
           <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2.5">
@@ -809,7 +880,7 @@ export default function RemitoPage() {
           </div>
           <div className="flex-1 overflow-y-auto bg-gray-300 px-4 py-4">
             <div className="mx-auto w-fit overflow-hidden rounded-xl bg-white shadow-sm">
-              <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} />
+              <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} descuentoPct={descuentoPct} />
             </div>
           </div>
           <div className="border-t border-gray-200 bg-white px-4 py-2.5">
@@ -822,6 +893,7 @@ export default function RemitoPage() {
         </DialogContent>
       </Dialog>
 
+      {/* MODAL: Confirmar nuevo remito */}
       <Dialog open={showConfirmNew} onOpenChange={setShowConfirmNew}>
         <DialogContent className="max-w-sm rounded-2xl border-gray-200 bg-white">
           <DialogHeader>
@@ -838,7 +910,7 @@ export default function RemitoPage() {
       {userId && <InstallBanner userId={userId} />}
       <div className="hidden" aria-hidden="true">
         <div id="printable-remito">
-          <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} />
+          <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} descuentoPct={descuentoPct} />
         </div>
       </div>
     </>
