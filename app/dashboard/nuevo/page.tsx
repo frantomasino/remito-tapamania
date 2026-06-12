@@ -509,7 +509,7 @@ export default function RemitoPage() {
     const successData = { numero: remitoNumero, cliente: clientRef.current.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     try {
       setIsPrintingBluetooth(true); showToast("Buscando impresora...")
-      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, aliasMP)
+      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, aliasMP, descuentoPct)
       const { device, characteristic } = await connectBlePrinter()
       showToast(`Conectado a ${device.name?.trim() || "impresora"}. Enviando...`)
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
