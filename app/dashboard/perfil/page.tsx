@@ -7,8 +7,8 @@ import { StockScanner } from "@/components/stock-scanner"
 type PriceListId = "base" | "mayorista" | "oferta"
 
 function getPriceListLabel(value?: string | null) {
-  switch (value as PriceListId) {
-    case "minorista": return "Minorista"
+  switch (value) {
+    case "base": return "Base"
     case "mayorista": return "Mayorista"
     case "oferta": return "Oferta"
     default: return "Sin definir"
