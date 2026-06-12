@@ -71,9 +71,12 @@ export function buildRemitoEscPos(
   empresa = "Remito",
   vendedor = "",
   telefono = "",
-  alias = ""
+  alias = "",
+  descuentoPct = 0
 ) {
-  const total = data.items.reduce((sum, item) => sum + item.subtotal, 0)
+  const subtotal = data.items.reduce((sum, item) => sum + item.subtotal, 0)
+  const montoDescuento = descuentoPct > 0 ? Math.round(subtotal * descuentoPct / 100) : 0
+  const total = subtotal - montoDescuento
   const totalUnidades = data.items.reduce((sum, item) => sum + item.cantidad, 0)
   const totalDevolucion = data.items.reduce((sum, item) => sum + (item.devolucion ?? 0), 0)
   const comercio = ascii((data.client.nombre ?? "").trim() || "Sin especificar")
@@ -146,7 +149,10 @@ export function buildRemitoEscPos(
   }
 
   // --- TOTALES ---
-  chunks.push(twoCols("Subtotal", fmt(total), 32))
+  chunks.push(twoCols("Subtotal", fmt(subtotal), 32))
+  if (montoDescuento > 0) {
+    chunks.push(twoCols(`Descuento (${descuentoPct}%)`, `-${fmt(montoDescuento)}`, 32))
+  }
   chunks.push(bold(true))
   chunks.push(size(1, 0))
   chunks.push(twoCols("TOTAL", fmt(total), 16))
