@@ -127,13 +127,21 @@ export function buildRemitoEscPos(
   chunks.push(hr())
 
   for (const group of grouped) {
-    const titleLines = wrapText(ascii(`${group.title} x${group.totalCantidad}`), 32)
+    // Nombre del producto más grande
+    chunks.push(size(1, 0))
+    chunks.push(bold(true))
+    const titleLines = wrapText(ascii(`${group.title} x${group.totalCantidad}`), 24)
     for (const l of titleLines) chunks.push(line(l))
+    chunks.push(bold(false))
+    chunks.push(size(0, 0))
 
+    // Opciones más grandes
     if (group.hasOpciones && group.opciones.length > 0) {
       const detalle = group.opciones.filter(o => o.cantidad > 0).map(o => `${ascii(o.opcion)} ${o.cantidad}`).join(", ")
       if (detalle) {
-        for (const l of wrapText(detalle, 30)) chunks.push(line(`  ${l}`))
+        chunks.push(size(1, 0))
+        for (const l of wrapText(detalle, 24)) chunks.push(line(l))
+        chunks.push(size(0, 0))
       }
     }
 
