@@ -73,14 +73,12 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
       id="remito-print"
       className="remito-ticket mx-auto w-[48mm] max-w-[48mm] overflow-hidden bg-white font-mono text-black"
     >
-      <div className="px-[2mm] py-[2mm] text-[10px] leading-tight">
+      <div className="px-[2mm] py-[2mm] text-[12px] leading-tight">
         <div className="border-b border-dashed border-black pb-[2mm] text-center">
-          <p className="text-[12px] font-bold uppercase">{empresa}</p>
-          {telefono && <p className="text-[9px]">{telefono}</p>}
-          {alias && (
-            <p className="text-[11px] font-bold italic text-gray-800">Alias: {alias}</p>
-          )}
-          <p className="mt-1 text-[10px] font-semibold">Remito - Pedido</p>
+          <p className="font-bold uppercase">{empresa}</p>
+          {telefono && <p className="font-bold">{telefono}</p>}
+          {alias && <p className="font-bold uppercase">{alias}</p>}
+          <p className="mt-1 font-semibold">Remito - Pedido</p>
           <p className="mt-1">N° {data.numero}</p>
           <p>{data.fecha}</p>
         </div>
@@ -113,7 +111,7 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
         </div>
 
         <div className="border-b border-dashed border-black py-[2mm]">
-          <div className="grid grid-cols-[1fr_auto] gap-2 text-[10px] font-bold">
+          <div className="grid grid-cols-[1fr_auto] gap-2 font-bold">
             <span>Producto</span>
             <span className="text-right">Subtotal</span>
           </div>
@@ -141,7 +139,7 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
                       : group.totalDevolucion}
                   </p>
                 )}
-                <div className="mt-[1mm] flex justify-between gap-2 text-[10px]">
+                <div className="mt-[1mm] flex justify-between gap-2">
                   <span>{group.totalCantidad} x {formatCurrency(group.precio)}</span>
                   <span className="text-right font-semibold">{formatCurrency(group.totalSubtotal)}</span>
                 </div>
@@ -150,19 +148,18 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
           )}
         </div>
 
-        {/* Totales con descuento */}
         <div className="border-t border-dashed border-black pt-[2mm]">
-          <div className="flex justify-between text-[10px]">
+          <div className="flex justify-between">
             <span>Subtotal</span>
             <span>{formatCurrency(subtotal)}</span>
           </div>
           {montoDescuento > 0 && (
-            <div className="mt-[1mm] flex justify-between text-[10px]">
+            <div className="mt-[1mm] flex justify-between">
               <span>Descuento ({descuentoPct}%)</span>
               <span>-{formatCurrency(montoDescuento)}</span>
             </div>
           )}
-          <div className="mt-[1mm] flex justify-between text-[12px] font-bold">
+          <div className="mt-[1mm] flex justify-between font-bold">
             <span>TOTAL</span>
             <span>{formatCurrency(total)}</span>
           </div>
