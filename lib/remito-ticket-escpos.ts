@@ -88,18 +88,20 @@ export function buildRemitoEscPos(
 
   // --- HEADER ---
   chunks.push(align("center"))
-  chunks.push(bold(true))
-  chunks.push(size(1, 1))
-  chunks.push(line(ascii(empresa.toUpperCase()) || "REMITO"))
-  chunks.push(size(0, 0))
-  chunks.push(bold(false))
+chunks.push(bold(true))
+chunks.push(size(1, 1))
+chunks.push(line(ascii(empresa.toUpperCase()) || "REMITO"))
+if (telefono) chunks.push(line(ascii(telefono)))
+if (alias) chunks.push(line(ascii(alias.toUpperCase())))
+chunks.push(size(0, 0))
+chunks.push(bold(false))
 
   if (telefono) chunks.push(line(ascii(telefono)))
 
   if (alias) {
     chunks.push(bold(true))
     chunks.push(size(1, 1))
-    chunks.push(line(ascii(`ALIAS: ${alias.toUpperCase()}`)))
+    chunks.push(line(ascii(alias.toUpperCase())))
     chunks.push(size(0, 0))
     chunks.push(bold(false))
   }
