@@ -88,24 +88,13 @@ export function buildRemitoEscPos(
 
   // --- HEADER ---
   chunks.push(align("center"))
-chunks.push(bold(true))
-chunks.push(size(1, 1))
-chunks.push(line(ascii(empresa.toUpperCase()) || "REMITO"))
-if (telefono) chunks.push(line(ascii(telefono)))
-if (alias) chunks.push(line(ascii(alias.toUpperCase())))
-chunks.push(size(0, 0))
-chunks.push(bold(false))
-
+  chunks.push(bold(true))
+  chunks.push(size(1, 1))
+  chunks.push(line(ascii(empresa.toUpperCase()) || "REMITO"))
   if (telefono) chunks.push(line(ascii(telefono)))
-
-  if (alias) {
-    chunks.push(bold(true))
-    chunks.push(size(1, 1))
-    chunks.push(line(ascii(alias.toUpperCase())))
-    chunks.push(size(0, 0))
-    chunks.push(bold(false))
-  }
-
+  if (alias) chunks.push(line(ascii(alias.toUpperCase())))
+  chunks.push(size(0, 0))
+  chunks.push(bold(false))
   chunks.push(line("Remito / Comprobante"))
   chunks.push(line(`N ${data.numero}`))
   chunks.push(line(data.fecha))
