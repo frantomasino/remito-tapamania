@@ -66,7 +66,6 @@ const detailTags = (s: string) => {
   return out.slice(0, 3)
 }
 
-
 const productOptions = (s: string) => {
   const tokens = extractParenParts(s)
     .flatMap((p) => p.split(","))
@@ -111,6 +110,7 @@ const productOptions = (s: string) => {
 
   return out.length > 1 ? out : []
 }
+
 const itemKey = (desc: string, opcion?: string) => `${desc}||${opcion ?? ""}`
 type Derived = { title: string; tags: string[]; options: string[]; haystack: string }
 
@@ -188,7 +188,7 @@ interface ProductRowProps {
   title: string
   infoTags: string[]
   options: string[]
-  selectedOpt: string
+  selectedOpt: string  // "" significa que el vendedor NO eligió ninguna opción explícitamente
   selectedCount: number
   isFirst?: boolean
   onSelectOption: (desc: string, opt: string) => void
@@ -213,7 +213,7 @@ const ProductRow = memo(function ProductRow({
           {options.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1">
               {options.map((o) => {
-                const active = normalize(o) === normalize(selectedOpt)
+                const active = selectedOpt !== "" && normalize(o) === normalize(selectedOpt)
                 return (
                   <button
                     key={o}
@@ -348,7 +348,7 @@ const CartGroupRow = memo(function CartGroupRow({
         <div className="mt-2 flex flex-col gap-2 pl-1">
           {group.items.map((item) => (
             <div key={itemKey(item.product.descripcion, item.opcion)}>
-              <p className="text-[12px] font-medium text-gray-600 mb-1">{item.opcion}</p>
+              <p className="text-[12px] font-medium text-gray-600 mb-1">{item.opcion ?? "Sin especificar"}</p>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[11px] text-gray-400 w-10">Venta:</span>
                 <div className="flex items-center gap-1">
@@ -376,7 +376,7 @@ const CartGroupRow = memo(function CartGroupRow({
     )
   }
 
-  // ── Caso simple — DOS LÍNEAS para mobile ──
+  // ── Caso simple ──
   const item = group.items[0]
   const handleBlur = () => {
     const parsed = parseInt(localVal, 10)
@@ -386,7 +386,6 @@ const CartGroupRow = memo(function CartGroupRow({
 
   return (
     <div className="border-b border-gray-200 last:border-b-0 py-2.5">
-      {/* Línea 1: nombre + precio + eliminar */}
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-semibold text-gray-900 leading-snug">
@@ -409,9 +408,7 @@ const CartGroupRow = memo(function CartGroupRow({
         </button>
       </div>
 
-      {/* Línea 2: controles cantidad + devolución */}
       <div className="flex items-center gap-2">
-        {/* Cantidad */}
         <div className="flex items-center gap-1">
           <button type="button"
             onClick={() => item.cantidad > 1 && onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1)}
@@ -433,10 +430,8 @@ const CartGroupRow = memo(function CartGroupRow({
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-base font-bold text-gray-700 active:opacity-60">+</button>
         </div>
 
-        {/* Separador */}
         <div className="h-4 w-px bg-gray-200 mx-1" />
 
-        {/* Devolución */}
         <div className="flex items-center gap-1">
           <span className="text-[11px] text-orange-500 font-medium mr-0.5">Dev</span>
           <button type="button"
@@ -487,6 +482,7 @@ export function ProductSelector({ products, items, onItemsChange, onAddToast }: 
     }
   }, [items.length])
 
+  // "" = el vendedor NO eligió opción todavía (no forzamos ninguna por defecto)
   const getSelectedOpt = useCallback((desc: string) => selectedOptionByDesc[desc] ?? "", [selectedOptionByDesc])
   const setSelectedOpt = useCallback((desc: string, opt: string) => {
     setSelectedOptionByDesc((prev) => prev[desc] === opt ? prev : { ...prev, [desc]: opt })
@@ -737,9 +733,13 @@ export function ProductSelector({ products, items, onItemsChange, onAddToast }: 
                 const title = d?.title ?? shortDesc(p.descripcion)
                 const options = d?.options ?? productOptions(p.descripcion)
                 const infoTags = d?.tags ?? detailTags(p.descripcion)
-                const selectedOpt = options.length > 0 ? (getSelectedOpt(p.descripcion) || options[0]) : ""
+
+                // "" = no eligió opción todavía. El + agrega sin opción.
+                const selectedOpt = getSelectedOpt(p.descripcion)
+
+                // Contar según la opción seleccionada, o sin opción si no eligió
                 const selectedCount = options.length > 0
-                  ? itemCountByKey.get(itemKey(p.descripcion, selectedOpt)) ?? 0
+                  ? itemCountByKey.get(itemKey(p.descripcion, selectedOpt || undefined)) ?? 0
                   : itemCountByKey.get(itemKey(p.descripcion)) ?? 0
 
                 return (
