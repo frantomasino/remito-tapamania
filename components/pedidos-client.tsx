@@ -21,6 +21,14 @@ const GROUP_LABELS: { id: GroupBy; label: string }[] = [
   { id: "año", label: "Año" },
 ]
 
+const CARD_TITLES: Record<GroupBy, string> = {
+  hoy: "Cobros de hoy",
+  dia: "Cobros del día",
+  semana: "Cobros de la semana",
+  mes: "Cobros del mes",
+  año: "Cobros del año",
+}
+
 function getTodayISO() { return new Date().toISOString().slice(0, 10) }
 function getYesterdayISO() {
   const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10)
@@ -87,6 +95,7 @@ interface PedidosClientProps {
 
 export function PedidosClient({ records, userId }: PedidosClientProps) {
   const [groupBy, setGroupBy] = useState<GroupBy>("hoy")
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayISO())
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [isPrinting, setIsPrinting] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
@@ -107,7 +116,10 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
 
   const groups = useMemo(() => {
     const today = getTodayISO()
-    const filtered = groupBy === "hoy" ? records.filter(r => r.fecha === today) : records
+    let filtered = records
+    if (groupBy === "hoy") filtered = records.filter(r => r.fecha === today)
+    else if (groupBy === "dia") filtered = records.filter(r => r.fecha === selectedDate)
+
     const map = new Map<string, SaleRecord[]>()
     for (const r of filtered) {
       const key = getGroupKey(r.fecha, groupBy)
@@ -121,7 +133,7 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
         key, label: getGroupLabel(key, groupBy), items,
         total: items.reduce((s, r) => s + (r.total || 0), 0),
       }))
-  }, [records, groupBy])
+  }, [records, groupBy, selectedDate])
 
   const stats = useMemo(() => {
     const today = getTodayISO()
@@ -134,6 +146,11 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
       const currTotal = curr.reduce((s, r) => s + r.total, 0)
       const prevTotal = prev.reduce((s, r) => s + r.total, 0)
       return { count: curr.length, total: currTotal, compareLabel: "vs ayer", pctTotal: pct(currTotal, prevTotal), pctCount: pct(curr.length, prev.length) }
+    }
+    if (groupBy === "dia") {
+      const curr = records.filter(r => r.fecha === selectedDate)
+      const currTotal = curr.reduce((s, r) => s + r.total, 0)
+      return { count: curr.length, total: currTotal, compareLabel: null, pctTotal: null, pctCount: null }
     }
     if (groupBy === "semana") {
       const monThis = getMondayISO(0); const sunThis = getSundayISO(monThis)
@@ -162,20 +179,33 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
       return { count: curr.length, total: currTotal, compareLabel: "vs año anterior", pctTotal: pct(currTotal, prevTotal), pctCount: pct(curr.length, prev.length) }
     }
     return { count: records.length, total: records.reduce((s, r) => s + r.total, 0), compareLabel: null, pctTotal: null, pctCount: null }
-  }, [records, groupBy])
+  }, [records, groupBy, selectedDate])
 
-  const resumenHoy = useMemo(() => {
+  const resumenPago = useMemo(() => {
     const today = getTodayISO()
-    const hoy = records.filter(r => r.fecha === today)
-    const efectivo = hoy.filter(r => r.formaPagoCliente === "efectivo" || !r.formaPagoCliente)
-    const mp = hoy.filter(r => r.formaPagoCliente === "mercadopago")
+    const d = new Date()
+    let filteredRecords = records
+
+    if (groupBy === "hoy") filteredRecords = records.filter(r => r.fecha === today)
+    else if (groupBy === "dia") filteredRecords = records.filter(r => r.fecha === selectedDate)
+    else if (groupBy === "semana") {
+      const monThis = getMondayISO(0); const sunThis = getSundayISO(monThis)
+      filteredRecords = records.filter(r => r.fecha >= monThis && r.fecha <= sunThis)
+    } else if (groupBy === "mes") {
+      const thisMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      filteredRecords = records.filter(r => r.fecha.startsWith(thisMonth))
+    } else if (groupBy === "año") {
+      const thisYear = String(d.getFullYear())
+      filteredRecords = records.filter(r => r.fecha.startsWith(thisYear))
+    }
+
+    const efectivo = filteredRecords.filter(r => r.formaPagoCliente === "efectivo" || !r.formaPagoCliente)
+    const mp = filteredRecords.filter(r => r.formaPagoCliente === "mercadopago")
     return {
-      total: hoy.reduce((s, r) => s + r.total, 0),
-      count: hoy.length,
       efectivo: { count: efectivo.length, total: efectivo.reduce((s, r) => s + r.total, 0) },
       mp: { count: mp.length, total: mp.reduce((s, r) => s + r.total, 0) },
     }
-  }, [records])
+  }, [records, groupBy, selectedDate])
 
   const toggleGroup = useCallback((key: string) => {
     setExpandedGroups(prev => {
@@ -187,6 +217,7 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
 
   const handleGroupBy = useCallback((g: GroupBy) => {
     setGroupBy(g); setExpandedGroups(new Set())
+    if (g === "dia") setSelectedDate(getTodayISO())
   }, [])
 
   const handlePrintGroup = useCallback(async (group: { label: string; items: SaleRecord[]; total: number }) => {
@@ -226,7 +257,6 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
 
   return (
     <>
-      {/* ── MODAL ELIMINAR ── */}
       <Dialog open={showConfirmClear} onOpenChange={setShowConfirmClear}>
         <DialogContent className="max-w-sm rounded-2xl border-gray-200 bg-white">
           <DialogHeader>
@@ -246,7 +276,6 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
         </DialogContent>
       </Dialog>
 
-      {/* ── MODAL RESUMEN DEL DÍA ── */}
       {showResumen && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center" onClick={() => setShowResumen(false)}>
           <div className="absolute inset-0 bg-black/40" />
@@ -254,44 +283,40 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
             onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-gray-200" />
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-[17px] font-semibold text-gray-900">Cobros de hoy</h2>
+              <h2 className="text-[17px] font-semibold text-gray-900">{CARD_TITLES[groupBy]}</h2>
               <button type="button" onClick={() => setShowResumen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 active:opacity-60">
                 <X className="size-4" />
               </button>
             </div>
-
-            {resumenHoy.count === 0 ? (
-              <p className="text-center text-[13px] text-gray-400 py-6">Sin pedidos hoy</p>
+            {stats.count === 0 ? (
+              <p className="text-center text-[13px] text-gray-400 py-6">Sin pedidos en este período</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {/* Total grande */}
                 <div className="rounded-2xl bg-[#1565c0] px-5 py-4 text-white">
-                  <p className="text-[12px] font-medium opacity-80">Total cobrado hoy</p>
-                  <p className="text-[32px] font-bold tabular-nums leading-tight">{formatCurrency(resumenHoy.total)}</p>
-                  <p className="text-[12px] opacity-70 mt-0.5">{resumenHoy.count} {resumenHoy.count === 1 ? "pedido" : "pedidos"}</p>
+                  <p className="text-[12px] font-medium opacity-80">{CARD_TITLES[groupBy]}</p>
+                  <p className="text-[32px] font-bold tabular-nums leading-tight">{formatCurrency(stats.total)}</p>
+                  <p className="text-[12px] opacity-70 mt-0.5">{stats.count} {stats.count === 1 ? "pedido" : "pedidos"}</p>
                 </div>
-
-                {/* Desglose — solo muestra la card si tiene monto > 0 */}
                 <div className="grid grid-cols-2 gap-2">
-                  {resumenHoy.efectivo.total > 0 && (
+                  {resumenPago.efectivo.total > 0 && (
                     <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
                       <div className="flex items-center gap-1.5 mb-1">
                         <Banknote className="size-3.5 text-green-600" />
                         <p className="text-[11px] font-medium text-green-700">Efectivo</p>
                       </div>
-                      <p className="text-[20px] font-bold text-green-800 tabular-nums leading-tight">{formatCurrency(resumenHoy.efectivo.total)}</p>
-                      <p className="text-[11px] text-green-600 mt-0.5">{resumenHoy.efectivo.count} {resumenHoy.efectivo.count === 1 ? "pedido" : "pedidos"}</p>
+                      <p className="text-[20px] font-bold text-green-800 tabular-nums leading-tight">{formatCurrency(resumenPago.efectivo.total)}</p>
+                      <p className="text-[11px] text-green-600 mt-0.5">{resumenPago.efectivo.count} {resumenPago.efectivo.count === 1 ? "pedido" : "pedidos"}</p>
                     </div>
                   )}
-                  {resumenHoy.mp.total > 0 && (
+                  {resumenPago.mp.total > 0 && (
                     <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
                       <div className="flex items-center gap-1.5 mb-1">
                         <Smartphone className="size-3.5 text-blue-600" />
                         <p className="text-[11px] font-medium text-blue-700">Mercado Pago</p>
                       </div>
-                      <p className="text-[20px] font-bold text-blue-800 tabular-nums leading-tight">{formatCurrency(resumenHoy.mp.total)}</p>
-                      <p className="text-[11px] text-blue-600 mt-0.5">{resumenHoy.mp.count} {resumenHoy.mp.count === 1 ? "pedido" : "pedidos"}</p>
+                      <p className="text-[20px] font-bold text-blue-800 tabular-nums leading-tight">{formatCurrency(resumenPago.mp.total)}</p>
+                      <p className="text-[11px] text-blue-600 mt-0.5">{resumenPago.mp.count} {resumenPago.mp.count === 1 ? "pedido" : "pedidos"}</p>
                     </div>
                   )}
                 </div>
@@ -301,7 +326,6 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
         </div>
       )}
 
-      {/* ── TOAST ── */}
       <div className={cn(
         "fixed bottom-24 left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 transition-all duration-200",
         toast ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
@@ -317,7 +341,6 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
       <div className="mx-auto max-w-md px-4 pb-6 pt-3">
         <div className="flex flex-col gap-3">
 
-          {/* ── HEADER ── */}
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{getTodayLabel()}</p>
@@ -329,30 +352,25 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
             </Link>
           </div>
 
-          {/* ── CARD COBROS DE HOY ── */}
-          {resumenHoy.count > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowResumen(true)}
-              className="flex w-full items-center justify-between rounded-2xl bg-[#1565c0] px-5 py-4 text-white active:opacity-80 shadow-sm"
-            >
+          {stats.count > 0 && (
+            <button type="button" onClick={() => setShowResumen(true)}
+              className="flex w-full items-center justify-between rounded-2xl bg-[#1565c0] px-5 py-4 text-white active:opacity-80 shadow-sm">
               <div className="text-left">
-                <p className="text-[11px] font-medium opacity-70">Cobros de hoy</p>
-                <p className="text-[24px] font-bold tabular-nums leading-tight">{formatCurrency(resumenHoy.total)}</p>
-                <p className="text-[11px] opacity-60 mt-0.5">{resumenHoy.count} {resumenHoy.count === 1 ? "pedido" : "pedidos"}</p>
+                <p className="text-[11px] font-medium opacity-70">{CARD_TITLES[groupBy]}</p>
+                <p className="text-[24px] font-bold tabular-nums leading-tight">{formatCurrency(stats.total)}</p>
+                <p className="text-[11px] opacity-60 mt-0.5">{stats.count} {stats.count === 1 ? "pedido" : "pedidos"}</p>
               </div>
               <div className="text-right flex flex-col gap-1.5">
-                {/* Solo muestra el ícono si tiene monto > 0 */}
-                {resumenHoy.efectivo.total > 0 && (
+                {resumenPago.efectivo.total > 0 && (
                   <div className="flex items-center justify-end gap-1.5">
                     <Banknote className="size-3.5 opacity-80" />
-                    <span className="text-[13px] font-semibold tabular-nums">{formatCurrency(resumenHoy.efectivo.total)}</span>
+                    <span className="text-[13px] font-semibold tabular-nums">{formatCurrency(resumenPago.efectivo.total)}</span>
                   </div>
                 )}
-                {resumenHoy.mp.total > 0 && (
+                {resumenPago.mp.total > 0 && (
                   <div className="flex items-center justify-end gap-1.5">
                     <Smartphone className="size-3.5 opacity-80" />
-                    <span className="text-[13px] font-semibold tabular-nums">{formatCurrency(resumenHoy.mp.total)}</span>
+                    <span className="text-[13px] font-semibold tabular-nums">{formatCurrency(resumenPago.mp.total)}</span>
                   </div>
                 )}
                 <p className="text-[10px] opacity-50 mt-0.5">Ver desglose →</p>
@@ -360,7 +378,6 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
             </button>
           )}
 
-          {/* ── FILTROS ── */}
           <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
             <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400 mb-2">Agrupar por</p>
             <div className="flex gap-1.5">
@@ -371,9 +388,22 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
                   )}>{g.label}</button>
               ))}
             </div>
+
+            {/* Selector de fecha — solo visible cuando groupBy = "dia" */}
+            {groupBy === "dia" && (
+              <div className="mt-2.5 pt-2.5 border-t border-gray-100">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400 mb-1.5">Elegí el día</p>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={getTodayISO()}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 text-[13px] font-medium text-gray-700 outline-none focus:border-[#1565c0]"
+                />
+              </div>
+            )}
           </div>
 
-          {/* ── STATS ── */}
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
               <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Pedidos</p>
@@ -399,11 +429,12 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
             </div>
           </div>
 
-          {/* ── GRUPOS ── */}
           {groups.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white py-8 text-center shadow-sm">
               <ClipboardList className="size-5 text-gray-300" />
-              <p className="text-[13px] text-gray-400">Sin pedidos</p>
+              <p className="text-[13px] text-gray-400">
+                {groupBy === "dia" ? "Sin pedidos para este día" : "Sin pedidos"}
+              </p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
