@@ -226,7 +226,6 @@ export default function RemitoPage() {
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
   const fixedBottomPx = BOTTOM_NAV_PX + (canPrint ? (actionBarCollapsed ? 12 : ACTION_BAR_PX) : 0)
 
-  // Abre automático cuando hay items, cierra cuando se vacía
   useEffect(() => {
     if (canPrint) setActionBarCollapsed(false)
     else setActionBarCollapsed(true)
@@ -373,7 +372,19 @@ export default function RemitoPage() {
     const successData = { numero: remitoNumero, cliente: clientRef.current.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     try {
       setIsPrintingBluetooth(true); showToast("Buscando impresora...")
-      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, aliasMP)
+
+      // Ordenar items según el CSV antes de imprimir
+      const currentProducts = productsCacheRef.current[priceListIdRef.current]?.products ?? []
+      const itemsOrdenados = currentProducts.length > 0
+        ? [...itemsRef.current].sort((a, b) => {
+            const idxA = currentProducts.findIndex(p => p.descripcion === a.product.descripcion)
+            const idxB = currentProducts.findIndex(p => p.descripcion === b.product.descripcion)
+            return idxA - idxB
+          })
+        : itemsRef.current
+      const remitoDataOrdenado = { ...remitoData, items: itemsOrdenados }
+      const payload = buildRemitoEscPos(remitoDataOrdenado, empresa, vendedor, telefono, aliasMP)
+
       const { device, characteristic } = await connectBlePrinter()
       showToast(`Conectado a ${device.name?.trim() || "impresora"}. Enviando...`)
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
@@ -520,13 +531,8 @@ export default function RemitoPage() {
         <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
           {canPrint && (
             <div className="border-b border-gray-100">
-
-              {/* Barra completa — tocar cualquier lugar la cierra */}
               <div
-                className={cn(
-                  "overflow-hidden transition-all duration-200",
-                  actionBarCollapsed ? "max-h-0" : "max-h-24"
-                )}
+                className={cn("overflow-hidden transition-all duration-200", actionBarCollapsed ? "max-h-0" : "max-h-24")}
                 onClick={() => setActionBarCollapsed(true)}
               >
                 <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pb-3 pt-2">
@@ -559,7 +565,6 @@ export default function RemitoPage() {
                 </div>
               </div>
 
-              {/* Handle — toca para abrir/cerrar */}
               <button
                 type="button"
                 onClick={() => setActionBarCollapsed(v => !v)}
@@ -572,7 +577,6 @@ export default function RemitoPage() {
                 }
                 <div className="h-[2px] w-8 rounded-full bg-gray-200" />
               </button>
-
             </div>
           )}
 

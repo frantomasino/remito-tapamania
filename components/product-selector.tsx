@@ -114,7 +114,6 @@ const productOptions = (s: string) => {
 const itemKey = (desc: string, opcion?: string) => `${desc}||${opcion ?? ""}`
 type Derived = { title: string; tags: string[]; options: string[]; haystack: string }
 
-// ── BOTÓN DE CANTIDAD CON INPUT INLINE ───────────────────────────────────────
 interface QtyButtonProps {
   count: number
   onConfirm: (qty: number) => void
@@ -182,13 +181,12 @@ const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) 
   )
 })
 
-// ── FILA DE PRODUCTO ──────────────────────────────────────────────────────────
 interface ProductRowProps {
   product: Product
   title: string
   infoTags: string[]
   options: string[]
-  selectedOpt: string  // "" significa que el vendedor NO eligió ninguna opción explícitamente
+  selectedOpt: string
   selectedCount: number
   isFirst?: boolean
   onSelectOption: (desc: string, opt: string) => void
@@ -264,7 +262,6 @@ const ProductRow = memo(function ProductRow({
   )
 })
 
-// ── CARRITO AGRUPADO ──────────────────────────────────────────────────────────
 type CartGroup = {
   baseDesc: string
   title: string
@@ -277,7 +274,8 @@ type CartGroup = {
   options: string[]
 }
 
-function groupCartItems(items: LineItem[], derivedByDesc: Map<string, Derived>): CartGroup[] {
+// Ordena los grupos según el orden del CSV (products)
+function groupCartItems(items: LineItem[], derivedByDesc: Map<string, Derived>, products: Product[]): CartGroup[] {
   const groups = new Map<string, CartGroup>()
   for (const item of items) {
     const baseDesc = item.product.descripcion
@@ -303,7 +301,12 @@ function groupCartItems(items: LineItem[], derivedByDesc: Map<string, Derived>):
       })
     }
   }
-  return Array.from(groups.values())
+  // Ordenar según posición en el CSV
+  return Array.from(groups.values()).sort((a, b) => {
+    const idxA = products.findIndex(p => p.descripcion === a.baseDesc)
+    const idxB = products.findIndex(p => p.descripcion === b.baseDesc)
+    return idxA - idxB
+  })
 }
 
 interface CartGroupRowProps {
@@ -320,7 +323,6 @@ const CartGroupRow = memo(function CartGroupRow({
   const [localVal, setLocalVal] = useState(String(group.totalCantidad))
   useEffect(() => { setLocalVal(String(group.totalCantidad)) }, [group.totalCantidad])
 
-  // ── Caso con múltiples opciones (Horno / Freír / Criolla) ──
   if (group.hasOpciones && group.options.length > 1) {
     const ventaResumen = group.items.filter((i) => i.cantidad > 0).map((i) => `${i.cantidad} ${i.opcion ?? ""}`).join(", ")
     const devResumen = group.items.filter((i) => (i.devolucion ?? 0) > 0).map((i) => `${i.devolucion} ${i.opcion ?? ""}`).join(", ")
@@ -376,7 +378,6 @@ const CartGroupRow = memo(function CartGroupRow({
     )
   }
 
-  // ── Caso simple ──
   const item = group.items[0]
   const handleBlur = () => {
     const parsed = parseInt(localVal, 10)
@@ -447,7 +448,6 @@ const CartGroupRow = memo(function CartGroupRow({
   )
 })
 
-// ── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
 export function ProductSelector({ products, items, onItemsChange, onAddToast }: ProductSelectorProps) {
   const [search, setSearch] = useState("")
   const deferredSearch = useDeferredValue(search)
@@ -482,7 +482,6 @@ export function ProductSelector({ products, items, onItemsChange, onAddToast }: 
     }
   }, [items.length])
 
-  // "" = el vendedor NO eligió opción todavía (no forzamos ninguna por defecto)
   const getSelectedOpt = useCallback((desc: string) => selectedOptionByDesc[desc] ?? "", [selectedOptionByDesc])
   const setSelectedOpt = useCallback((desc: string, opt: string) => {
     setSelectedOptionByDesc((prev) => prev[desc] === opt ? prev : { ...prev, [desc]: opt })
@@ -519,7 +518,9 @@ export function ProductSelector({ products, items, onItemsChange, onAddToast }: 
 
   const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
   const totalDevolucion = useMemo(() => items.reduce((s, i) => s + (i.devolucion ?? 0), 0), [items])
-  const cartGroups = useMemo(() => groupCartItems(items, derivedByDesc), [items, derivedByDesc])
+
+  // Carrito ordenado según el CSV
+  const cartGroups = useMemo(() => groupCartItems(items, derivedByDesc, products), [items, derivedByDesc, products])
 
   const setQuantity = useCallback((product: Product, opcion: string | undefined, qty: number) => {
     const key = itemKey(product.descripcion, opcion)
@@ -612,7 +613,6 @@ export function ProductSelector({ products, items, onItemsChange, onAddToast }: 
 
   return (
     <>
-      {/* ── TOAST DE CONFIRMACIÓN ── */}
       <div
         className={cn(
           "fixed left-1/2 z-[70] -translate-x-1/2 transition-all duration-200",
@@ -733,11 +733,7 @@ export function ProductSelector({ products, items, onItemsChange, onAddToast }: 
                 const title = d?.title ?? shortDesc(p.descripcion)
                 const options = d?.options ?? productOptions(p.descripcion)
                 const infoTags = d?.tags ?? detailTags(p.descripcion)
-
-                // "" = no eligió opción todavía. El + agrega sin opción.
                 const selectedOpt = getSelectedOpt(p.descripcion)
-
-                // Contar según la opción seleccionada, o sin opción si no eligió
                 const selectedCount = options.length > 0
                   ? itemCountByKey.get(itemKey(p.descripcion, selectedOpt || undefined)) ?? 0
                   : itemCountByKey.get(itemKey(p.descripcion)) ?? 0
