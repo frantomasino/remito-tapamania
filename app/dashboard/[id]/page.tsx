@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { redirect, notFound } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Pencil } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import type { RemitoWithItems } from "@/lib/remito-types"
 import { formatRemitoNumber } from "@/lib/remito-types"
@@ -52,7 +52,6 @@ export default async function RemitoDetailPage({
   const telefono = profile?.telefono ?? ""
   const alias = profile?.alias ?? ""
 
-  // Armar remitoData para reimprimir
   const remitoData = {
     numero: remito.numero_remito,
     fecha: formatDate(remito.fecha),
@@ -71,7 +70,6 @@ export default async function RemitoDetailPage({
       cantidad: item.cantidad,
       subtotal: Number((item as { subtotal?: number | null }).subtotal ?? 0),
       opcion: (item as { opcion?: string | null }).opcion ?? undefined,
-
       devolucion: 0,
     })),
     subtotal: total,
@@ -89,10 +87,16 @@ export default async function RemitoDetailPage({
             aria-label="Volver">
             <ArrowLeft className="size-3.5" />
           </Link>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-[18px] font-semibold text-gray-900">{remito.numero_remito}</h1>
             <p className="text-[11px] text-gray-500">{formatDate(remito.fecha)}</p>
           </div>
+          {/* BOTÓN EDITAR */}
+          <Link href={`/dashboard/${id}/editar`}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-[12px] font-medium text-gray-600 active:opacity-60 shadow-sm shrink-0">
+            <Pencil className="size-3" />
+            Editar
+          </Link>
         </div>
 
         {/* ── RESUMEN ── */}
