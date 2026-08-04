@@ -1,8 +1,8 @@
 "use client"
 
 import { forwardRef, useMemo } from "react"
-import type { RemitoData, LineItem } from "@/lib/remito-types"
-import { formatCurrency } from "@/lib/remito-types"
+import type { RemitoData, LineItem, Product } from "@/lib/remito-types"
+import { formatCurrency, sortLineItemsByCatalog } from "@/lib/remito-types"
 
 interface RemitoPrintProps {
   data: RemitoData
@@ -11,6 +11,8 @@ interface RemitoPrintProps {
   telefono?: string
   alias?: string
   descuentoPct?: number
+  /** Orden del listado de la app (CSV). Si viene, el ticket sigue ese orden. */
+  catalog?: Product[]
 }
 
 const cleanDesc = (value: string) =>
@@ -27,6 +29,7 @@ type PrintGroup = {
 }
 
 function groupItems(items: LineItem[]): PrintGroup[] {
+  // El orden de impresión = orden de primera aparición en `items`
   const groups = new Map<string, PrintGroup>()
   for (const item of items) {
     const baseDesc = item.product.descripcion
@@ -56,16 +59,17 @@ function groupItems(items: LineItem[]): PrintGroup[] {
 }
 
 export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function RemitoPrint(
-  { data, empresa = "Remito", vendedor = "", telefono = "", alias = "", descuentoPct = 0 },
+  { data, empresa = "Remito", vendedor = "", telefono = "", alias = "", descuentoPct = 0, catalog = [] },
   ref
 ) {
-  const subtotal = useMemo(() => data.items.reduce((sum, item) => sum + item.subtotal, 0), [data.items])
+  const orderedItems = useMemo(() => sortLineItemsByCatalog(data.items, catalog), [data.items, catalog])
+  const subtotal = useMemo(() => orderedItems.reduce((sum, item) => sum + item.subtotal, 0), [orderedItems])
   const montoDescuento = useMemo(() => descuentoPct > 0 ? Math.round(subtotal * descuentoPct / 100) : 0, [subtotal, descuentoPct])
   const total = useMemo(() => subtotal - montoDescuento, [subtotal, montoDescuento])
-  const totalUnidades = useMemo(() => data.items.reduce((sum, item) => sum + item.cantidad, 0), [data.items])
-  const totalDevolucion = useMemo(() => data.items.reduce((sum, item) => sum + (item.devolucion ?? 0), 0), [data.items])
+  const totalUnidades = useMemo(() => orderedItems.reduce((sum, item) => sum + item.cantidad, 0), [orderedItems])
+  const totalDevolucion = useMemo(() => orderedItems.reduce((sum, item) => sum + (item.devolucion ?? 0), 0), [orderedItems])
   const comercio = (data.client.nombre ?? "").trim()
-  const grouped = useMemo(() => groupItems(data.items), [data.items])
+  const grouped = useMemo(() => groupItems(orderedItems), [orderedItems])
 
   return (
     <div

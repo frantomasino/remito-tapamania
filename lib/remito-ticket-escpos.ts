@@ -1,4 +1,5 @@
-import type { RemitoData, LineItem } from "@/lib/remito-types"
+import type { RemitoData, LineItem, Product } from "@/lib/remito-types"
+import { sortLineItemsByCatalog } from "@/lib/remito-types"
 import {
   align, bold, cut, feed, hr, initPrinter, joinBytes, line, size, twoCols, wrapText,
 } from "@/lib/escpos"
@@ -24,6 +25,7 @@ type PrintGroup = {
 }
 
 function groupItems(items: LineItem[]): PrintGroup[] {
+  // El orden de impresión = orden de primera aparición en `items`
   const groups = new Map<string, PrintGroup>()
   for (const item of items) {
     const baseDesc = item.product.descripcion
@@ -58,15 +60,17 @@ export function buildRemitoEscPos(
   vendedor = "",
   telefono = "",
   alias = "",
-  descuentoPct = 0
+  descuentoPct = 0,
+  catalog: Product[] = []
 ) {
-  const subtotal = data.items.reduce((sum, item) => sum + item.subtotal, 0)
+  const orderedItems = sortLineItemsByCatalog(data.items, catalog)
+  const subtotal = orderedItems.reduce((sum, item) => sum + item.subtotal, 0)
   const montoDescuento = descuentoPct > 0 ? Math.round(subtotal * descuentoPct / 100) : 0
   const total = subtotal - montoDescuento
-  const totalUnidades = data.items.reduce((sum, item) => sum + item.cantidad, 0)
-  const totalDevolucion = data.items.reduce((sum, item) => sum + (item.devolucion ?? 0), 0)
+  const totalUnidades = orderedItems.reduce((sum, item) => sum + item.cantidad, 0)
+  const totalDevolucion = orderedItems.reduce((sum, item) => sum + (item.devolucion ?? 0), 0)
   const comercio = (data.client.nombre ?? "").trim() || "Sin especificar"
-  const grouped = groupItems(data.items)
+  const grouped = groupItems(orderedItems)
 
   const chunks: Uint8Array[] = []
 

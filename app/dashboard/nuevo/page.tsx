@@ -18,7 +18,7 @@ import { buildRemitoEscPos } from "@/lib/remito-ticket-escpos"
 import { cn } from "@/lib/utils"
 import {
   type Product, type LineItem, type ClientData, type RemitoData,
-  formatRemitoNumber, formatCurrency, parseCSV,
+  formatRemitoNumber, formatCurrency, parseCSV, sortLineItemsByCatalog,
 } from "@/lib/remito-types"
 import { Onboarding } from "@/components/onboarding"
 import { InstallBanner } from "@/components/install-banner"
@@ -134,9 +134,11 @@ export default function RemitoPage() {
   const itemsRef = useRef(items)
   const clientRef = useRef(client)
   const selectedListIdRef = useRef(selectedListId)
+  const productsRef = useRef(products)
   useLayoutEffect(() => { itemsRef.current = items }, [items])
   useLayoutEffect(() => { clientRef.current = client }, [client])
   useLayoutEffect(() => { selectedListIdRef.current = selectedListId }, [selectedListId])
+  useLayoutEffect(() => { productsRef.current = products }, [products])
 
   // Cache de productos por listId
   const productsCacheRef = useRef<Record<string, ProductsCacheEntry>>({})
@@ -360,7 +362,14 @@ export default function RemitoPage() {
   const total = useMemo(() => subtotal - montoDescuento, [subtotal, montoDescuento])
   const totalUnits = useMemo(() => items.reduce((s, i) => s + i.cantidad, 0), [items])
   const totalDev = useMemo(() => items.reduce((s, i) => s + (i.devolucion ?? 0), 0), [items])
-  const remitoData: RemitoData = useMemo(() => ({ numero: remitoNumero, fecha: remitoDateRef.current, client, items, subtotal, total }), [remitoNumero, client, items, subtotal, total])
+  const remitoData: RemitoData = useMemo(() => ({
+    numero: remitoNumero,
+    fecha: remitoDateRef.current,
+    client,
+    items: sortLineItemsByCatalog(items, products),
+    subtotal,
+    total,
+  }), [remitoNumero, client, items, products, subtotal, total])
 
   const canPrint = items.filter(i => i.cantidad > 0).length > 0
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
@@ -378,7 +387,8 @@ export default function RemitoPage() {
   const persistRemito = useCallback(async (): Promise<{ nextNumber: number; remitoId: string } | null> => {
     if (!isOnline) { showToast("Sin internet"); return null }
     if (!userId) { showToast("Falta sesión"); return null }
-    const currentItems = itemsRef.current; const currentClient = clientRef.current
+    const currentItems = sortLineItemsByCatalog(itemsRef.current, productsRef.current)
+    const currentClient = clientRef.current
     const currentListId = selectedListIdRef.current
     const currentSubtotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
     const currentDescuento = Math.round(currentSubtotal * descuentoPct / 100)
@@ -405,7 +415,8 @@ export default function RemitoPage() {
 
   const persistRemitoOffline = useCallback(() => {
     if (!userId) return null
-    const currentItems = itemsRef.current; const currentClient = clientRef.current
+    const currentItems = sortLineItemsByCatalog(itemsRef.current, productsRef.current)
+    const currentClient = clientRef.current
     const currentListId = selectedListIdRef.current
     const currentSubtotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
     const currentDescuento = Math.round(currentSubtotal * descuentoPct / 100)
@@ -426,7 +437,8 @@ export default function RemitoPage() {
   const buildPrintHtml = useCallback(() => {
     const _empresa = empresa; const _vendedor = vendedor; const _telefono = telefono
     const _alias = aliasMP; const _numero = remitoNumero; const _fecha = remitoDateRef.current
-    const items = itemsRef.current; const client = clientRef.current
+    const items = sortLineItemsByCatalog(itemsRef.current, productsRef.current)
+    const client = clientRef.current
     const subtotalVal = items.reduce((s, i) => s + i.subtotal, 0)
     const descuentoVal = Math.round(subtotalVal * descuentoPct / 100)
     const totalVal = subtotalVal - descuentoVal
@@ -509,7 +521,7 @@ export default function RemitoPage() {
     const successData = { numero: remitoNumero, cliente: clientRef.current.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     try {
       setIsPrintingBluetooth(true); showToast("Buscando impresora...")
-      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, aliasMP, descuentoPct)
+      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, aliasMP, descuentoPct, productsRef.current)
       const { device, characteristic } = await connectBlePrinter()
       showToast(`Conectado a ${device.name?.trim() || "impresora"}. Enviando...`)
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
@@ -878,7 +890,7 @@ export default function RemitoPage() {
           </div>
           <div className="flex-1 overflow-y-auto bg-gray-300 px-4 py-4">
             <div className="mx-auto w-fit overflow-hidden rounded-xl bg-white shadow-sm">
-              <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} descuentoPct={descuentoPct} />
+              <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} descuentoPct={descuentoPct} catalog={products} />
             </div>
           </div>
           <div className="border-t border-gray-200 bg-white px-4 py-2.5">
@@ -907,7 +919,7 @@ export default function RemitoPage() {
       {userId && <InstallBanner userId={userId} />}
       <div className="hidden" aria-hidden="true">
         <div id="printable-remito">
-          <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} descuentoPct={descuentoPct} />
+          <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} descuentoPct={descuentoPct} catalog={products} />
         </div>
       </div>
     </>

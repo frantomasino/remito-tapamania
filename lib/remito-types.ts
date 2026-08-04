@@ -138,6 +138,19 @@ export function formatCurrency(value: number): string {
   }).format(value)
 }
 
+/** Ordena ítems como en la lista de precios de la app (CSV), no por orden de carga. */
+export function sortLineItemsByCatalog(items: LineItem[], products: Product[]): LineItem[] {
+  if (!products.length || items.length <= 1) return items
+  return [...items].sort((a, b) => {
+    const idxA = products.findIndex((p) => p.descripcion === a.product.descripcion)
+    const idxB = products.findIndex((p) => p.descripcion === b.product.descripcion)
+    const safeA = idxA < 0 ? Number.MAX_SAFE_INTEGER : idxA
+    const safeB = idxB < 0 ? Number.MAX_SAFE_INTEGER : idxB
+    if (safeA !== safeB) return safeA - safeB
+    return (a.opcion ?? "").localeCompare(b.opcion ?? "", "es")
+  })
+}
+
 export function formatRemitoNumber(n: number): string {
   const punto = "00001"
   const numero = String(n).padStart(8, "0")

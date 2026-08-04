@@ -10,7 +10,7 @@ import { buildRemitoEscPos } from "@/lib/remito-ticket-escpos"
 import { cn } from "@/lib/utils"
 import {
   type Product, type LineItem,
-  formatCurrency, parseCSV,
+  formatCurrency, parseCSV, sortLineItemsByCatalog,
 } from "@/lib/remito-types"
 
 type ProductsCacheEntry = { loadedAt: number; products: Product[] }
@@ -137,13 +137,7 @@ export function EditarPedidoClient({
       showToast("Conectando impresora...")
 
       const currentProducts = productsRef.current
-      const itemsOrdenados = currentProducts.length > 0
-        ? [...currentItems].sort((a, b) => {
-            const idxA = currentProducts.findIndex(p => p.descripcion === a.product.descripcion)
-            const idxB = currentProducts.findIndex(p => p.descripcion === b.product.descripcion)
-            return idxA - idxB
-          })
-        : currentItems
+      const itemsOrdenados = sortLineItemsByCatalog(currentItems, currentProducts)
 
       const remitoData = {
         numero: numeroRemito,
@@ -154,7 +148,7 @@ export function EditarPedidoClient({
         total: newTotal,
       }
 
-      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, alias)
+      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, alias, 0, currentProducts)
       const { device, characteristic } = await connectBlePrinter()
       showToast("Conectado. Enviando...")
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
