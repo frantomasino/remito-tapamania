@@ -1,6 +1,6 @@
 {
-  "name": "Rutix",
-"short_name": "Rutix",
+  "name": "Boleta",
+  "short_name": "Boleta",
   "start_url": "/dashboard/nuevo",
   "scope": "/",
   "display": "standalone",

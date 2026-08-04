@@ -79,10 +79,10 @@ function generateLocalId() {
 }
 
 const ONBOARDING_STEPS = [
-  { key: "empresa" as const, title: "¿Cómo se llama tu negocio?", subtitle: "Aparece en el encabezado del ticket impreso.", placeholder: "Ej: Tapamanía", emoji: "🏢", type: "text" },
+  { key: "empresa" as const, title: "¿Cómo se llama tu negocio?", subtitle: "Aparece en el encabezado del ticket impreso.", placeholder: "Ej: Mi Negocio", emoji: "🏢", type: "text" },
   { key: "vendedor" as const, title: "¿Cuál es tu nombre?", subtitle: "Aparece en el ticket como vendedor.", placeholder: "Ej: Gustavo", emoji: "👤", type: "text" },
   { key: "telefono" as const, title: "¿Tu teléfono de contacto?", subtitle: "Se muestra en el ticket para que el cliente te contacte.", placeholder: "Ej: 11 1234-5678", emoji: "📞", type: "tel" },
-  { key: "alias" as const, title: "¿Tu alias de Mercado Pago?", subtitle: "Se imprime en el ticket para que el cliente pueda transferirte.", placeholder: "Ej: tapamania.mp", emoji: "💳", type: "text" },
+  { key: "alias" as const, title: "¿Tu alias de Mercado Pago?", subtitle: "Se imprime en el ticket para que el cliente pueda transferirte.", placeholder: "Ej: minegocio.mp", emoji: "💳", type: "text" },
 ]
 
 type OnboardingValues = { empresa: string; vendedor: string; telefono: string; alias: string }

@@ -95,7 +95,7 @@ export default async function PerfilPage() {
 
         {/* ── SOPORTE ── */}
         <a
-          href="https://wa.me/5491131256510?text=Hola%2C%20necesito%20ayuda%20con%20la%20app%20de%20remitos"
+          href="https://wa.me/5491131256510?text=Hola%2C%20necesito%20ayuda%20con%20Boleta"
           target="_blank"
           rel="noopener noreferrer"
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2.5 text-[13px] font-medium text-gray-600 active:opacity-60 shadow-sm">
