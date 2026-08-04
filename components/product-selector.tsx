@@ -659,7 +659,7 @@ export function ProductSelector({ products, items, onItemsChange, onAddToast }: 
             placeholder="Buscar producto..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-11 w-full rounded-xl border border-gray-300 bg-white pl-10 pr-4 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#1565c0] shadow-sm"
+            className="h-12 w-full rounded-xl border border-gray-300 bg-white pl-10 pr-4 text-[16px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#1565c0] shadow-sm"
           />
         </div>
 

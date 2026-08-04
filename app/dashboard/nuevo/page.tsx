@@ -747,7 +747,7 @@ export default function RemitoPage() {
           <div className="mb-3">
             <input type="text" placeholder="Nombre del cliente (opcional)"
               value={client.nombre} onChange={(e) => setClient((prev) => ({ ...prev, nombre: e.target.value }))}
-              className="h-11 w-full rounded-xl border border-gray-300 bg-white px-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#1565c0] shadow-sm" />
+              className="h-12 w-full rounded-xl border border-gray-300 bg-white px-3 text-[16px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#1565c0] shadow-sm" />
           </div>
           {isLoadingProducts && products.length === 0 ? (
             <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-14 animate-pulse rounded-xl bg-gray-200" />)}</div>
