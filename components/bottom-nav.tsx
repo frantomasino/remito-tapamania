@@ -37,11 +37,11 @@ export function BottomNav() {
       setTodayCount(count ?? 0)
     }
     load()
-  }, [pathname]) // se recarga cada vez que cambia de página
+  }, [pathname])
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">
-      <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5">
+      <div className="mx-auto grid max-w-md grid-cols-3 items-center px-3 pb-[calc(env(safe-area-inset-bottom)+6px)] pt-2">
         {navItems.map((item) => {
           const isActive = item.href === "/dashboard/pedidos"
             ? pathname === "/dashboard/pedidos"
@@ -51,9 +51,9 @@ export function BottomNav() {
             return (
               <Link key={item.href} href={item.href} prefetch aria-current={isActive ? "page" : undefined}
                 className="flex items-center justify-center active:opacity-80">
-                <div className="flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl bg-[#1565c0] text-white transition-opacity">
-                  <item.icon className="size-4" />
-                  <span className="text-[10px] font-semibold leading-none">{item.label}</span>
+                <div className="flex h-12 w-[5.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl bg-[#1565c0] text-white transition-opacity">
+                  <item.icon className="size-5" />
+                  <span className="text-[11px] font-semibold leading-none">{item.label}</span>
                 </div>
               </Link>
             )
@@ -62,20 +62,25 @@ export function BottomNav() {
           const isPedidos = item.href === "/dashboard/pedidos"
 
           return (
-            <Link key={item.href} href={item.href} prefetch aria-current={isActive ? "page" : undefined}
-              className="flex items-center justify-center active:opacity-60">
+            <Link
+              key={item.href}
+              href={item.href}
+              prefetch
+              aria-current={isActive ? "page" : undefined}
+              {...(isPedidos ? { "data-onboarding": "nav-pedidos" } : {})}
+              className="flex items-center justify-center active:opacity-60"
+            >
               <div className={cn(
-                "relative flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl transition-colors",
+                "relative flex h-12 w-[5.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl transition-colors",
                 isActive ? "text-[#1565c0]" : "text-gray-400"
               )}>
-                <item.icon className="size-4" />
-                {/* Badge contador — solo en Historial y si hay pedidos hoy */}
+                <item.icon className="size-5" />
                 {isPedidos && todayCount > 0 && (
-                  <div className="absolute -top-0.5 right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1565c0] px-1 text-[9px] font-bold text-white">
+                  <div className="absolute top-0.5 right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#1565c0] px-1 text-[10px] font-bold text-white">
                     {todayCount > 99 ? "99+" : todayCount}
                   </div>
                 )}
-                <span className={cn("text-[10px] leading-none", isActive ? "font-semibold" : "font-medium")}>
+                <span className={cn("text-[11px] leading-none", isActive ? "font-semibold" : "font-medium")}>
                   {item.label}
                 </span>
               </div>

@@ -149,14 +149,14 @@ const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) 
           onKeyDown={(e) => { if (e.key === "Enter") confirm(); if (e.key === "Escape") setEditing(false) }}
           onBlur={confirm}
           onFocus={(e) => e.target.select()}
-          className="h-10 w-14 rounded-xl border-2 border-[#1565c0] bg-white text-center text-[15px] font-bold text-gray-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="h-12 w-16 rounded-xl border-2 border-[#1565c0] bg-white text-center text-[16px] font-bold text-gray-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <button
           type="button"
           onMouseDown={(e) => { e.preventDefault(); confirm() }}
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1565c0] text-white active:opacity-80"
+          className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#1565c0] text-white active:opacity-80"
         >
-          <Check className="size-4" />
+          <Check className="size-5" />
         </button>
       </div>
     )
@@ -167,15 +167,15 @@ const QtyButton = memo(function QtyButton({ count, onConfirm }: QtyButtonProps) 
       type="button"
       onClick={openEdit}
       className={cn(
-        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 transition-colors active:opacity-60 font-bold",
+        "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 transition-colors active:opacity-60 font-bold",
         count > 0
           ? "border-[#1565c0] bg-[#1565c0] text-white"
           : "border-gray-300 bg-white text-gray-700"
       )}
     >
       {count > 0
-        ? <span className="text-[13px] font-bold leading-none">{count}</span>
-        : <Plus className="size-4" />
+        ? <span className="text-[15px] font-bold leading-none">{count}</span>
+        : <Plus className="size-5" />
       }
     </button>
   )
@@ -218,7 +218,7 @@ const ProductRow = memo(function ProductRow({
                     type="button"
                     onClick={() => onSelectOption(product.descripcion, o)}
                     className={cn(
-                      "rounded-full px-3 py-1 text-[13px] font-medium transition-colors border",
+                      "min-h-10 rounded-full px-3.5 py-2 text-[14px] font-medium transition-colors border",
                       active
                         ? "bg-[#1565c0] text-white border-[#1565c0]"
                         : "bg-white text-gray-600 border-gray-300"
@@ -246,9 +246,9 @@ const ProductRow = memo(function ProductRow({
           type="button"
           onClick={() => onAddDevolucion(product, selectedOpt || undefined)}
           {...(isFirst ? { "data-onboarding": "devolucion" } : {})}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-orange-300 bg-white text-orange-400 transition-colors active:opacity-60"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-orange-300 bg-white text-orange-400 transition-colors active:opacity-60"
         >
-          <RotateCcw className="size-4" />
+          <RotateCcw className="size-5" />
         </button>
 
         <div {...(isFirst ? { "data-onboarding": "add-qty" } : {})}>
@@ -353,22 +353,22 @@ const CartGroupRow = memo(function CartGroupRow({
               <p className="text-[12px] font-medium text-gray-600 mb-1">{item.opcion ?? "Sin especificar"}</p>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[11px] text-gray-400 w-10">Venta:</span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button type="button" onClick={() => item.cantidad > 1 ? onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1) : onRemoveSingle(item.product.descripcion, item.opcion)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 text-base font-bold active:opacity-60">−</button>
-                  <span className="w-7 text-center text-[13px] font-bold text-gray-900 tabular-nums">{item.cantidad}</span>
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-300 bg-white text-gray-700 text-lg font-bold active:opacity-60">−</button>
+                  <span className="w-8 text-center text-[15px] font-bold text-gray-900 tabular-nums">{item.cantidad}</span>
                   <button type="button" onClick={() => onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 text-base font-bold active:opacity-60">+</button>
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-300 bg-white text-gray-700 text-lg font-bold active:opacity-60">+</button>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-orange-500 w-10">Dev:</span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button type="button" onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, Math.max(0, (item.devolucion ?? 0) - 1))}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">−</button>
-                  <span className="w-7 text-center text-[13px] font-bold text-orange-500 tabular-nums">{item.devolucion ?? 0}</span>
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-orange-300 bg-white text-orange-400 text-lg font-bold active:opacity-60">−</button>
+                  <span className="w-8 text-center text-[15px] font-bold text-orange-500 tabular-nums">{item.devolucion ?? 0}</span>
                   <button type="button" onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, (item.devolucion ?? 0) + 1)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">+</button>
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-orange-300 bg-white text-orange-400 text-lg font-bold active:opacity-60">+</button>
                 </div>
               </div>
             </div>
@@ -410,11 +410,11 @@ const CartGroupRow = memo(function CartGroupRow({
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button type="button"
             onClick={() => item.cantidad > 1 && onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad - 1)}
             disabled={item.cantidad <= 1}
-            className={cn("flex h-8 w-8 items-center justify-center rounded-lg border text-base font-bold",
+            className={cn("flex h-11 w-11 items-center justify-center rounded-xl border text-lg font-bold",
               item.cantidad > 1 ? "border-gray-300 bg-white text-gray-700 active:opacity-60" : "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
             )}>−</button>
           <input
@@ -424,24 +424,24 @@ const CartGroupRow = memo(function CartGroupRow({
             onBlur={handleBlur}
             onFocus={(e) => e.target.select()}
             onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-            className="h-8 w-10 rounded-lg border border-gray-300 bg-white text-center text-[13px] font-bold text-gray-900 outline-none focus:border-[#1565c0] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="h-11 w-12 rounded-xl border border-gray-300 bg-white text-center text-[15px] font-bold text-gray-900 outline-none focus:border-[#1565c0] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <button type="button"
             onClick={() => onUpdateQuantity(item.product.descripcion, item.opcion, item.cantidad + 1)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 bg-white text-base font-bold text-gray-700 active:opacity-60">+</button>
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-300 bg-white text-lg font-bold text-gray-700 active:opacity-60">+</button>
         </div>
 
-        <div className="h-4 w-px bg-gray-200 mx-1" />
+        <div className="h-5 w-px bg-gray-200 mx-1" />
 
-        <div className="flex items-center gap-1">
-          <span className="text-[11px] text-orange-500 font-medium mr-0.5">Dev</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[12px] text-orange-500 font-medium mr-0.5">Dev</span>
           <button type="button"
             onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, Math.max(0, (item.devolucion ?? 0) - 1))}
-            className="flex h-8 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">−</button>
-          <span className="w-6 text-center text-[12px] font-bold text-orange-500 tabular-nums">{item.devolucion ?? 0}</span>
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-orange-300 bg-white text-orange-400 text-lg font-bold active:opacity-60">−</button>
+          <span className="w-8 text-center text-[15px] font-bold text-orange-500 tabular-nums">{item.devolucion ?? 0}</span>
           <button type="button"
             onClick={() => onUpdateDevolucion(item.product.descripcion, item.opcion, (item.devolucion ?? 0) + 1)}
-            className="flex h-8 w-7 items-center justify-center rounded-lg border border-orange-300 bg-white text-orange-400 text-base font-bold active:opacity-60">+</button>
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-orange-300 bg-white text-orange-400 text-lg font-bold active:opacity-60">+</button>
         </div>
       </div>
     </div>

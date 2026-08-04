@@ -30,7 +30,7 @@ export function InstallBanner({ userId }: { userId: string }) {
   if (!visible) return null
 
   return (
-    <div className="fixed bottom-[80px] left-0 right-0 z-[90] px-4">
+    <div className="fixed bottom-[calc(84px+env(safe-area-inset-bottom))] left-0 right-0 z-[90] px-4">
       <div className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
         <div className="flex items-start gap-3 px-4 py-3.5">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#1565c0] text-white">

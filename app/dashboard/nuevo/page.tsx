@@ -7,10 +7,9 @@ import dynamic from "next/dynamic"
 import {
   Printer, CheckCircle2, Loader2, Eye,
   Bluetooth, ChevronDown, Plus, WifiOff,
-  ClipboardList, PlusCircle, Settings2, CloudOff, Tag, X,
+  CloudOff, Tag, X,
 } from "lucide-react"
-import { useRouter, usePathname } from "next/navigation"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { RemitoPrint } from "@/components/remito-print"
 import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
@@ -32,12 +31,6 @@ const ProductSelector = dynamic(
 // ── Lista de precios dinámica desde Supabase ──
 type PriceList = { id: string; nombre: string }
 
-const navItems = [
-  { href: "/dashboard/pedidos", label: "Historial", icon: ClipboardList },
-  { href: "/dashboard/nuevo", label: "Nuevo", icon: PlusCircle, primary: true },
-  { href: "/dashboard/perfil", label: "Cuenta", icon: Settings2 },
-]
-
 const defaultClient: ClientData = { nombre: "", direccion: "", telefono: "", mail: "", formaPago: "" }
 
 function getTodayDateSafe(): string {
@@ -55,8 +48,9 @@ const LS_BASE_KEYS = {
 function k(base: string, userId: string) { return `${base}:${userId}` }
 function onboardingKey(userId: string) { return `onboarding_done:${userId}` }
 
-const BOTTOM_NAV_PX = 72
-const ACTION_BAR_PX = 52
+/** Altura de BottomNav (sin safe-area) — debe coincidir con layout/bottom-nav */
+const BOTTOM_NAV_PX = 76
+const ACTION_BAR_PX = 60
 
 type ProductsCacheEntry = { loadedAt: number; products: Product[] }
 type DraftData = { items: LineItem[]; clientNombre: string; listId: string; savedAt: number }
@@ -89,7 +83,6 @@ type OnboardingValues = { empresa: string; vendedor: string; telefono: string; a
 
 export default function RemitoPage() {
   const router = useRouter()
-  const pathname = usePathname()
   const [userId, setUserId] = useState<string>("")
   const [empresa, setEmpresa] = useState<string>("")
   const [vendedor, setVendedor] = useState<string>("")
@@ -598,11 +591,11 @@ export default function RemitoPage() {
           </div>
           <div className="mt-4 flex gap-2">
             {successState.remitoId && (
-              <button type="button" onClick={() => router.push(`/dashboard/${successState.remitoId}`)} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white text-[13px] font-medium text-gray-600 active:opacity-60 shadow-sm">
-                <Eye className="size-3.5" />Ver pedido
+              <button type="button" onClick={() => router.push(`/dashboard/${successState.remitoId}`)} className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white text-[14px] font-medium text-gray-600 active:opacity-60 shadow-sm">
+                <Eye className="size-4" />Ver pedido
               </button>
             )}
-            <button type="button" onClick={() => setSuccessState(null)} className="flex h-11 flex-[2] items-center justify-center gap-2 rounded-xl bg-[#1565c0] text-[14px] font-semibold text-white active:opacity-80 shadow-sm">
+            <button type="button" onClick={() => setSuccessState(null)} className="flex h-12 flex-[2] items-center justify-center gap-2 rounded-xl bg-[#1565c0] text-[15px] font-semibold text-white active:opacity-80 shadow-sm">
               <Plus className="size-4" />Nuevo pedido
             </button>
           </div>
@@ -721,8 +714,8 @@ export default function RemitoPage() {
             </div>
             {pendingCount > 0 && (
               <button type="button" onClick={() => isOnline && syncPendingRemitos(userId)} disabled={isSyncing}
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-2.5 text-[11px] font-medium text-orange-600 active:opacity-60">
-                {isSyncing ? <Loader2 className="size-3 animate-spin" /> : <CloudOff className="size-3" />}
+                className="flex h-10 items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 text-[12px] font-medium text-orange-600 active:opacity-60">
+                {isSyncing ? <Loader2 className="size-3.5 animate-spin" /> : <CloudOff className="size-3.5" />}
                 {pendingCount} pendiente{pendingCount > 1 ? "s" : ""}
               </button>
             )}
@@ -730,15 +723,15 @@ export default function RemitoPage() {
             {priceLists.length > 1 && (
               <div className="relative shrink-0">
                 <select value={selectedListId} onChange={(e) => setSelectedListId(e.target.value)}
-                  className="h-8 appearance-none rounded-lg border border-gray-300 bg-gray-50 px-2.5 pr-6 text-[13px] font-medium text-gray-700 outline-none focus:border-[#1565c0]">
+                  className="h-10 appearance-none rounded-xl border border-gray-300 bg-gray-50 px-3 pr-7 text-[13px] font-medium text-gray-700 outline-none focus:border-[#1565c0]">
                   {priceLists.map((l) => (<option key={l.id} value={l.id}>{l.nombre}</option>))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-gray-400" />
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
               </div>
             )}
             <button type="button" onClick={() => hasDraft ? setShowConfirmNew(true) : confirmNewRemito()}
-              className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-gray-300 bg-gray-50 px-2.5 text-[12px] font-medium text-gray-600 active:opacity-60">
-              <Plus className="size-3" />Nuevo
+              className="flex h-10 shrink-0 items-center gap-1 rounded-xl border border-gray-300 bg-gray-50 px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
+              <Plus className="size-3.5" />Nuevo
             </button>
           </div>
           <div className={cn("overflow-hidden transition-all duration-150", isOnline ? "max-h-0" : "max-h-20")}>
@@ -763,97 +756,71 @@ export default function RemitoPage() {
           )}
         </main>
 
-        {/* BLOQUE FIJO INFERIOR */}
-        <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
-          {canPrint && (
-            <div className="border-b border-gray-100">
-              {showDescuento && (
-                <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pt-2.5 pb-2">
-                  <Tag className="size-3.5 shrink-0 text-gray-400" />
-                  <span className="text-[13px] text-gray-500">Descuento</span>
-                  <input
-                    ref={descuentoRef}
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="0"
-                    value={descuentoInput}
-                    onChange={(e) => setDescuentoInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") confirmarDescuento() }}
-                    className="h-9 w-20 rounded-lg border border-gray-300 bg-white text-center text-[15px] font-bold text-gray-900 outline-none focus:border-[#1565c0] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <span className="text-[13px] text-gray-500">%</span>
-                  <div className="flex-1" />
-                  <button type="button" onClick={confirmarDescuento}
-                    className="flex h-9 items-center gap-1 rounded-lg bg-[#1565c0] px-3 text-[13px] font-medium text-white active:opacity-80">
-                    Aplicar
-                  </button>
-                  <button type="button" onClick={() => { setShowDescuento(false); setDescuentoPct(0) }}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-400 active:opacity-60">
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-              )}
-              <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
-                  {descuentoPct > 0 && (
-                    <p className="text-[11px] text-green-600 mt-0.5">{descuentoPct}% desc. · -{formatCurrency(montoDescuento)}</p>
-                  )}
-                  {totalDev > 0 && (
-                    <p className="text-[11px] text-orange-500 mt-0.5">{totalDev} dev.</p>
-                  )}
-                </div>
-                <button type="button" onClick={() => setShowDescuento(v => !v)}
-                  className={cn(
-                    "flex h-10 items-center gap-1 rounded-xl border px-2.5 text-[12px] font-medium active:opacity-60",
-                    descuentoPct > 0
-                      ? "border-green-300 bg-green-50 text-green-700"
-                      : "border-gray-300 bg-white text-gray-600"
-                  )}>
-                  <Tag className="size-3.5" />
-                  {descuentoPct > 0 ? `${descuentoPct}%` : "Desc."}
+        {/* Barra de total / imprimir — encima de la BottomNav compartida */}
+        {canPrint && (
+          <div
+            className="fixed inset-x-0 z-40 border-t border-gray-200 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+            style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
+          >
+            {showDescuento && (
+              <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pt-2.5 pb-2">
+                <Tag className="size-4 shrink-0 text-gray-400" />
+                <span className="text-[13px] text-gray-500">Descuento</span>
+                <input
+                  ref={descuentoRef}
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={descuentoInput}
+                  onChange={(e) => setDescuentoInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") confirmarDescuento() }}
+                  className="h-11 w-20 rounded-xl border border-gray-300 bg-white text-center text-[16px] font-bold text-gray-900 outline-none focus:border-[#1565c0] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="text-[13px] text-gray-500">%</span>
+                <div className="flex-1" />
+                <button type="button" onClick={confirmarDescuento}
+                  className="flex h-11 items-center gap-1 rounded-xl bg-[#1565c0] px-3.5 text-[14px] font-medium text-white active:opacity-80">
+                  Aplicar
                 </button>
-                <button type="button" onClick={() => setShowPreview(true)}
-                  className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
-                  <Eye className="size-3.5" />Ver
-                </button>
-                <button type="button" onClick={handleBluetoothPrint}
-                  disabled={isSaving || isPrintingBluetooth}
-                  className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
-                  {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
-                  {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
+                <button type="button" onClick={() => { setShowDescuento(false); setDescuentoPct(0) }}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-300 text-gray-400 active:opacity-60">
+                  <X className="size-4" />
                 </button>
               </div>
+            )}
+            <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-[17px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
+                {descuentoPct > 0 && (
+                  <p className="text-[12px] text-green-600 mt-0.5">{descuentoPct}% desc. · -{formatCurrency(montoDescuento)}</p>
+                )}
+                {totalDev > 0 && (
+                  <p className="text-[12px] text-orange-500 mt-0.5">{totalDev} dev.</p>
+                )}
+              </div>
+              <button type="button" onClick={() => setShowDescuento(v => !v)}
+                className={cn(
+                  "flex h-12 items-center gap-1 rounded-xl border px-3 text-[13px] font-medium active:opacity-60",
+                  descuentoPct > 0
+                    ? "border-green-300 bg-green-50 text-green-700"
+                    : "border-gray-300 bg-white text-gray-600"
+                )}>
+                <Tag className="size-4" />
+                {descuentoPct > 0 ? `${descuentoPct}%` : "Desc."}
+              </button>
+              <button type="button" onClick={() => setShowPreview(true)}
+                className="flex h-12 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 text-[14px] font-medium text-gray-600 active:opacity-60">
+                <Eye className="size-4" />Ver
+              </button>
+              <button type="button" onClick={handleBluetoothPrint}
+                disabled={isSaving || isPrintingBluetooth}
+                className="flex h-12 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[14px] font-semibold text-white active:opacity-80 disabled:opacity-40">
+                {isPrintingBluetooth ? <Loader2 className="size-4 animate-spin" /> : <Bluetooth className="size-4" />}
+                {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
+              </button>
             </div>
-          )}
-          <nav>
-            <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5">
-              {navItems.map((item) => {
-                const isActive = item.href === "/dashboard/pedidos" ? pathname === "/dashboard/pedidos" : pathname.startsWith(item.href)
-                if (item.primary) {
-                  return (
-                    <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
-                      <div className="flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl bg-[#1565c0] text-white">
-                        <item.icon className="size-4" />
-                        <span className="text-[10px] font-semibold leading-none">{item.label}</span>
-                      </div>
-                    </Link>
-                  )
-                }
-                return (
-                  <Link key={item.href} href={item.href} prefetch
-                    {...(item.href === "/dashboard/pedidos" ? { "data-onboarding": "nav-pedidos" } : {})}
-                    className="flex items-center justify-center active:opacity-60">
-                    <div className={cn("flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl transition-colors", isActive ? "text-[#1565c0]" : "text-gray-400")}>
-                      <item.icon className="size-4" />
-                      <span className={cn("text-[10px] leading-none", isActive ? "font-semibold" : "font-medium")}>{item.label}</span>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </nav>
-        </div>
+          </div>
+        )}
 
         <div className={cn(
             "fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 transition-all duration-200",
@@ -881,10 +848,10 @@ export default function RemitoPage() {
               <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} descuentoPct={descuentoPct} />
             </div>
           </div>
-          <div className="border-t border-gray-200 bg-white px-4 py-2.5">
+          <div className="border-t border-gray-200 bg-white px-4 py-3">
             <button type="button" onClick={handlePreviewPrint} disabled={!isOnline || isSaving || isPrintingBluetooth}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#1565c0] text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
-              {isSaving ? <Loader2 className="size-3.5 animate-spin" /> : <Printer className="size-3.5" />}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1565c0] text-[15px] font-semibold text-white active:opacity-80 disabled:opacity-40">
+              {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
               {isSaving ? "Imprimiendo..." : "Imprimir"}
             </button>
           </div>
@@ -898,8 +865,8 @@ export default function RemitoPage() {
           </DialogHeader>
           <p className="text-[13px] text-gray-500">Se limpia el pedido actual y empezás uno nuevo.</p>
           <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => setShowConfirmNew(false)} className="flex h-10 flex-1 items-center justify-center rounded-xl border border-gray-300 bg-white text-[13px] font-medium text-gray-700 active:opacity-60">Cancelar</button>
-            <button type="button" onClick={confirmNewRemito} className="flex h-10 flex-1 items-center justify-center rounded-xl bg-[#1565c0] text-[13px] font-semibold text-white active:opacity-80">Continuar</button>
+            <button type="button" onClick={() => setShowConfirmNew(false)} className="flex h-12 flex-1 items-center justify-center rounded-xl border border-gray-300 bg-white text-[14px] font-medium text-gray-700 active:opacity-60">Cancelar</button>
+            <button type="button" onClick={confirmNewRemito} className="flex h-12 flex-1 items-center justify-center rounded-xl bg-[#1565c0] text-[14px] font-semibold text-white active:opacity-80">Continuar</button>
           </div>
         </DialogContent>
       </Dialog>
