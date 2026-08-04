@@ -4,17 +4,6 @@ import { createClient } from "@/lib/supabase/server"
 import { PerfilEditor } from "@/components/perfil-editor"
 import { StockScanner } from "@/components/stock-scanner"
 
-type PriceListId = "base" | "mayorista" | "oferta"
-
-function getPriceListLabel(value?: string | null) {
-  switch (value) {
-    case "base": return "Base"
-    case "mayorista": return "Mayorista"
-    case "oferta": return "Oferta"
-    default: return "Sin definir"
-  }
-}
-
 export default async function PerfilPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -22,11 +11,10 @@ export default async function PerfilPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("selected_price_list, app_version, empresa, vendedor, telefono, alias")
+    .select("app_version, empresa, vendedor, telefono, alias")
     .eq("id", user.id)
     .single()
 
-  const selectedPriceList = profile?.selected_price_list ?? null
   const appVersion = profile?.app_version ?? "1.0.0"
   const empresa = profile?.empresa ?? ""
   const vendedor = profile?.vendedor ?? ""
@@ -64,7 +52,7 @@ export default async function PerfilPage() {
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Lista activa por defecto</p>
               <p className="mt-0.5 text-[13px] font-semibold text-gray-900">
-                {getPriceListLabel(selectedPriceList)}
+                Lista Base
               </p>
             </div>
           </div>
