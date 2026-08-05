@@ -460,7 +460,7 @@ export default function RemitoPage() {
     const fmt = (n: number) => n.toLocaleString("es-AR", { style: "currency", currency: "ARS" })
     const itemsHtml = Array.from(groups.values()).map(g => `
       <div style="border-bottom:1px dashed #000;padding:3px 0;">
-        <div style="font-weight:bold;">${g.title} <span style="font-weight:normal;">x${g.totalCantidad}</span></div>
+        <div style="font-weight:bold;">${g.title}</div>
         ${g.hasOpciones ? `<div style="font-size:9px;color:#666;">${g.opciones.filter(o=>o.cantidad>0).map(o=>`${o.opcion} ${o.cantidad}`).join(", ")}</div>` : ""}
         ${g.totalDevolucion > 0 ? `<div style="font-size:9px;">Dev: ${g.hasOpciones ? g.opciones.filter(o=>o.devolucion>0).map(o=>`${o.devolucion} ${o.opcion}`).join(", ") : g.totalDevolucion}</div>` : ""}
         <div style="display:flex;justify-content:space-between;"><span>${g.totalCantidad} x ${fmt(g.precio)}</span><span style="font-weight:bold;">${fmt(g.totalSubtotal)}</span></div>
