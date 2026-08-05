@@ -82,8 +82,7 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
           <p className="font-bold uppercase">{empresa}</p>
           {telefono && <p className="font-bold">{telefono}</p>}
           {alias && <p className="font-bold uppercase">{alias}</p>}
-          <p className="mt-1 font-semibold">Remito - Pedido</p>
-          <p className="mt-1">N° {data.numero}</p>
+          <p className="mt-1 font-semibold">Remito  N {data.numero}</p>
           <p>{data.fecha}</p>
         </div>
 

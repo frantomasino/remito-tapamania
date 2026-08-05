@@ -477,8 +477,8 @@ export default function RemitoPage() {
         <div style="font-weight:bold;font-size:12px;text-transform:uppercase;">${_empresa || "Remito"}</div>
         ${_telefono ? `<div style="font-size:9px;">${_telefono}</div>` : ""}
         ${_alias ? `<div style="font-weight:bold;font-size:11px;font-style:italic;">Alias: ${_alias}</div>` : ""}
-        <div style="font-weight:bold;margin-top:2px;">Remito - Pedido</div>
-        <div>N° ${_numero}</div><div>${_fecha}</div>
+        <div style="font-weight:bold;margin-top:2px;">Remito  N ${_numero}</div>
+        <div>${_fecha}</div>
       </div>
       <div style="border-bottom:1px dashed #000;padding:3px 0;">
         ${comercio ? `<div class="row"><span style="font-weight:bold;">Comercio:</span><span>${comercio}</span></div>` : ""}

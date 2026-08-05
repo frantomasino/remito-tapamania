@@ -85,8 +85,7 @@ export function buildRemitoEscPos(
   if (alias) chunks.push(line(alias.toUpperCase()))
   chunks.push(size(0, 0))
   chunks.push(bold(false))
-  chunks.push(line("Remito / Comprobante"))
-  chunks.push(line(`N ${data.numero}`))
+  chunks.push(line(`Remito  N ${data.numero}`))
   chunks.push(line(data.fecha))
   chunks.push(hr())
 
