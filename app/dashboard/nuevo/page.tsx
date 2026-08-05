@@ -444,7 +444,7 @@ export default function RemitoPage() {
     const totalVal = subtotalVal - descuentoVal
     const totalUnidades = items.reduce((s, i) => s + i.cantidad, 0)
     const totalDevolucion = items.reduce((s, i) => s + (i.devolucion ?? 0), 0)
-    const comercio = client.nombre?.trim() || "Sin especificar"
+    const comercio = client.nombre?.trim() || ""
     const groups = new Map<string, { title: string; precio: number; totalCantidad: number; totalSubtotal: number; totalDevolucion: number; opciones: Array<{opcion: string; cantidad: number; devolucion: number}>; hasOpciones: boolean }>()
     for (const item of items) {
       const baseDesc = item.product.descripcion
@@ -481,7 +481,7 @@ export default function RemitoPage() {
         <div>N° ${_numero}</div><div>${_fecha}</div>
       </div>
       <div style="border-bottom:1px dashed #000;padding:3px 0;">
-        <div class="row"><span style="font-weight:bold;">Comercio:</span><span>${comercio}</span></div>
+        ${comercio ? `<div class="row"><span style="font-weight:bold;">Comercio:</span><span>${comercio}</span></div>` : ""}
         ${_vendedor ? `<div class="row"><span style="font-weight:bold;">Vendedor:</span><span>${_vendedor}</span></div>` : ""}
         <div class="row"><span style="font-weight:bold;">Items:</span><span>${groups.size}</span></div>
         <div class="row"><span style="font-weight:bold;">Unidades:</span><span>${totalUnidades}</span></div>
