@@ -88,17 +88,19 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
         </div>
 
         <div className="border-b border-dashed border-black py-[2mm]">
-          <div className="flex justify-between gap-2">
-            <span className="font-semibold">Comercio:</span>
-            <span className="max-w-[26mm] text-right break-words">{comercio || "Sin especificar"}</span>
-          </div>
+          {comercio ? (
+            <div className="flex justify-between gap-2">
+              <span className="font-semibold">Comercio:</span>
+              <span className="max-w-[26mm] text-right break-words">{comercio}</span>
+            </div>
+          ) : null}
           {vendedor && (
-            <div className="mt-1 flex justify-between gap-2">
+            <div className={`flex justify-between gap-2 ${comercio ? "mt-1" : ""}`}>
               <span className="font-semibold">Vendedor:</span>
               <span className="max-w-[26mm] text-right break-words">{vendedor}</span>
             </div>
           )}
-          <div className="mt-1 flex justify-between gap-2">
+          <div className={`flex justify-between gap-2 ${(comercio || vendedor) ? "mt-1" : ""}`}>
             <span className="font-semibold">Items:</span>
             <span>{grouped.length}</span>
           </div>

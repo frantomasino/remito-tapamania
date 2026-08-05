@@ -69,7 +69,7 @@ export function buildRemitoEscPos(
   const total = subtotal - montoDescuento
   const totalUnidades = orderedItems.reduce((sum, item) => sum + item.cantidad, 0)
   const totalDevolucion = orderedItems.reduce((sum, item) => sum + (item.devolucion ?? 0), 0)
-  const comercio = (data.client.nombre ?? "").trim() || "Sin especificar"
+  const comercio = (data.client.nombre ?? "").trim()
   const grouped = groupItems(orderedItems)
 
   const chunks: Uint8Array[] = []
@@ -92,7 +92,7 @@ export function buildRemitoEscPos(
 
   // --- INFO ---
   chunks.push(align("left"))
-  chunks.push(twoCols("Comercio:", comercio, 32))
+  if (comercio) chunks.push(twoCols("Comercio:", comercio, 32))
   if (vendedor) chunks.push(twoCols("Vendedor:", vendedor, 32))
   chunks.push(twoCols("Items:", String(grouped.length), 32))
   chunks.push(twoCols("Unidades:", String(totalUnidades), 32))
