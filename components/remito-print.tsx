@@ -128,7 +128,7 @@ export const RemitoPrint = forwardRef<HTMLDivElement, RemitoPrintProps>(function
             grouped.map((group, idx) => (
               <div key={`${group.title}-${idx}`} className="border-b border-dashed border-black py-[2mm] last:border-b-0">
                 <p className="break-words font-semibold">
-                  {group.title}<span className="font-normal"> x{group.totalCantidad}</span>
+                  {group.title}
                 </p>
                 {group.hasOpciones && group.opciones.length > 0 && (
                   <p className="mt-[0.5mm] text-[9px] text-gray-600 break-words">

@@ -108,7 +108,7 @@ export function buildRemitoEscPos(
   chunks.push(hr())
 
   for (const group of grouped) {
-    const titleLines = wrapText(`${group.title} x${group.totalCantidad}`, 32)
+    const titleLines = wrapText(group.title, 32)
     for (const l of titleLines) chunks.push(line(l))
 
     if (group.hasOpciones && group.opciones.length > 0) {
