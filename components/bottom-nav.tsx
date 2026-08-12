@@ -9,6 +9,9 @@ import { createClient } from "@/lib/supabase/client"
 
 export const NUEVO_REMITO_EVENT = "boleta:nuevo-remito"
 
+/** Altura del contenido de la nav (pt + ítems + pb), sin safe-area. */
+export const BOTTOM_NAV_CONTENT_PX = 46
+
 const navItems = [
   { href: "/dashboard/pedidos", label: "Historial", icon: ClipboardList },
   { href: "/dashboard/nuevo", label: "Nuevo", icon: PlusCircle, primary: true },

@@ -22,7 +22,7 @@ import {
 import { Onboarding } from "@/components/onboarding"
 import { InstallBanner } from "@/components/install-banner"
 import { checkAppVersion } from "@/lib/version-check"
-import { NUEVO_REMITO_EVENT } from "@/components/bottom-nav"
+import { NUEVO_REMITO_EVENT, BOTTOM_NAV_CONTENT_PX } from "@/components/bottom-nav"
 
 const ProductSelector = dynamic(
   () => import("@/components/product-selector").then(m => ({ default: m.ProductSelector })),
@@ -56,7 +56,6 @@ const LS_BASE_KEYS = {
 function k(base: string, userId: string) { return `${base}:${userId}` }
 function onboardingKey(userId: string) { return `onboarding_done:${userId}` }
 
-const BOTTOM_NAV_PX = 72
 const ACTION_BAR_PX = 52
 
 type ProductsCacheEntry = { loadedAt: number; products: Product[] }
@@ -390,7 +389,7 @@ export default function RemitoPage() {
 
   const canPrint = items.filter(i => i.cantidad > 0).length > 0
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
-  const fixedBottomPx = BOTTOM_NAV_PX + (canPrint ? ACTION_BAR_PX : 0)
+  const fixedBottomPx = BOTTOM_NAV_CONTENT_PX + (canPrint ? ACTION_BAR_PX : 0)
 
   const handleItemsChange = useCallback<React.Dispatch<React.SetStateAction<LineItem[]>>>((updater) => {
     setItems((prev) => typeof updater === "function" ? updater(prev) : updater)
@@ -834,7 +833,7 @@ export default function RemitoPage() {
         {canPrint && (
           <div
             className="fixed inset-x-0 z-40 border-t border-gray-200 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
-            style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
+            style={{ bottom: `calc(${BOTTOM_NAV_CONTENT_PX}px + env(safe-area-inset-bottom))` }}
           >
             {showDescuento && (
               <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pt-2.5 pb-2">
