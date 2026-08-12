@@ -7,10 +7,9 @@ import dynamic from "next/dynamic"
 import {
   Printer, CheckCircle2, Loader2, Eye,
   Bluetooth, ChevronDown, Plus, WifiOff,
-  ClipboardList, PlusCircle, Settings2, CloudOff, Tag, X,
+  CloudOff, Tag, X,
 } from "lucide-react"
-import { useRouter, usePathname } from "next/navigation"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { RemitoPrint } from "@/components/remito-print"
 import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
@@ -23,6 +22,7 @@ import {
 import { Onboarding } from "@/components/onboarding"
 import { InstallBanner } from "@/components/install-banner"
 import { checkAppVersion } from "@/lib/version-check"
+import { NUEVO_REMITO_EVENT } from "@/components/bottom-nav"
 
 const ProductSelector = dynamic(
   () => import("@/components/product-selector").then(m => ({ default: m.ProductSelector })),
@@ -38,12 +38,6 @@ function getBaseListId(lists: PriceList[]): string {
   const byName = lists.find((l) => /base/i.test(l.nombre.trim()))
   return byName?.id ?? lists[0].id
 }
-
-const navItems = [
-  { href: "/dashboard/pedidos", label: "Historial", icon: ClipboardList },
-  { href: "/dashboard/nuevo", label: "Nuevo", icon: PlusCircle, primary: true },
-  { href: "/dashboard/perfil", label: "Cuenta", icon: Settings2 },
-]
 
 const defaultClient: ClientData = { nombre: "", direccion: "", telefono: "", mail: "", formaPago: "" }
 
@@ -96,7 +90,6 @@ type OnboardingValues = { empresa: string; vendedor: string; telefono: string; a
 
 export default function RemitoPage() {
   const router = useRouter()
-  const pathname = usePathname()
   const [userId, setUserId] = useState<string>("")
   const [empresa, setEmpresa] = useState<string>("")
   const [vendedor, setVendedor] = useState<string>("")
@@ -426,6 +419,31 @@ export default function RemitoPage() {
     if (baseId) setSelectedListId(baseId)
     showToast("Nuevo remito listo")
   }, [showToast, userId, clearDraft])
+
+  // Bottom nav "Nuevo" mientras ya estás en esta pantalla
+  const hasDraftRef = useRef(false)
+  const successRef = useRef<SuccessState>(null)
+  useLayoutEffect(() => {
+    hasDraftRef.current = items.length > 0 || client.nombre.trim().length > 0
+  }, [items, client.nombre])
+  useLayoutEffect(() => {
+    successRef.current = successState
+  }, [successState])
+
+  useEffect(() => {
+    const onNuevoTap = () => {
+      // Pantalla de éxito post-impresión → volver al formulario
+      if (successRef.current) {
+        setSuccessState(null)
+        return
+      }
+      if (hasDraftRef.current) setShowConfirmNew(true)
+      else confirmNewRemito()
+    }
+    window.addEventListener(NUEVO_REMITO_EVENT, onNuevoTap)
+    return () => window.removeEventListener(NUEVO_REMITO_EVENT, onNuevoTap)
+  }, [confirmNewRemito])
+
   const persistRemito = useCallback(async (): Promise<{ nextNumber: number; remitoId: string } | null> => {
     if (!isOnline) { showToast("Sin internet"); return null }
     if (!userId) { showToast("Falta sesión"); return null }
@@ -812,97 +830,71 @@ export default function RemitoPage() {
           )}
         </main>
 
-        {/* BLOQUE FIJO INFERIOR */}
-        <div className="fixed inset-x-0 bottom-0 z-50 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
-          {canPrint && (
-            <div className="border-b border-gray-100">
-              {showDescuento && (
-                <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pt-2.5 pb-2">
-                  <Tag className="size-3.5 shrink-0 text-gray-400" />
-                  <span className="text-[13px] text-gray-500">Descuento</span>
-                  <input
-                    ref={descuentoRef}
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="0"
-                    value={descuentoInput}
-                    onChange={(e) => setDescuentoInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") confirmarDescuento() }}
-                    className="h-9 w-20 rounded-lg border border-gray-300 bg-white text-center text-[15px] font-bold text-gray-900 outline-none focus:border-[#1565c0] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <span className="text-[13px] text-gray-500">%</span>
-                  <div className="flex-1" />
-                  <button type="button" onClick={confirmarDescuento}
-                    className="flex h-9 items-center gap-1 rounded-lg bg-[#1565c0] px-3 text-[13px] font-medium text-white active:opacity-80">
-                    Aplicar
-                  </button>
-                  <button type="button" onClick={() => { setShowDescuento(false); setDescuentoPct(0) }}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-400 active:opacity-60">
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-              )}
-              <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
-                  {descuentoPct > 0 && (
-                    <p className="text-[11px] text-green-600 mt-0.5">{descuentoPct}% desc. · -{formatCurrency(montoDescuento)}</p>
-                  )}
-                  {totalDev > 0 && (
-                    <p className="text-[11px] text-orange-500 mt-0.5">{totalDev} dev.</p>
-                  )}
-                </div>
-                <button type="button" onClick={() => setShowDescuento(v => !v)}
-                  className={cn(
-                    "flex h-10 items-center gap-1 rounded-xl border px-2.5 text-[12px] font-medium active:opacity-60",
-                    descuentoPct > 0
-                      ? "border-green-300 bg-green-50 text-green-700"
-                      : "border-gray-300 bg-white text-gray-600"
-                  )}>
-                  <Tag className="size-3.5" />
-                  {descuentoPct > 0 ? `${descuentoPct}%` : "Desc."}
+        {/* Barra total/imprimir — encima de la BottomNav compartida */}
+        {canPrint && (
+          <div
+            className="fixed inset-x-0 z-40 border-t border-gray-200 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+            style={{ bottom: `calc(${BOTTOM_NAV_PX}px + env(safe-area-inset-bottom))` }}
+          >
+            {showDescuento && (
+              <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 pt-2.5 pb-2">
+                <Tag className="size-3.5 shrink-0 text-gray-400" />
+                <span className="text-[13px] text-gray-500">Descuento</span>
+                <input
+                  ref={descuentoRef}
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={descuentoInput}
+                  onChange={(e) => setDescuentoInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") confirmarDescuento() }}
+                  className="h-9 w-20 rounded-lg border border-gray-300 bg-white text-center text-[15px] font-bold text-gray-900 outline-none focus:border-[#1565c0] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="text-[13px] text-gray-500">%</span>
+                <div className="flex-1" />
+                <button type="button" onClick={confirmarDescuento}
+                  className="flex h-9 items-center gap-1 rounded-lg bg-[#1565c0] px-3 text-[13px] font-medium text-white active:opacity-80">
+                  Aplicar
                 </button>
-                <button type="button" onClick={() => setShowPreview(true)}
-                  className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
-                  <Eye className="size-3.5" />Ver
-                </button>
-                <button type="button" onClick={handleBluetoothPrint}
-                  disabled={isSaving || isPrintingBluetooth}
-                  className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
-                  {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
-                  {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
+                <button type="button" onClick={() => { setShowDescuento(false); setDescuentoPct(0) }}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-400 active:opacity-60">
+                  <X className="size-3.5" />
                 </button>
               </div>
+            )}
+            <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-bold text-gray-900 tabular-nums leading-none">{formatCurrency(total)}</p>
+                {descuentoPct > 0 && (
+                  <p className="text-[11px] text-green-600 mt-0.5">{descuentoPct}% desc. · -{formatCurrency(montoDescuento)}</p>
+                )}
+                {totalDev > 0 && (
+                  <p className="text-[11px] text-orange-500 mt-0.5">{totalDev} dev.</p>
+                )}
+              </div>
+              <button type="button" onClick={() => setShowDescuento(v => !v)}
+                className={cn(
+                  "flex h-10 items-center gap-1 rounded-xl border px-2.5 text-[12px] font-medium active:opacity-60",
+                  descuentoPct > 0
+                    ? "border-green-300 bg-green-50 text-green-700"
+                    : "border-gray-300 bg-white text-gray-600"
+                )}>
+                <Tag className="size-3.5" />
+                {descuentoPct > 0 ? `${descuentoPct}%` : "Desc."}
+              </button>
+              <button type="button" onClick={() => setShowPreview(true)}
+                className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 text-[13px] font-medium text-gray-600 active:opacity-60">
+                <Eye className="size-3.5" />Ver
+              </button>
+              <button type="button" onClick={handleBluetoothPrint}
+                disabled={isSaving || isPrintingBluetooth}
+                className="flex h-10 items-center gap-1.5 rounded-xl bg-[#1565c0] px-4 text-[13px] font-semibold text-white active:opacity-80 disabled:opacity-40">
+                {isPrintingBluetooth ? <Loader2 className="size-3.5 animate-spin" /> : <Bluetooth className="size-3.5" />}
+                {isPrintingBluetooth ? "Conectando..." : "Imprimir"}
+              </button>
             </div>
-          )}
-          <nav>
-            <div className="mx-auto grid max-w-md grid-cols-3 items-center px-4 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5">
-              {navItems.map((item) => {
-                const isActive = item.href === "/dashboard/pedidos" ? pathname === "/dashboard/pedidos" : pathname.startsWith(item.href)
-                if (item.primary) {
-                  return (
-                    <Link key={item.href} href={item.href} prefetch className="flex items-center justify-center">
-                      <div className="flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl bg-[#1565c0] text-white">
-                        <item.icon className="size-4" />
-                        <span className="text-[10px] font-semibold leading-none">{item.label}</span>
-                      </div>
-                    </Link>
-                  )
-                }
-                return (
-                  <Link key={item.href} href={item.href} prefetch
-                    {...(item.href === "/dashboard/pedidos" ? { "data-onboarding": "nav-pedidos" } : {})}
-                    className="flex items-center justify-center active:opacity-60">
-                    <div className={cn("flex h-9 w-20 flex-col items-center justify-center gap-0.5 rounded-xl transition-colors", isActive ? "text-[#1565c0]" : "text-gray-400")}>
-                      <item.icon className="size-4" />
-                      <span className={cn("text-[10px] leading-none", isActive ? "font-semibold" : "font-medium")}>{item.label}</span>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </nav>
-        </div>
+          </div>
+        )}
 
         <div className={cn(
             "fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 transition-all duration-200",

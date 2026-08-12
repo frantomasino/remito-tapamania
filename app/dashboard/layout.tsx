@@ -1,15 +1,10 @@
 import { BottomNav } from "@/components/bottom-nav"
-import { headers } from "next/headers"
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const headersList = await headers()
-  const pathname = headersList.get("x-pathname") ?? ""
-  const isNuevo = pathname.includes("/dashboard/nuevo")
-
   return (
     <div className="min-h-dvh bg-gray-100 text-gray-900">
       <div className="mx-auto w-full max-w-md">
@@ -17,7 +12,7 @@ export default async function DashboardLayout({
           {children}
         </main>
       </div>
-      {!isNuevo && <BottomNav />}
+      <BottomNav />
     </div>
   )
 }
