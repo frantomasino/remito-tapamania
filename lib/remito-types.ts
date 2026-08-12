@@ -151,6 +151,24 @@ export function sortLineItemsByCatalog(items: LineItem[], products: Product[]): 
   })
 }
 
+/** Recalcula precios/subtotales al cambiar de lista (misma descripción → nuevo precio). */
+export function repriceLineItemsToCatalog(items: LineItem[], products: Product[]): LineItem[] {
+  if (!products.length || !items.length) return items
+  const byDesc = new Map(products.map((p) => [p.descripcion, p]))
+  let changed = false
+  const next = items.map((item) => {
+    const match = byDesc.get(item.product.descripcion)
+    if (!match || match.precio === item.product.precio) return item
+    changed = true
+    return {
+      ...item,
+      product: { descripcion: match.descripcion, precio: match.precio },
+      subtotal: item.cantidad * match.precio,
+    }
+  })
+  return changed ? next : items
+}
+
 export function formatRemitoNumber(n: number): string {
   const punto = "00001"
   const numero = String(n).padStart(8, "0")

@@ -18,7 +18,7 @@ import { buildRemitoEscPos } from "@/lib/remito-ticket-escpos"
 import { cn } from "@/lib/utils"
 import {
   type Product, type LineItem, type ClientData, type RemitoData,
-  formatRemitoNumber, formatCurrency, parseCSV, sortLineItemsByCatalog,
+  formatRemitoNumber, formatCurrency, parseCSV, sortLineItemsByCatalog, repriceLineItemsToCatalog,
 } from "@/lib/remito-types"
 import { Onboarding } from "@/components/onboarding"
 import { InstallBanner } from "@/components/install-banner"
@@ -366,6 +366,19 @@ export default function RemitoPage() {
     loadProducts()
     return () => controller.abort()
   }, [selectedListId])
+
+  // Si cambia la lista, recalcular precios del pedido en curso
+  useEffect(() => {
+    if (!products.length) return
+    setItems((prev) => {
+      if (prev.length === 0) return prev
+      const next = repriceLineItemsToCatalog(prev, products)
+      if (next !== prev) {
+        queueMicrotask(() => showToast("Precios actualizados a la lista elegida"))
+      }
+      return next
+    })
+  }, [products, showToast])
 
   const remitoNumero = useMemo(() => formatRemitoNumber(nextNumber), [nextNumber])
   const subtotal = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
