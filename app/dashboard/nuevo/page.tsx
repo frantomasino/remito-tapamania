@@ -32,6 +32,13 @@ const ProductSelector = dynamic(
 // ── Lista de precios dinámica desde Supabase ──
 type PriceList = { id: string; nombre: string }
 
+/** Lista Base = nombre con "base", o la primera por orden. */
+function getBaseListId(lists: PriceList[]): string {
+  if (!lists.length) return ""
+  const byName = lists.find((l) => /base/i.test(l.nombre.trim()))
+  return byName?.id ?? lists[0].id
+}
+
 const navItems = [
   { href: "/dashboard/pedidos", label: "Historial", icon: ClipboardList },
   { href: "/dashboard/nuevo", label: "Nuevo", icon: PlusCircle, primary: true },
@@ -135,10 +142,12 @@ export default function RemitoPage() {
   const clientRef = useRef(client)
   const selectedListIdRef = useRef(selectedListId)
   const productsRef = useRef(products)
+  const priceListsRef = useRef(priceLists)
   useLayoutEffect(() => { itemsRef.current = items }, [items])
   useLayoutEffect(() => { clientRef.current = client }, [client])
   useLayoutEffect(() => { selectedListIdRef.current = selectedListId }, [selectedListId])
   useLayoutEffect(() => { productsRef.current = products }, [products])
+  useLayoutEffect(() => { priceListsRef.current = priceLists }, [priceLists])
 
   // Cache de productos por listId
   const productsCacheRef = useRef<Record<string, ProductsCacheEntry>>({})
@@ -300,10 +309,10 @@ export default function RemitoPage() {
 
         if (lists && lists.length > 0) {
           setPriceLists(lists)
-          // Restaurar lista seleccionada desde localStorage
-          const savedListId = localStorage.getItem(k(LS_BASE_KEYS.selectedList, userId))
-          const validId = lists.find(l => l.id === savedListId)?.id ?? lists[0].id
-          setSelectedListId(validId)
+          const baseId = getBaseListId(lists)
+          // Por defecto siempre Lista Base; si hay borrador de hoy, abajo puede pisar con su listId
+          setSelectedListId(baseId)
+          try { localStorage.setItem(k(LS_BASE_KEYS.selectedList, userId), baseId) } catch {}
         }
 
         if (!draftRestoredRef.current) {
@@ -315,7 +324,9 @@ export default function RemitoPage() {
             if (draft.items?.length > 0 && draftDate === getTodayISODate()) {
               setItems(draft.items)
               setClient((prev) => ({ ...prev, nombre: draft.clientNombre || "" }))
-              if (draft.listId) setSelectedListId(draft.listId)
+              if (draft.listId && lists?.some((l) => l.id === draft.listId)) {
+                setSelectedListId(draft.listId)
+              }
                } else { localStorage.removeItem(k(LS_BASE_KEYS.draft, userId)) }          }
         }
       } catch {}
@@ -380,10 +391,28 @@ export default function RemitoPage() {
   }, [])
 
   const advanceAndReset = useCallback((nextVisibleNumber: number, successData: SuccessState) => {
-    setSuccessState(successData); setNextNumber(nextVisibleNumber); setClient(defaultClient); setItems([])
-    setDescuentoPct(0); clearDraft(userId); remitoDateRef.current = getTodayDateSafe()
+    setSuccessState(successData)
+    setNextNumber(nextVisibleNumber)
+    setClient(defaultClient)
+    setItems([])
+    setDescuentoPct(0)
+    clearDraft(userId)
+    remitoDateRef.current = getTodayDateSafe()
+    // Después de imprimir, siempre volver a Lista Base
+    const baseId = getBaseListId(priceListsRef.current)
+    if (baseId) setSelectedListId(baseId)
   }, [userId, clearDraft])
 
+  const confirmNewRemito = useCallback(() => {
+    setClient(defaultClient)
+    setItems([])
+    setShowConfirmNew(false)
+    setDescuentoPct(0)
+    clearDraft(userId)
+    const baseId = getBaseListId(priceListsRef.current)
+    if (baseId) setSelectedListId(baseId)
+    showToast("Nuevo remito listo")
+  }, [showToast, userId, clearDraft])
   const persistRemito = useCallback(async (): Promise<{ nextNumber: number; remitoId: string } | null> => {
     if (!isOnline) { showToast("Sin internet"); return null }
     if (!userId) { showToast("Falta sesión"); return null }
@@ -542,11 +571,6 @@ export default function RemitoPage() {
       showToast("No se pudo conectar con la impresora")
     } finally { setIsPrintingBluetooth(false) }
   }, [canPrint, isSaving, isPrintingBluetooth, remitoNumero, total, totalUnits, remitoData, empresa, vendedor, telefono, aliasMP, isOnline, persistRemito, persistRemitoOffline, advanceAndReset, nextNumber, showToast])
-
-  const confirmNewRemito = useCallback(() => {
-    setClient(defaultClient); setItems([]); setShowConfirmNew(false)
-    setDescuentoPct(0); clearDraft(userId); showToast("Nuevo remito listo")
-  }, [showToast, userId, clearDraft])
 
   if (!mounted) {
     return (
