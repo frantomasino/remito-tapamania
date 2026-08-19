@@ -1,4 +1,4 @@
-import { BottomNav, BOTTOM_NAV_CONTENT_PX } from "@/components/bottom-nav"
+import { BottomNav, BOTTOM_NAV_CONTENT_PX, BOTTOM_NAV_SCROLL_EXTRA_PX } from "@/components/bottom-nav"
 
 export default function DashboardLayout({
   children,
@@ -10,7 +10,7 @@ export default function DashboardLayout({
       <div className="mx-auto w-full max-w-md">
         <main
           className="min-h-dvh"
-          style={{ paddingBottom: `calc(${BOTTOM_NAV_CONTENT_PX}px + env(safe-area-inset-bottom))` }}
+          style={{ paddingBottom: `calc(${BOTTOM_NAV_CONTENT_PX}px + env(safe-area-inset-bottom) + ${BOTTOM_NAV_SCROLL_EXTRA_PX}px)` }}
         >
           {children}
         </main>

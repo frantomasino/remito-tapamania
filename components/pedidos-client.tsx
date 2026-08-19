@@ -338,7 +338,7 @@ export function PedidosClient({ records, userId }: PedidosClientProps) {
         </div>
       </div>
 
-      <div className="mx-auto max-w-md px-4 pb-6 pt-3">
+      <div className="mx-auto max-w-md px-4 pt-3">
         <div className="flex flex-col gap-3">
 
           <div className="flex items-center justify-between">

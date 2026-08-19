@@ -22,7 +22,7 @@ export default async function PerfilPage() {
   const alias = profile?.alias ?? ""
 
   return (
-    <div className="mx-auto max-w-md px-4 pb-6 pt-3">
+    <div className="mx-auto max-w-md px-4 pt-3">
       <div className="flex flex-col gap-3">
 
         <div className="mb-1">

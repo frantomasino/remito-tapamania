@@ -8,13 +8,14 @@ import type { RemitoData } from "@/lib/remito-types"
 
 interface ReimprimirButtonProps {
   remitoData: RemitoData
+  descuentoPct?: number
   empresa: string
   vendedor: string
   telefono: string
   alias: string
 }
 
-export function ReimprimirButton({ remitoData, empresa, vendedor, telefono, alias }: ReimprimirButtonProps) {
+export function ReimprimirButton({ remitoData, descuentoPct = 0, empresa, vendedor, telefono, alias }: ReimprimirButtonProps) {
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
 
@@ -23,7 +24,7 @@ export function ReimprimirButton({ remitoData, empresa, vendedor, telefono, alia
     try {
       setLoading(true)
       setMsg(null)
-      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, alias)
+      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, alias, descuentoPct)
       const { device, characteristic } = await connectBlePrinter()
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
       setMsg({ text: "Impreso", ok: true })
@@ -37,7 +38,7 @@ export function ReimprimirButton({ remitoData, empresa, vendedor, telefono, alia
     } finally {
       setLoading(false)
     }
-  }, [loading, remitoData, empresa, vendedor, telefono, alias])
+  }, [loading, remitoData, descuentoPct, empresa, vendedor, telefono, alias])
 
   return (
     <div className="flex flex-col gap-1.5">

@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation"
 import { ArrowLeft, Pencil } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import type { RemitoWithItems } from "@/lib/remito-types"
-import { formatRemitoNumber } from "@/lib/remito-types"
+import { formatRemitoNumber, resolveDescuentoPct } from "@/lib/remito-types"
 import { FormaPagoSelector } from "@/components/forma-pago-selector"
 import { ReimprimirButton } from "@/components/reimprimir-button"
 
@@ -44,7 +44,20 @@ export default async function RemitoDetailPage({
   if (error || !data) notFound()
 
   const remito = data as RemitoWithItems & { forma_pago?: string | null }
+  const items = remito.remito_items.map((item) => ({
+    product: {
+      descripcion: item.descripcion,
+      precio: Number(item.precio_unitario ?? 0),
+    },
+    cantidad: item.cantidad,
+    subtotal: Number((item as { subtotal?: number | null }).subtotal ?? 0),
+    opcion: (item as { opcion?: string | null }).opcion ?? undefined,
+    devolucion: 0,
+  }))
+  const subtotal = items.reduce((s, i) => s + i.subtotal, 0)
   const total = Number(remito.total || 0)
+  const descuentoPct = resolveDescuentoPct(subtotal, total, remito.observaciones)
+  const montoDescuento = descuentoPct > 0 ? Math.round(subtotal * descuentoPct / 100) : 0
   const itemCount = remito.remito_items.length
 
   const empresa = profile?.empresa ?? ""
@@ -62,22 +75,13 @@ export default async function RemitoDetailPage({
       mail: "",
       formaPago: "",
     },
-    items: remito.remito_items.map((item) => ({
-      product: {
-        descripcion: item.descripcion,
-        precio: Number(item.precio_unitario ?? 0),
-      },
-      cantidad: item.cantidad,
-      subtotal: Number((item as { subtotal?: number | null }).subtotal ?? 0),
-      opcion: (item as { opcion?: string | null }).opcion ?? undefined,
-      devolucion: 0,
-    })),
-    subtotal: total,
+    items,
+    subtotal,
     total,
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 pb-6 pt-3">
+    <div className="mx-auto max-w-md px-4 pt-3">
       <div className="flex flex-col gap-3">
 
         {/* ── HEADER ── */}
@@ -112,6 +116,9 @@ export default async function RemitoDetailPage({
             <p className="mt-0.5 text-[15px] font-semibold text-gray-900 tabular-nums">
               {formatCurrency(total)}
             </p>
+            {descuentoPct > 0 && (
+              <p className="mt-0.5 text-[11px] text-green-600">{descuentoPct}% desc.</p>
+            )}
           </div>
         </div>
 
@@ -140,7 +147,12 @@ export default async function RemitoDetailPage({
             ))}
           </div>
           <div className="flex items-center justify-between px-3 py-2.5 border-t border-gray-200 bg-gray-50">
-            <p className="text-[12px] font-semibold text-gray-500">Total</p>
+            <div>
+              <p className="text-[12px] font-semibold text-gray-500">Total</p>
+              {descuentoPct > 0 && (
+                <p className="text-[10px] text-gray-400">Subtotal {formatCurrency(subtotal)} · -{descuentoPct}%</p>
+              )}
+            </div>
             <p className="text-[15px] font-semibold text-gray-900 tabular-nums">{formatCurrency(total)}</p>
           </div>
         </div>
@@ -148,6 +160,7 @@ export default async function RemitoDetailPage({
         {/* ── REIMPRIMIR ── */}
         <ReimprimirButton
           remitoData={remitoData}
+          descuentoPct={descuentoPct}
           empresa={empresa}
           vendedor={vendedor}
           telefono={telefono}

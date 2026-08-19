@@ -7,11 +7,15 @@ import { createClient } from "@/lib/supabase/client"
 import { ProductSelector } from "@/components/product-selector"
 import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
 import { buildRemitoEscPos } from "@/lib/remito-ticket-escpos"
+import { BOTTOM_NAV_CONTENT_PX } from "@/components/bottom-nav"
 import { cn } from "@/lib/utils"
 import {
   type Product, type LineItem,
   formatCurrency, parseCSV, sortLineItemsByCatalog,
+  formatDescuentoObservaciones,
 } from "@/lib/remito-types"
+
+const ACTION_BAR_PX = 52
 
 type ProductsCacheEntry = { loadedAt: number; products: Product[] }
 
@@ -22,6 +26,7 @@ interface EditarPedidoClientProps {
   clienteNombre: string | null
   priceListUuid: string
   initialItems: LineItem[]
+  initialDescuentoPct: number
   empresa: string
   vendedor: string
   telefono: string
@@ -30,11 +35,12 @@ interface EditarPedidoClientProps {
 
 export function EditarPedidoClient({
   remitoId, numeroRemito, fechaRemito, clienteNombre,
-  priceListUuid, initialItems, empresa, vendedor, telefono, alias,
+  priceListUuid, initialItems, initialDescuentoPct, empresa, vendedor, telefono, alias,
 }: EditarPedidoClientProps) {
   const router = useRouter()
   const [items, setItems] = useState<LineItem[]>(initialItems)
   const [clienteNombreState, setClienteNombreState] = useState(clienteNombre ?? "")
+  const [descuentoPct] = useState(initialDescuentoPct)
   const [products, setProducts] = useState<Product[]>([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -90,8 +96,15 @@ export function EditarPedidoClient({
     return () => controller.abort()
   }, [priceListUuid])
 
-  const total = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
+  const subtotal = useMemo(() => items.reduce((s, i) => s + i.subtotal, 0), [items])
+  const montoDescuento = useMemo(
+    () => descuentoPct > 0 ? Math.round(subtotal * descuentoPct / 100) : 0,
+    [subtotal, descuentoPct],
+  )
+  const total = useMemo(() => subtotal - montoDescuento, [subtotal, montoDescuento])
   const totalUnits = useMemo(() => items.reduce((s, i) => s + i.cantidad, 0), [items])
+  const hasItems = items.filter(i => i.cantidad > 0).length > 0
+  const fixedBottomPx = BOTTOM_NAV_CONTENT_PX + (hasItems ? ACTION_BAR_PX : 0)
 
   const handleItemsChange = useCallback((updater: React.SetStateAction<LineItem[]>) => {
     setItems((prev) => typeof updater === "function" ? updater(prev) : updater)
@@ -106,11 +119,17 @@ export function EditarPedidoClient({
       setIsSaving(true)
       showToast("Guardando...")
 
-      const newTotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
+      const newSubtotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
+      const newDescuento = descuentoPct > 0 ? Math.round(newSubtotal * descuentoPct / 100) : 0
+      const newTotal = newSubtotal - newDescuento
 
       const { error: remitoError } = await supabase
         .from("remitos")
-        .update({ cliente_nombre: clienteNombreState.trim() || null, total: newTotal })
+        .update({
+          cliente_nombre: clienteNombreState.trim() || null,
+          total: newTotal,
+          observaciones: formatDescuentoObservaciones(descuentoPct),
+        })
         .eq("id", remitoId)
       if (remitoError) { showToast("Error al guardar"); return }
 
@@ -144,11 +163,11 @@ export function EditarPedidoClient({
         fecha: fechaRemito,
         client: { nombre: clienteNombreState.trim(), direccion: "", telefono: "", mail: "", formaPago: "" },
         items: itemsOrdenados,
-        subtotal: newTotal,
+        subtotal: newSubtotal,
         total: newTotal,
       }
 
-      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, alias, 0, currentProducts)
+      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, alias, descuentoPct, currentProducts)
       const { device, characteristic } = await connectBlePrinter()
       showToast("Conectado. Enviando...")
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
@@ -165,10 +184,9 @@ export function EditarPedidoClient({
       setIsSaving(false)
       setIsPrinting(false)
     }
-  }, [isOnline, isSaving, isPrinting, clienteNombreState, remitoId, numeroRemito, fechaRemito, empresa, vendedor, telefono, alias, supabase, router, showToast])
+  }, [isOnline, isSaving, isPrinting, clienteNombreState, remitoId, numeroRemito, fechaRemito, empresa, vendedor, telefono, alias, descuentoPct, supabase, router, showToast])
 
   const isLoading = isSaving || isPrinting
-  const hasItems = items.filter(i => i.cantidad > 0).length > 0
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -191,9 +209,8 @@ export function EditarPedidoClient({
         )}
       </header>
 
-      {/* Padding bottom: nav (64px) + barra acción (72px) + extra */}
       <main className="mx-auto w-full max-w-md px-4 pt-3"
-        style={{ paddingBottom: `calc(${hasItems ? 136 : 72}px + env(safe-area-inset-bottom) + 24px)` }}>
+        style={{ paddingBottom: `calc(${fixedBottomPx}px + env(safe-area-inset-bottom) + 24px)` }}>
         <div className="mb-3">
           <input type="text" placeholder="Nombre del cliente (opcional)"
             value={clienteNombreState}
@@ -210,13 +227,15 @@ export function EditarPedidoClient({
         )}
       </main>
 
-      {/* Barra de acción — encima de la nav del layout (bottom-16 = 64px) */}
       {hasItems && (
-        <div className="fixed inset-x-0 z-50 border-t border-gray-200 bg-white px-4 pt-3 shadow-lg"
-          style={{ bottom: `calc(64px + env(safe-area-inset-bottom))` }}>
+        <div className="fixed inset-x-0 z-40 border-t border-gray-200 bg-white px-4 pt-3 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"
+          style={{ bottom: `calc(${BOTTOM_NAV_CONTENT_PX}px + env(safe-area-inset-bottom))` }}>
           <div className="mx-auto max-w-md flex items-center gap-3 pb-3">
             <div className="flex-1">
               <p className="text-[15px] font-bold text-gray-900 tabular-nums">{formatCurrency(total)}</p>
+              {descuentoPct > 0 && (
+                <p className="text-[11px] text-green-600">{descuentoPct}% desc.</p>
+              )}
               <p className="text-[11px] text-gray-400">{totalUnits} unidades</p>
             </div>
             <button type="button" onClick={handleGuardarYReimprimir} disabled={isLoading || !isOnline}
@@ -233,7 +252,7 @@ export function EditarPedidoClient({
         "fixed left-1/2 z-[60] w-[calc(100%-32px)] max-w-sm -translate-x-1/2 transition-all duration-200",
         toastVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
       )}
-        style={{ bottom: `calc(140px + env(safe-area-inset-bottom))` }}>
+        style={{ bottom: `calc(${fixedBottomPx}px + env(safe-area-inset-bottom) + 10px)` }}>
         <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-lg">
           <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#1565c0] text-white">
             <CheckCircle2 className="size-3" />

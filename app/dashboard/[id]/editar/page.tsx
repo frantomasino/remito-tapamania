@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import type { RemitoWithItems } from "@/lib/remito-types"
+import { resolveDescuentoPct } from "@/lib/remito-types"
 import { EditarPedidoClient } from "@/components/editar-pedido-client"
 import type { LineItem } from "@/lib/remito-types"
 
@@ -49,6 +50,9 @@ export default async function EditarPedidoPage({
     devolucion: 0,
   }))
 
+  const subtotal = initialItems.reduce((s, i) => s + i.subtotal, 0)
+  const descuentoPct = resolveDescuentoPct(subtotal, Number(remito.total || 0), remito.observaciones)
+
   return (
     <EditarPedidoClient
       remitoId={id}
@@ -57,6 +61,7 @@ export default async function EditarPedidoPage({
       clienteNombre={remito.cliente_nombre ?? null}
       priceListUuid={remito.price_list_id ?? ""}
       initialItems={initialItems}
+      initialDescuentoPct={descuentoPct}
       empresa={profile?.empresa ?? ""}
       vendedor={profile?.vendedor ?? ""}
       telefono={profile?.telefono ?? ""}

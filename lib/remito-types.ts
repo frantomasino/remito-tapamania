@@ -206,3 +206,32 @@ export interface RemitoWithItems {
   total?: number | null
   remito_items: RemitoItemRow[]
 }
+
+const DESCUENTO_OBS_PREFIX = "descuento_pct:"
+
+/** Guarda el % de descuento en observaciones (campo ya existente en remitos). */
+export function formatDescuentoObservaciones(pct: number): string | null {
+  if (pct <= 0 || pct > 100) return null
+  return `${DESCUENTO_OBS_PREFIX}${pct}`
+}
+
+export function parseDescuentoFromObservaciones(obs: string | null | undefined): number | null {
+  if (!obs?.startsWith(DESCUENTO_OBS_PREFIX)) return null
+  const val = parseFloat(obs.slice(DESCUENTO_OBS_PREFIX.length))
+  if (!Number.isFinite(val) || val <= 0 || val > 100) return null
+  return val
+}
+
+/** Infiere descuento cuando solo tenemos subtotal de ítems y total guardado. */
+export function inferDescuentoPct(subtotal: number, total: number): number {
+  if (subtotal <= 0 || total >= subtotal) return 0
+  return Math.round((1 - total / subtotal) * 100)
+}
+
+export function resolveDescuentoPct(
+  subtotal: number,
+  total: number,
+  observaciones?: string | null,
+): number {
+  return parseDescuentoFromObservaciones(observaciones) ?? inferDescuentoPct(subtotal, total)
+}

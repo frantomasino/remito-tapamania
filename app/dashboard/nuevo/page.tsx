@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import {
   type Product, type LineItem, type ClientData, type RemitoData,
   formatRemitoNumber, formatCurrency, parseCSV, sortLineItemsByCatalog, repriceLineItemsToCatalog,
+  formatDescuentoObservaciones,
 } from "@/lib/remito-types"
 import { Onboarding } from "@/components/onboarding"
 import { InstallBanner } from "@/components/install-banner"
@@ -70,6 +71,7 @@ type PendingRemito = {
   clienteNombre: string | null
   listId: string
   total: number
+  descuentoPct?: number
   items: Array<{ descripcion: string; cantidad: number; precio_unitario: number; subtotal: number; opcion: string | null }>
   savedAt: number
 }
@@ -237,7 +239,8 @@ export default function RemitoPage() {
           if (consumeError || typeof consumedNumber !== "number") continue
           const { data: remitoInserted, error: remitoError } = await supabase.from("remitos").insert({
             user_id: uid, numero_remito: formatRemitoNumber(consumedNumber), fecha: remito.fecha,
-            cliente_nombre: remito.clienteNombre, estado: "pendiente", observaciones: null,
+            cliente_nombre: remito.clienteNombre, estado: "pendiente",
+            observaciones: formatDescuentoObservaciones(remito.descuentoPct ?? 0),
             price_list_id: remito.listId, total: remito.total,
           }).select("id").single()
           if (remitoError || !remitoInserted) continue
@@ -459,7 +462,8 @@ export default function RemitoPage() {
       if (consumeError || typeof consumedNumber !== "number") { showToast("Error al generar número"); return null }
       const { data: remitoInserted, error: remitoError } = await supabase.from("remitos").insert({
         user_id: userId, numero_remito: formatRemitoNumber(consumedNumber), fecha: getTodayISODate(),
-        cliente_nombre: currentClient.nombre?.trim() || null, estado: "pendiente", observaciones: null,
+        cliente_nombre: currentClient.nombre?.trim() || null, estado: "pendiente",
+        observaciones: formatDescuentoObservaciones(descuentoPct),
         price_list_id: currentListId, total: currentTotal,
       }).select("id").single()
       if (remitoError || !remitoInserted) { showToast("Error al guardar"); return null }
@@ -483,6 +487,7 @@ export default function RemitoPage() {
     const pending: PendingRemito = {
       id: generateLocalId(), userId, numeroRemito: remitoNumero, fecha: getTodayISODate(),
       clienteNombre: currentClient.nombre?.trim() || null, listId: currentListId, total: currentTotal,
+      descuentoPct: descuentoPct > 0 ? descuentoPct : undefined,
       items: currentItems.filter(i => i.cantidad > 0).map(item => ({
         descripcion: item.product.descripcion, cantidad: item.cantidad,
         precio_unitario: item.product.precio, subtotal: item.subtotal, opcion: item.opcion || null,
