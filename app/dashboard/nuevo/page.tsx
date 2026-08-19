@@ -11,7 +11,6 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { RemitoPrint } from "@/components/remito-print"
 import { connectBlePrinter, disconnectBlePrinter, writeEscPos } from "@/lib/bluetooth-printer"
 import { buildRemitoEscPos } from "@/lib/remito-ticket-escpos"
 import { cn } from "@/lib/utils"
@@ -20,13 +19,26 @@ import {
   formatRemitoNumber, formatCurrency, parseCSV, sortLineItemsByCatalog, repriceLineItemsToCatalog,
   formatDescuentoObservaciones,
 } from "@/lib/remito-types"
-import { Onboarding } from "@/components/onboarding"
-import { InstallBanner } from "@/components/install-banner"
 import { checkAppVersion } from "@/lib/version-check"
-import { NUEVO_REMITO_EVENT, BOTTOM_NAV_CONTENT_PX } from "@/components/bottom-nav"
+import { NUEVO_REMITO_EVENT, REMITO_SAVED_EVENT, BOTTOM_NAV_CONTENT_PX } from "@/components/bottom-nav"
 
 const ProductSelector = dynamic(
   () => import("@/components/product-selector").then(m => ({ default: m.ProductSelector })),
+  { ssr: false }
+)
+
+const RemitoPrint = dynamic(
+  () => import("@/components/remito-print").then(m => ({ default: m.RemitoPrint })),
+  { ssr: false }
+)
+
+const InstallBanner = dynamic(
+  () => import("@/components/install-banner").then(m => ({ default: m.InstallBanner })),
+  { ssr: false }
+)
+
+const Onboarding = dynamic(
+  () => import("@/components/onboarding").then(m => ({ default: m.Onboarding })),
   { ssr: false }
 )
 
@@ -78,6 +90,32 @@ type PendingRemito = {
 
 function generateLocalId() {
   return `local_${Date.now()}_${Math.random().toString(36).slice(2)}`
+}
+
+const PRODUCTS_CACHE_TTL_MS = 30 * 60 * 1000
+
+function productsCacheKey(userId: string, listId: string) {
+  return `${LS_BASE_KEYS.productsCache}:${userId}:${listId}`
+}
+
+function readProductsCache(userId: string, listId: string): ProductsCacheEntry | null {
+  if (!userId || !listId) return null
+  try {
+    const raw = localStorage.getItem(productsCacheKey(userId, listId))
+    if (!raw) return null
+    const entry = JSON.parse(raw) as ProductsCacheEntry
+    if (!entry?.products?.length || Date.now() - entry.loadedAt > PRODUCTS_CACHE_TTL_MS) return null
+    return entry
+  } catch {
+    return null
+  }
+}
+
+function writeProductsCache(userId: string, listId: string, entry: ProductsCacheEntry) {
+  if (!userId || !listId) return
+  try {
+    localStorage.setItem(productsCacheKey(userId, listId), JSON.stringify(entry))
+  } catch {}
 }
 
 const ONBOARDING_STEPS = [
@@ -146,7 +184,6 @@ export default function RemitoPage() {
   // Cache de productos por listId
   const productsCacheRef = useRef<Record<string, ProductsCacheEntry>>({})
 
-  useEffect(() => { checkAppVersion() }, [])
   useEffect(() => setMounted(true), [])
 
   useEffect(() => {
@@ -255,6 +292,7 @@ export default function RemitoPage() {
         localStorage.setItem(k(LS_BASE_KEYS.pendingRemitos, uid), JSON.stringify(remaining))
         setPendingCount(remaining.length)
         showToast(`${synced.length} remito${synced.length > 1 ? "s" : ""} sincronizado${synced.length > 1 ? "s" : ""}`)
+        window.dispatchEvent(new Event(REMITO_SAVED_EVENT))
       }
     } catch {} finally { setIsSyncing(false) }
   }, [supabase, showToast])
@@ -283,10 +321,19 @@ export default function RemitoPage() {
     loadPendingCount(userId)
     const load = async () => {
       try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("next_remito_number, empresa, vendedor, telefono, alias")
-          .eq("id", userId).single()
+        const [{ data: profile }, { data: lists }] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("next_remito_number, empresa, vendedor, telefono, alias")
+            .eq("id", userId)
+            .single(),
+          supabase
+            .from("price_lists")
+            .select("id, nombre")
+            .eq("user_id", userId)
+            .order("orden", { ascending: true }),
+        ])
+
         if (profile?.next_remito_number && Number(profile.next_remito_number) > 0) setNextNumber(Number(profile.next_remito_number))
         if (profile?.empresa) setEmpresa(profile.empresa)
         if (profile?.vendedor) setVendedor(profile.vendedor)
@@ -294,18 +341,11 @@ export default function RemitoPage() {
         if (profile?.alias) setAliasMP(profile.alias)
         const onboardingDone = localStorage.getItem(onboardingKey(userId))
         if (!profile?.empresa && !onboardingDone) setShowOnboarding(true)
-
-        // ── Cargar listas del usuario desde Supabase ──
-        const { data: lists } = await supabase
-          .from("price_lists")
-          .select("id, nombre")
-          .eq("user_id", userId)
-          .order("orden", { ascending: true })
+        checkAppVersion()
 
         if (lists && lists.length > 0) {
           setPriceLists(lists)
           const baseId = getBaseListId(lists)
-          // Por defecto siempre Lista Base; si hay borrador de hoy, abajo puede pisar con su listId
           setSelectedListId(baseId)
           try { localStorage.setItem(k(LS_BASE_KEYS.selectedList, userId), baseId) } catch {}
         }
@@ -339,19 +379,31 @@ export default function RemitoPage() {
   }, [selectedListId, userId])
 
   useEffect(() => {
-    if (!selectedListId) return
+    if (!selectedListId || !userId) return
     const controller = new AbortController()
-    const CACHE_TTL_MS = 30 * 60 * 1000
     const loadProducts = async () => {
-      const cached = productsCacheRef.current[selectedListId]
-      const isStale = !cached?.loadedAt || (Date.now() - cached.loadedAt) > CACHE_TTL_MS
-      if (cached?.products?.length > 0 && !isStale) { setProducts(cached.products); return }
+      const memCached = productsCacheRef.current[selectedListId]
+      const memStale = !memCached?.loadedAt || (Date.now() - memCached.loadedAt) > PRODUCTS_CACHE_TTL_MS
+      if (memCached?.products?.length > 0 && !memStale) {
+        setProducts(memCached.products)
+        return
+      }
+
+      const lsCached = readProductsCache(userId, selectedListId)
+      if (lsCached?.products?.length) {
+        productsCacheRef.current[selectedListId] = lsCached
+        setProducts(lsCached.products)
+        return
+      }
+
       try {
         setIsLoadingProducts(true)
-        const res = await fetch(`/api/products-csv?listId=${selectedListId}`, { cache: "no-store", signal: controller.signal })
+        const res = await fetch(`/api/products-csv?listId=${selectedListId}`, { signal: controller.signal })
         if (!res.ok) throw new Error()
         const parsed = parseCSV(await res.text())
-        productsCacheRef.current[selectedListId] = { loadedAt: Date.now(), products: parsed }
+        const entry = { loadedAt: Date.now(), products: parsed }
+        productsCacheRef.current[selectedListId] = entry
+        writeProductsCache(userId, selectedListId, entry)
         startTransition(() => setProducts(parsed))
       } catch (e) {
         if ((e as { name?: string })?.name === "AbortError") return
@@ -360,7 +412,7 @@ export default function RemitoPage() {
     }
     loadProducts()
     return () => controller.abort()
-  }, [selectedListId])
+  }, [selectedListId, userId])
 
   // Si cambia la lista, recalcular precios del pedido en curso
   useEffect(() => {
@@ -381,14 +433,33 @@ export default function RemitoPage() {
   const total = useMemo(() => subtotal - montoDescuento, [subtotal, montoDescuento])
   const totalUnits = useMemo(() => items.reduce((s, i) => s + i.cantidad, 0), [items])
   const totalDev = useMemo(() => items.reduce((s, i) => s + (i.devolucion ?? 0), 0), [items])
-  const remitoData: RemitoData = useMemo(() => ({
-    numero: remitoNumero,
-    fecha: remitoDateRef.current,
-    client,
-    items: sortLineItemsByCatalog(items, products),
-    subtotal,
-    total,
-  }), [remitoNumero, client, items, products, subtotal, total])
+
+  const previewRemitoData = useMemo((): RemitoData | null => {
+    if (!showPreview) return null
+    return {
+      numero: remitoNumero,
+      fecha: remitoDateRef.current,
+      client,
+      items: sortLineItemsByCatalog(items, products),
+      subtotal,
+      total,
+    }
+  }, [showPreview, remitoNumero, client, items, products, subtotal, total])
+
+  const buildLiveRemitoData = useCallback((): RemitoData => {
+    const currentItems = sortLineItemsByCatalog(itemsRef.current, productsRef.current)
+    const currentClient = clientRef.current
+    const currentSubtotal = currentItems.reduce((s, i) => s + i.subtotal, 0)
+    const currentDescuento = descuentoPct > 0 ? Math.round(currentSubtotal * descuentoPct / 100) : 0
+    return {
+      numero: remitoNumero,
+      fecha: remitoDateRef.current,
+      client: currentClient,
+      items: currentItems,
+      subtotal: currentSubtotal,
+      total: currentSubtotal - currentDescuento,
+    }
+  }, [remitoNumero, descuentoPct])
 
   const canPrint = items.filter(i => i.cantidad > 0).length > 0
   const hasDraft = items.length > 0 || client.nombre.trim().length > 0
@@ -409,6 +480,7 @@ export default function RemitoPage() {
     // Después de imprimir, siempre volver a Lista Base
     const baseId = getBaseListId(priceListsRef.current)
     if (baseId) setSelectedListId(baseId)
+    window.dispatchEvent(new Event(REMITO_SAVED_EVENT))
   }, [userId, clearDraft])
 
   const confirmNewRemito = useCallback(() => {
@@ -585,7 +657,7 @@ export default function RemitoPage() {
     const successData = { numero: remitoNumero, cliente: clientRef.current.nombre?.trim() || "Sin cliente", total, unidades: totalUnits }
     try {
       setIsPrintingBluetooth(true); showToast("Buscando impresora...")
-      const payload = buildRemitoEscPos(remitoData, empresa, vendedor, telefono, aliasMP, descuentoPct, productsRef.current)
+      const payload = buildRemitoEscPos(buildLiveRemitoData(), empresa, vendedor, telefono, aliasMP, descuentoPct, productsRef.current)
       const { device, characteristic } = await connectBlePrinter()
       showToast(`Conectado a ${device.name?.trim() || "impresora"}. Enviando...`)
       try { await writeEscPos(characteristic, payload) } finally { await disconnectBlePrinter(device) }
@@ -605,7 +677,7 @@ export default function RemitoPage() {
       if (/no parece compatible/i.test(msg)) { showToast("La impresora no es compatible"); return }
       showToast("No se pudo conectar con la impresora")
     } finally { setIsPrintingBluetooth(false) }
-  }, [canPrint, isSaving, isPrintingBluetooth, remitoNumero, total, totalUnits, remitoData, empresa, vendedor, telefono, aliasMP, isOnline, persistRemito, persistRemitoOffline, advanceAndReset, nextNumber, showToast])
+  }, [canPrint, isSaving, isPrintingBluetooth, remitoNumero, total, totalUnits, buildLiveRemitoData, empresa, vendedor, telefono, aliasMP, descuentoPct, isOnline, persistRemito, persistRemitoOffline, advanceAndReset, nextNumber, showToast])
 
   if (!mounted) {
     return (
@@ -923,7 +995,9 @@ export default function RemitoPage() {
           </div>
           <div className="flex-1 overflow-y-auto bg-gray-300 px-4 py-4">
             <div className="mx-auto w-fit overflow-hidden rounded-xl bg-white shadow-sm">
-              <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} descuentoPct={descuentoPct} catalog={products} />
+              {previewRemitoData && (
+                <RemitoPrint data={previewRemitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} descuentoPct={descuentoPct} catalog={products} />
+              )}
             </div>
           </div>
           <div className="border-t border-gray-200 bg-white px-4 py-2.5">
@@ -950,11 +1024,6 @@ export default function RemitoPage() {
       </Dialog>
 
       {userId && <InstallBanner userId={userId} />}
-      <div className="hidden" aria-hidden="true">
-        <div id="printable-remito">
-          <RemitoPrint data={remitoData} empresa={empresa} vendedor={vendedor} telefono={telefono} alias={aliasMP} descuentoPct={descuentoPct} catalog={products} />
-        </div>
-      </div>
     </>
   )
 }

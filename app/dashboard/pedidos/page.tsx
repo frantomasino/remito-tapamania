@@ -26,7 +26,7 @@ export default async function PedidosPage() {
     .eq("user_id", user.id)
     .order("fecha", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(500)
+    .limit(200)
 
   if (error) console.error("Error cargando pedidos", error)
 

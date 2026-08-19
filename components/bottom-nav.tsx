@@ -2,12 +2,13 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { PlusCircle, ClipboardList, Settings2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 
 export const NUEVO_REMITO_EVENT = "boleta:nuevo-remito"
+export const REMITO_SAVED_EVENT = "boleta:remito-saved"
 
 /** Altura del contenido de la nav (pt + ítems + pb), sin safe-area. */
 export const BOTTOM_NAV_CONTENT_PX = 46
@@ -27,25 +28,28 @@ export function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
   const [todayCount, setTodayCount] = useState(0)
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     navItems.forEach((item) => router.prefetch(item.href))
   }, [router])
 
+  const refreshTodayCount = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { count } = await supabase
+      .from("remitos")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("fecha", getTodayISO())
+    setTodayCount(count ?? 0)
+  }, [supabase])
+
   useEffect(() => {
-    const supabase = createClient()
-    const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { count } = await supabase
-        .from("remitos")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("fecha", getTodayISO())
-      setTodayCount(count ?? 0)
-    }
-    load()
-  }, [pathname])
+    refreshTodayCount()
+    window.addEventListener(REMITO_SAVED_EVENT, refreshTodayCount)
+    return () => window.removeEventListener(REMITO_SAVED_EVENT, refreshTodayCount)
+  }, [refreshTodayCount])
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">

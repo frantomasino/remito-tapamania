@@ -138,14 +138,19 @@ export function formatCurrency(value: number): string {
   }).format(value)
 }
 
+/** Índice descripción → posición en CSV para ordenar sin O(n²). */
+export function buildCatalogIndex(products: Product[]): Map<string, number> {
+  return new Map(products.map((p, i) => [p.descripcion, i]))
+}
+
 /** Ordena ítems como en la lista de precios de la app (CSV), no por orden de carga. */
 export function sortLineItemsByCatalog(items: LineItem[], products: Product[]): LineItem[] {
   if (!products.length || items.length <= 1) return items
+  const index = buildCatalogIndex(products)
+  const unknown = Number.MAX_SAFE_INTEGER
   return [...items].sort((a, b) => {
-    const idxA = products.findIndex((p) => p.descripcion === a.product.descripcion)
-    const idxB = products.findIndex((p) => p.descripcion === b.product.descripcion)
-    const safeA = idxA < 0 ? Number.MAX_SAFE_INTEGER : idxA
-    const safeB = idxB < 0 ? Number.MAX_SAFE_INTEGER : idxB
+    const safeA = index.get(a.product.descripcion) ?? unknown
+    const safeB = index.get(b.product.descripcion) ?? unknown
     if (safeA !== safeB) return safeA - safeB
     return (a.opcion ?? "").localeCompare(b.opcion ?? "", "es")
   })

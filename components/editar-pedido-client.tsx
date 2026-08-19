@@ -83,7 +83,7 @@ export function EditarPedidoClient({
       if (cached?.products?.length > 0 && !isStale) { setProducts(cached.products); return }
       try {
         setIsLoadingProducts(true)
-        const res = await fetch(`/api/products-csv?listId=${priceListUuid}`, { cache: "no-store", signal: controller.signal })
+        const res = await fetch(`/api/products-csv?listId=${priceListUuid}`, { signal: controller.signal })
         if (!res.ok) throw new Error()
         const parsed = parseCSV(await res.text())
         cacheRef.current = { loadedAt: Date.now(), products: parsed }

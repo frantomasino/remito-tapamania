@@ -4,7 +4,7 @@ import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef,
 import { Plus, Trash2, Search, Package2, X, ChevronDown, ChevronUp, RotateCcw, Check } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { type Product, type LineItem, formatCurrency } from "@/lib/remito-types"
+import { type Product, type LineItem, formatCurrency, buildCatalogIndex } from "@/lib/remito-types"
 
 interface ProductSelectorProps {
   products: Product[]
@@ -302,9 +302,11 @@ function groupCartItems(items: LineItem[], derivedByDesc: Map<string, Derived>, 
     }
   }
   // Ordenar según posición en el CSV
+  const catalogIndex = buildCatalogIndex(products)
+  const unknown = Number.MAX_SAFE_INTEGER
   return Array.from(groups.values()).sort((a, b) => {
-    const idxA = products.findIndex(p => p.descripcion === a.baseDesc)
-    const idxB = products.findIndex(p => p.descripcion === b.baseDesc)
+    const idxA = catalogIndex.get(a.baseDesc) ?? unknown
+    const idxB = catalogIndex.get(b.baseDesc) ?? unknown
     return idxA - idxB
   })
 }
@@ -448,7 +450,7 @@ const CartGroupRow = memo(function CartGroupRow({
   )
 })
 
-export function ProductSelector({ products, items, onItemsChange, onAddToast }: ProductSelectorProps) {
+export const ProductSelector = memo(function ProductSelector({ products, items, onItemsChange, onAddToast }: ProductSelectorProps) {
   const [search, setSearch] = useState("")
   const deferredSearch = useDeferredValue(search)
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
@@ -770,4 +772,4 @@ export function ProductSelector({ products, items, onItemsChange, onAddToast }: 
       </div>
     </>
   )
-}
+})

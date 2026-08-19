@@ -35,6 +35,17 @@ const withPWA = nextPWA({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
+  runtimeCaching: [
+    {
+      urlPattern: /\/api\/products-csv/,
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "products-csv",
+        expiration: { maxEntries: 8, maxAgeSeconds: 300 },
+        networkTimeoutSeconds: 8,
+      },
+    },
+  ],
 })
 
 export default withPWA(nextConfig)
