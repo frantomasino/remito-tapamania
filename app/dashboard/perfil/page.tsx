@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { PerfilEditor } from "@/components/perfil-editor"
 import { StockScanner } from "@/components/stock-scanner"
+import { BottomNavSpacer } from "@/components/bottom-nav-spacer"
 
 export default async function PerfilPage() {
   const supabase = await createClient()
@@ -92,14 +93,15 @@ export default async function PerfilPage() {
         </a>
 
         {/* ── CERRAR SESIÓN ── */}
-        <form action="/auth/signout" method="post" className="mt-1">
+        <form action="/auth/signout" method="post">
           <button type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white py-2.5 text-[13px] font-medium text-red-500 active:opacity-60 shadow-sm">
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white py-3 text-[13px] font-medium text-red-500 active:opacity-60 shadow-sm">
             <LogOut className="size-3.5" />
             Cerrar sesión
           </button>
         </form>
 
+        <BottomNavSpacer />
       </div>
     </div>
   )

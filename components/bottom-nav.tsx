@@ -10,11 +10,7 @@ import { createClient } from "@/lib/supabase/client"
 export const NUEVO_REMITO_EVENT = "boleta:nuevo-remito"
 export const REMITO_SAVED_EVENT = "boleta:remito-saved"
 
-/** Altura del contenido de la nav (pt + ítems + pb), sin safe-area. */
-export const BOTTOM_NAV_CONTENT_PX = 46
-
-/** Espacio extra para que el último botón no quede tapado en pantallas chicas. */
-export const BOTTOM_NAV_SCROLL_EXTRA_PX = 24
+export { BOTTOM_NAV_CONTENT_PX, bottomNavScrollPadding } from "@/lib/bottom-nav-layout"
 
 const navItems = [
   { href: "/dashboard/pedidos", label: "Historial", icon: ClipboardList },
